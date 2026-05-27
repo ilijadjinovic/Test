@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <link rel="manifest" href="manifest.json"/>
-<title>Trening Tracker</title>
+<title>Fitnes Tracker</title>
 <style>
 :root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--card:#1e293b;--acc:#3b82f6;--accL:#93c5fd;--grn:#22c55e;--amb:#f59e0b;--red:#ef4444;--pur:#a855f7;--tx:#f1f5f9;--tx2:#94a3b8;--tx3:#64748b;--br:#334155;--br2:#475569;--sb:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -130,7 +130,7 @@ const DFD=[
   {id:'f1',name:'Piletina (belo meso)',unit:'g',p:31,c:0,f:3.6,k:165},
   {id:'f2',name:'Govedina',unit:'g',p:26,c:0,f:15,k:250},
   {id:'f3',name:'Jaje',unit:'kom',p:6,c:0.6,f:5,k:72},
-  {id:'f4',name:'Skuta',unit:'g',p:11,c:3,f:4,k:98},
+  {id:'f4',name:'Svinjetina',unit:'g',p:25.7,c:0,f:20.8,k:297},
   {id:'f5',name:'Mleko (2.8%)',unit:'ml',p:3.4,c:4.8,f:2.8,k:57},
   {id:'f6',name:'Jogurt (prirodni)',unit:'g',p:3.5,c:4.7,f:3.3,k:61},
   {id:'f7',name:'Ovsena kaša',unit:'g',p:13,c:68,f:7,k:389},
@@ -156,19 +156,30 @@ const DFD=[
   {id:'f27',name:'Leblebija',unit:'g',p:9,c:27,f:2.6,k:164},
   {id:'f28',name:'Čokolada (tamna)',unit:'g',p:5,c:46,f:31,k:546},
   {id:'f29',name:'Sveže povrće',unit:'g',p:1.5,c:5,f:0.2,k:25},
-  {id:'f30',name:'Narandža',unit:'kom',p:1.2,c:15,f:0.2,k:62}
+  {id:'f30',name:'Narandža',unit:'kom',p:1.2,c:15,f:0.2,k:62},
+  {id:'f31',name:'FETA sir',unit:'g',p:14,c:4.1,f:21,k:264},
+  {id:'f32',name:'Pileći batak',unit:'g',p:24.2,c:0,f:9,k:184},
+  {id:'f33',name:'Grčki jogurt',unit:'g',p:6,c:5,f:10,k:133},
+  {id:'f34',name:'Boranija',unit:'g',p:1.8,c:7.1,f:0.1,k:31},
+  {id:'f35',name:'Crni luk',unit:'g',p:1.1,c:9.3,f:0.1,k:40},
+  {id:'f36',name:'Kupus',unit:'g',p:1.3,c:5.8,f:0.1,k:25},
+  {id:'f37',name:'Kuvani kukuruz',unit:'g',p:3.3,c:18.7,f:1.4,k:86},
+  {id:'f38',name:'Paradajz',unit:'g',p:0.9,c:3.9,f:0.2,k:18},
+  {id:'f39',name:'Sočivo',unit:'g',p:24.6,c:63.4,f:1.1,k:352},
+  {id:'f40',name:'Pastrmka',unit:'g',p:21.5,c:0,f:1.4,k:195},
+  {id:'f41',name:'Beli hleb',unit:'g',p:9,c:49,f:32,k:265}
 ];
 
 let S={
   profile:{name:'',age:'',height:'',weight:'',gender:'musko'},
   schedule:[
-    {day:0,active:true,time:'07:00',parts:['Grudi','Triceps']},
-    {day:1,active:false,time:'07:00',parts:[]},
-    {day:2,active:true,time:'07:00',parts:['Leđa','Biceps']},
-    {day:3,active:false,time:'07:00',parts:[]},
-    {day:4,active:true,time:'07:00',parts:['Noge','Stomak']},
+    {day:0,active:true,time:'16:00',parts:['Grudi','Triceps']},
+    {day:1,active:false,time:'09:00',parts:[]},
+    {day:2,active:true,time:'16:00',parts:['Leđa','Biceps']},
+    {day:3,active:false,time:'09:00',parts:[]},
+    {day:4,active:true,time:'16:00',parts:['Noge','Stomak']},
     {day:5,active:true,time:'10:00',parts:['Ramena']},
-    {day:6,active:false,time:'07:00',parts:[]}
+    {day:6,active:false,time:'10:00',parts:[]}
   ],
   exercises:DEX.map(e=>Object.assign({},e)),
   foods:DFD.map(f=>Object.assign({},f)),
@@ -217,10 +228,37 @@ function bmr(){
   return Math.round(10*w+6.25*h-5*a+5);
 }
 function sKcal(ex){
+  // Precizna formula: mehanicki rad + metabolicki trosak odmora
+  // Energia = tezina * amplituda * g / efikasnost misica
+  // + bazalni trosak (disanje, srce) tokom odmora izmedju serija
   if(!ex.sets||!ex.sets.length)return 0;
-  var w=parseFloat(S.profile.weight)||75,avg=ex.sets.reduce(function(a,s){return a+s.weight},0)/ex.sets.length;
-  var MET=avg>50?6:avg>20?5:4;
-  return Math.round(MET*(w*3.5/200)*ex.sets.length*2.5);
+  var bw=parseFloat(S.profile.weight)||75;
+  var gender=S.profile.gender||'m';
+  // Amplituda pokreta ~0.45m prosecno (razlicita za razlicite vezbe)
+  var amp=0.45;
+  // Efikasnost misica ~25% (75% se gubi kao toplota)
+  var eff=0.25;
+  // Ekscentricna faza dodaje ~30% od koncentricne
+  var eccFactor=1.3;
+  var totalKcal=0;
+  ex.sets.forEach(function(s){
+    var load=s.w||0;
+    var reps=s.r||0;
+    if(load===0){
+      // Vežba sa sopstvenom težinom - koristi telesnu masu
+      load=bw*0.65;
+    }
+    // Mehanicki rad po seriji (Joule) -> kcal
+    // W = load(kg) * g(9.81) * amp(m) * reps * eccFactor
+    var joules=load*9.81*amp*reps*eccFactor;
+    var kcalMech=joules/(4184*eff); // 4184 J = 1 kcal
+    // Bazalni trosak tokom serije i odmora (~2.5 min po seriji)
+    // BMR po minuti * faktor aktivnosti
+    var bmrPerMin=(10*bw+6.25*(parseFloat(S.profile.height)||175)-5*(parseFloat(S.profile.age)||30)+(gender==='m'?5:-161))/(24*60);
+    var restKcal=bmrPerMin*2.5*3; // 3x BMR tokom odmora
+    totalKcal+=kcalMech+restKcal;
+  });
+  return Math.round(totalKcal);
 }
 function kKcal(dur,man){
   if(man&&man>0)return man;
@@ -249,7 +287,7 @@ function rHome(){
   var nm=S.profile.name?S.profile.name:'';
   var h='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
   h+='<img src="'+LOGO+'" style="width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0"/>';
-  h+='<div><div style="font-size:22px;font-weight:700">Trening</div>';
+  h+='<div><div style="font-size:22px;font-weight:700">Fitnes Tracker</div>';
   if(nm)h+='<div style="font-size:13px;color:var(--tx2)">Zdravo, '+nm+'</div>';
   h+='</div></div>';
   h+='<div class="mg"><div class="met"><div class="mv" style="color:var(--accL)">'+tot+'</div><div class="ml">Ukupno treninga</div></div>';
@@ -341,7 +379,9 @@ function rLog(){
         h+='<button onclick="rmSet('+ei+','+si+')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;text-align:center;width:auto;padding:0">×</button></div>';
       });
       var kc=sKcal(ex),vol=ex.sets.reduce(function(a,s){return a+s.r*s.w},0);
-      h+='<div class="calbdg">🔥 ~'+kc+' kcal · Volumen: '+vol+' kg</div>';
+      var avgW=ex.sets.length?Math.round(ex.sets.reduce(function(a,s){return a+s.w},0)/ex.sets.length):0;
+      var totR=ex.sets.reduce(function(a,s){return a+s.r},0);
+      h+='<div class="calbdg">🔥 ~'+kc+' kcal spaljeno &nbsp;·&nbsp; '+totR+' ukupno pon. &nbsp;·&nbsp; Volumen: '+vol+' kg</div>';
     }
     h+='</div>';
   });

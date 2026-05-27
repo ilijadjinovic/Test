@@ -506,7 +506,16 @@ function rHist(){
           h+='</div></div>';
         }
       });
-      if(w.note)h+='<div style="font-size:13px;color:var(--tx2);font-style:italic;margin-top:6px">"'+w.note+'"</div>';
+      // Ukupno kalorije za ceo trening
+      var totalKcal=w.exercises.reduce(function(a,ex){
+        if(ex.type==='k'){return a+kKcal(ex.dur||0,ex.kcal||0);}
+        return a+sKcal(ex);
+      },0);
+      h+='<div style="margin-top:10px;padding:10px 12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;display:flex;justify-content:space-between;align-items:center">';
+      h+='<span style="font-size:13px;font-weight:600;color:var(--amb)">🔥 Ukupno spaljeno</span>';
+      h+='<span style="font-size:16px;font-weight:700;color:var(--amb)">'+totalKcal+' kcal</span>';
+      h+='</div>';
+      if(w.note)h+='<div style="font-size:13px;color:var(--tx2);font-style:italic;margin-top:8px">"'+w.note+'"</div>';
       h+='</div>';
     });
   }

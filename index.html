@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AkiAlexQuiz</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <header>
+    <h1>🎮 AkiAlexQuiz</h1>
+    <nav>
+      <button onclick="showTab('leaderboard')">Tabela</button>
+      <button onclick="showTab('quiz')">Takmičenje</button>
+      <button onclick="showTab('profile')">Profil</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Leaderboard -->
+    <section id="leaderboard" class="tab">
+      <h2>Rezultati</h2>
+      <ul id="leaderboardList"></ul>
+    </section>
+
+    <!-- Quiz -->
+    <section id="quiz" class="tab hidden">
+      <h2>Kviz</h2>
+      <div id="roomControls">
+        <button onclick="createRoom()">Kreiraj sobu</button>
+        <input type="text" id="roomCode" placeholder="Unesi kod sobe">
+        <button onclick="joinRoom()">Pridruži se</button>
+        <p id="roomInfo"></p>
+      </div>
+      <div id="countdown"></div>
+      <div id="questionArea"></div>
+    </section>
+
+    <!-- Profile -->
+    <section id="profile" class="tab hidden">
+      <h2>Profil</h2>
+      <button id="loginBtn">Prijavi se Google nalogom</button>
+      <p id="userInfo"></p>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

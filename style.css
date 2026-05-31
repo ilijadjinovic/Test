@@ -1,0 +1,36 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #e0f7fa; /* svetlo plava */
+  margin: 0;
+}
+header {
+  background: #ff80ab; /* roze */
+  color: white;
+  padding: 10px;
+}
+nav button {
+  margin: 5px;
+  padding: 10px;
+  background: #4fc3f7;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+nav button:hover {
+  background: #0288d1;
+}
+.tab.hidden {
+  display: none;
+}
+button {
+  background: #f06292;
+  color: white;
+  border: none;
+  padding: 10px;
+  margin: 5px;
+  cursor: pointer;
+}
+button:hover {
+  background: #ec407a;
+}

@@ -432,6 +432,65 @@ body {
   line-height: 1.6;
 }
 
+/* ── Nickname ── */
+
+.nickname-section {
+  margin-bottom: 4px;
+}
+
+.nickname-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #3c4060;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.nickname-row {
+  display: flex;
+  gap: 10px;
+}
+
+.nickname-input {
+  flex: 1;
+  background: #0d0f14;
+  border: 0.5px solid #2a2d40;
+  color: #e8eaf0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.nickname-input:focus { border-color: #2a4a8a; }
+.nickname-input::placeholder { color: #2a2d40; }
+
+.btn-save-nick {
+  background: #1e3a6e;
+  color: #7ab3f5;
+  border: 0.5px solid #2a4a8a;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-save-nick:hover { background: #253f75; }
+
+.nickname-hint {
+  font-size: 12px;
+  color: #2da87a;
+  margin-top: 7px;
+  min-height: 18px;
+}
+
 /* ── Bottom navigation ── */
 
 .bottom-nav {

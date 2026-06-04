@@ -32,17 +32,64 @@ function renderLeaderboard(entries) {
   const avatarClasses = ['av-blue', 'av-teal', 'av-purple', 'av-red'];
 
   list.innerHTML = entries.map((e, i) => {
-    const initials = e.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    // e.name treba da bude nadimak igrača (nickname iz Firestore/localStorage)
+    const displayName = e.name;
+    const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     const rankClass = rankClasses[i] || '';
     const avClass = avatarClasses[i % avatarClasses.length];
     return `
       <li class="leaderboard-item">
         <span class="rank ${rankClass}">${i + 1}</span>
         <div class="avatar ${avClass}">${initials}</div>
-        <span class="lb-name">${e.name}</span>
+        <span class="lb-name">${displayName}</span>
         <span class="lb-score">${e.score}<span class="lb-pts">pt</span></span>
       </li>`;
   }).join('');
+}
+
+// ── Nickname ─────────────────────────────────────────────
+window.saveNickname = function () {
+  const input = document.getElementById('nicknameInput');
+  const hint  = document.getElementById('nicknameHint');
+  const nick  = input.value.trim();
+
+  if (!currentUser) {
+    hint.style.color = '#e85050';
+    hint.textContent = 'Mora biti prijavljen.';
+    return;
+  }
+  if (!nick) {
+    hint.style.color = '#e85050';
+    hint.textContent = 'Nadimak ne sme biti prazan.';
+    return;
+  }
+
+  // Sačuvaj u localStorage (zameni Firestore setDoc kad povežeš Firebase)
+  localStorage.setItem('nickname_' + currentUser.uid, nick);
+
+  hint.style.color = '#2da87a';
+  hint.textContent = 'Nadimak sačuvan ✓';
+
+  // Ažuriraj prikaz u profilu ako je prikazano ime
+  const nameEl = document.getElementById('profileName');
+  if (nameEl) nameEl.textContent = nick;
+};
+
+window.onNicknameInput = function () {
+  document.getElementById('nicknameHint').textContent = '';
+};
+
+function loadNickname(user) {
+  if (!user) return;
+  const saved = localStorage.getItem('nickname_' + user.uid);
+  document.getElementById('nicknameInput').value = saved || '';
+}
+
+// Helper: vrati nadimak korisnika ili fallback
+function getDisplayName(user) {
+  if (!user) return 'Igrač';
+  const saved = localStorage.getItem('nickname_' + user.uid);
+  return saved || user.displayName || user.email.split('@')[0];
 }
 
 // ── Profile ──────────────────────────────────────────────
@@ -50,15 +97,17 @@ function renderProfile(user) {
   const card = document.getElementById('profileCard');
   if (user) {
     card.style.display = 'flex';
-    const initials = user.displayName
-      ? user.displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-      : user.email[0].toUpperCase();
+    const displayName = getDisplayName(user);
+    const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     document.getElementById('profileAvatar').textContent = initials;
-    document.getElementById('profileName').textContent   = user.displayName || 'Korisnik';
+    document.getElementById('profileName').textContent   = displayName;
     document.getElementById('profileEmail').textContent  = user.email;
     document.getElementById('loginBtn').textContent      = 'Odjavi se';
+    loadNickname(user);
   } else {
     card.style.display = 'none';
+    document.getElementById('nicknameInput').value = '';
+    document.getElementById('nicknameHint').textContent = '';
     document.getElementById('loginBtn').innerHTML = `
       <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
         <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>

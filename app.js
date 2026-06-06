@@ -353,7 +353,7 @@ function startCountdown(from, cb) {
 }
 
 let questionTimer = null;
-const QUESTION_TIME = 5; // sekundi po pitanju
+const QUESTION_TIME = 10; // sekundi po pitanju
 
 function showQuestion() {
   if (currentQIndex >= quizQuestions.length) { endQuiz(); return; }
@@ -362,7 +362,6 @@ function showQuestion() {
 
   const q = quizQuestions[currentQIndex];
   quizAnswered = false;
-  let timeLeft = QUESTION_TIME;
 
   document.getElementById('questionArea').innerHTML = `
     <div class="room-card" style="margin-bottom:0;">
@@ -370,14 +369,16 @@ function showQuestion() {
         <span class="tag tag-blue">${q.subject}</span>
         <span style="font-size:12px;color:#5a5f75;">${currentQIndex + 1} / ${quizQuestions.length}</span>
       </div>
-      <div style="height:4px;background:#1a1d2e;border-radius:2px;margin-bottom:4px;">
-        <div style="height:4px;background:#4f6bff;border-radius:2px;width:${((currentQIndex+1)/quizQuestions.length)*100}%;transition:width .3s;"></div>
+      <div style="height:4px;background:#1a1d2e;border-radius:2px;margin-bottom:12px;">
+        <div style="height:4px;background:#4f6bff;border-radius:2px;width:${((currentQIndex+1)/quizQuestions.length)*100}%;"></div>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-        <span id="questionTimerDisplay" style="font-size:13px;font-weight:700;color:#4f6bff;">${timeLeft}s</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div id="questionTimerBar" style="flex:1;height:6px;background:#1a1d2e;border-radius:3px;overflow:hidden;">
+          <div id="questionTimerFill" style="height:100%;background:#4f6bff;border-radius:3px;width:100%;"></div>
+        </div>
+        <span id="questionTimerDisplay" style="font-size:14px;font-weight:700;color:#4f6bff;min-width:28px;text-align:right;">${QUESTION_TIME}</span>
       </div>
-      <div id="questionTimerBar" style="height:3px;background:#4f6bff;border-radius:2px;width:100%;margin-bottom:16px;transition:width 1s linear;"></div>
-      <p style="font-size:16px;font-weight:600;color:#e8eaf0;line-height:1.5;margin-bottom:20px;">${q.question}</p>
+      <p style="font-size:16px;font-weight:600;color:#e8eaf0;line-height:1.5;margin:16px 0 20px;">${q.question}</p>
       <div style="display:flex;flex-direction:column;gap:10px;" id="answerBtns">
         ${q.options.map((opt, i) => `
           <button onclick="answerQuestion(${i})" data-idx="${i}"
@@ -390,21 +391,29 @@ function showQuestion() {
       </div>
     </div>`;
 
-  // Pokreni timer
-  setTimeout(() => {
-    const bar = document.getElementById('questionTimerBar');
-    if (bar) bar.style.width = '0%';
-  }, 50);
+  // Ticker koji odbrojava sekunde
+  let timeLeft = QUESTION_TIME;
+  const totalTime = QUESTION_TIME;
 
   questionTimer = setInterval(() => {
     timeLeft--;
+
     const timerEl = document.getElementById('questionTimerDisplay');
-    if (timerEl) timerEl.textContent = timeLeft + 's';
+    const fillEl  = document.getElementById('questionTimerFill');
+
+    if (timerEl) timerEl.textContent = timeLeft;
+    if (fillEl)  fillEl.style.width  = ((timeLeft / totalTime) * 100) + '%';
+
+    // Promeni boju kad ostane malo vremena
+    if (timeLeft <= 3) {
+      if (timerEl) timerEl.style.color = '#e85050';
+      if (fillEl)  fillEl.style.background = '#e85050';
+    }
+
     if (timeLeft <= 0) {
       clearInterval(questionTimer);
       questionTimer = null;
       if (!quizAnswered) {
-        // Vreme isteklo — prikaži tačan odgovor, bez poena
         quizAnswered = true;
         const btns = document.querySelectorAll('#answerBtns button');
         btns.forEach((btn, i) => {
@@ -468,11 +477,14 @@ async function endQuiz() {
       const updPlayers = room.players.map(p =>
         p.uid === currentUser.uid ? { ...p, score: quizScore } : p
       );
-      // wait a bit for others to finish, then update
       await updateDoc(doc(db, 'rooms', currentRoomId), {
         players: updPlayers,
         status: 'finished',
       });
+      // Obriši sobu nakon 30s da ne smeta novim igrama
+      setTimeout(async () => {
+        try { await deleteDoc(doc(db, 'rooms', currentRoomId)); } catch(e) {}
+      }, 30000);
 
       // Update global leaderboard
       await updateGlobalLeaderboard(currentUser.uid, quizScore);
@@ -528,10 +540,14 @@ function showResults(players) {
   loadLeaderboard();
 }
 
-window.playAgain = function () {
+window.playAgain = async function () {
+  stopPolling();
+  // Obriši staru sobu iz Firestore-a
+  if (currentRoomId) {
+    try { await deleteDoc(doc(db, 'rooms', currentRoomId)); } catch(e) {}
+  }
   currentRoomId = null;
   isRoomCreator = false;
-  stopPolling();
   resetQuizUI();
 };
 

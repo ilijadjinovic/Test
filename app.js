@@ -183,14 +183,23 @@ function showLobby(roomId, code, players, amCreator) {
 }
 
 // Generate 12 questions: 3 per subject
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function pickQuestions(allQ) {
   const result = [];
   SUBJECTS.forEach(subj => {
     const pool = allQ.filter(q => q.subject === subj);
-    const shuffled = pool.sort(() => Math.random() - 0.5);
+    const shuffled = shuffle(pool);
     result.push(...shuffled.slice(0, 3));
   });
-  return result.sort(() => Math.random() - 0.5);
+  return shuffle(result);
 }
 
 // ── Create room ──────────────────────────────────────────

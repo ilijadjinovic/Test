@@ -323,6 +323,7 @@ window.startQuiz = async function () {
 function beginQuiz() {
   currentQIndex = 0;
   quizScore     = 0;
+  window._lbUpdated = false;
 
   // hide lobby
   document.getElementById('roomInfo').innerHTML = '';
@@ -469,37 +470,65 @@ window.answerQuestion = function (chosenIdx) {
 async function endQuiz() {
   stopPolling();
 
-  // Save score to room
   if (currentRoomId && currentUser) {
+    // Prvo pročitaj sobu da znaš koliko igrača ima
     const roomSnap = await getDoc(doc(db, 'rooms', currentRoomId));
-    if (roomSnap.exists()) {
-      const room = roomSnap.data();
-      const updPlayers = room.players.map(p =>
-        p.uid === currentUser.uid ? { ...p, score: quizScore } : p
-      );
-      await updateDoc(doc(db, 'rooms', currentRoomId), {
-        players: updPlayers,
-        status: 'finished',
-      });
-      // Obriši sobu nakon 30s da ne smeta novim igrama
-      setTimeout(async () => {
-        try { await deleteDoc(doc(db, 'rooms', currentRoomId)); } catch(e) {}
-      }, 30000);
+    if (!roomSnap.exists()) { showResults([]); return; }
 
-      // Update global leaderboard
+    const room = roomSnap.data();
+    const totalPlayers = room.players.length;
+
+    // Upiši sopstveni rezultat
+    const updPlayers = room.players.map(p =>
+      p.uid === currentUser.uid ? { ...p, score: quizScore, done: true } : p
+    );
+    await updateDoc(doc(db, 'rooms', currentRoomId), { players: updPlayers });
+
+    // Update global leaderboard (jednom po kvizu)
+    if (!window._lbUpdated) {
+      window._lbUpdated = true;
       await updateGlobalLeaderboard(currentUser.uid, quizScore);
-
-      // Show results using room players
-      const finalSnap = await getDoc(doc(db, 'rooms', currentRoomId));
-      const finalPlayers = finalSnap.data().players;
-      showResults(finalPlayers);
     }
+
+    // Prikaži "čekam ostale" poruku
+    document.getElementById('questionArea').innerHTML = `
+      <div class="room-card" style="text-align:center;">
+        <p style="font-size:13px;color:#5a5f75;margin-bottom:8px;">Tvoj rezultat</p>
+        <div style="font-size:52px;font-weight:900;color:#e8eaf0;font-family:'Syne',sans-serif;">${quizScore}</div>
+        <div style="font-size:13px;color:#5a5f75;margin-top:4px;margin-bottom:20px;">poena</div>
+        <p style="font-size:13px;color:#3c4060;">Čekam ostale takmičare…</p>
+      </div>`;
+
+    // Polling dok svi ne završe (done: true)
+    let waitAttempts = 0;
+    const waitForAll = setInterval(async () => {
+      waitAttempts++;
+      try {
+        const snap = await getDoc(doc(db, 'rooms', currentRoomId));
+        if (!snap.exists()) { clearInterval(waitForAll); showResults([]); return; }
+        const data = snap.data();
+        const donePlayers = data.players.filter(p => p.done);
+        if (donePlayers.length >= totalPlayers || waitAttempts >= 20) {
+          clearInterval(waitForAll);
+          // Obriši sobu nakon 30s
+          setTimeout(async () => {
+            try { await deleteDoc(doc(db, 'rooms', currentRoomId)); } catch(e) {}
+          }, 30000);
+          showResults(data.players);
+        }
+      } catch(e) {
+        clearInterval(waitForAll);
+        showResults([]);
+      }
+    }, 1500);
+
   } else {
     showResults([]);
   }
 }
 
 async function updateGlobalLeaderboard(uid, score) {
+  if (score <= 0) return; // ne upisuj ako nema bodova
   const nick = await getMyNickname();
   const lbRef = doc(db, 'leaderboard', uid);
   const lbSnap = await getDoc(lbRef);

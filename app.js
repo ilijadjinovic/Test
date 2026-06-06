@@ -308,6 +308,11 @@ window.startQuiz = async function () {
     questions: picked,
     currentQuestion: 0,
   });
+
+  // Kreator odmah startuje lokalno, ne čeka polling
+  stopPolling();
+  quizQuestions = picked;
+  beginQuiz();
 };
 
 // ── Begin quiz locally ───────────────────────────────────

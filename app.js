@@ -289,7 +289,11 @@ async function pollRoom() {
     showLobby(currentRoomId, room.code, room.players, isRoomCreator);
   } else if (room.status === 'playing') {
     stopPolling();
-    quizQuestions = room.questions;
+    quizQuestions = room.questions || [];
+    if (quizQuestions.length === 0) {
+      console.error('pollRoom: quizQuestions je prazan!');
+      return;
+    }
     beginQuiz();
   }
 }
@@ -348,21 +352,31 @@ function startCountdown(from, cb) {
   }, 1000);
 }
 
+let questionTimer = null;
+const QUESTION_TIME = 5; // sekundi po pitanju
+
 function showQuestion() {
   if (currentQIndex >= quizQuestions.length) { endQuiz(); return; }
 
+  if (questionTimer) { clearInterval(questionTimer); questionTimer = null; }
+
   const q = quizQuestions[currentQIndex];
   quizAnswered = false;
+  let timeLeft = QUESTION_TIME;
 
   document.getElementById('questionArea').innerHTML = `
     <div class="room-card" style="margin-bottom:0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <span class="tag tag-blue">${q.subject}</span>
         <span style="font-size:12px;color:#5a5f75;">${currentQIndex + 1} / ${quizQuestions.length}</span>
       </div>
-      <div style="height:4px;background:#1a1d2e;border-radius:2px;margin-bottom:16px;">
+      <div style="height:4px;background:#1a1d2e;border-radius:2px;margin-bottom:4px;">
         <div style="height:4px;background:#4f6bff;border-radius:2px;width:${((currentQIndex+1)/quizQuestions.length)*100}%;transition:width .3s;"></div>
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+        <span id="questionTimerDisplay" style="font-size:13px;font-weight:700;color:#4f6bff;">${timeLeft}s</span>
+      </div>
+      <div id="questionTimerBar" style="height:3px;background:#4f6bff;border-radius:2px;width:100%;margin-bottom:16px;transition:width 1s linear;"></div>
       <p style="font-size:16px;font-weight:600;color:#e8eaf0;line-height:1.5;margin-bottom:20px;">${q.question}</p>
       <div style="display:flex;flex-direction:column;gap:10px;" id="answerBtns">
         ${q.options.map((opt, i) => `
@@ -374,17 +388,50 @@ function showQuestion() {
             <span style="font-weight:700;color:#4f6bff;margin-right:8px;">${String.fromCharCode(65+i)}.</span>${opt}
           </button>`).join('')}
       </div>
-      <p style="font-size:12px;color:#3c4060;text-align:center;margin-top:14px;">Pitanje ${currentQIndex+1} od ${quizQuestions.length}</p>
     </div>`;
+
+  // Pokreni timer
+  setTimeout(() => {
+    const bar = document.getElementById('questionTimerBar');
+    if (bar) bar.style.width = '0%';
+  }, 50);
+
+  questionTimer = setInterval(() => {
+    timeLeft--;
+    const timerEl = document.getElementById('questionTimerDisplay');
+    if (timerEl) timerEl.textContent = timeLeft + 's';
+    if (timeLeft <= 0) {
+      clearInterval(questionTimer);
+      questionTimer = null;
+      if (!quizAnswered) {
+        // Vreme isteklo — prikaži tačan odgovor, bez poena
+        quizAnswered = true;
+        const btns = document.querySelectorAll('#answerBtns button');
+        btns.forEach((btn, i) => {
+          btn.disabled = true;
+          btn.onmouseover = null;
+          btn.onmouseout  = null;
+          if (i === q.answer) {
+            btn.style.background = '#0f2e27';
+            btn.style.border     = '0.5px solid #2da87a';
+            btn.style.color      = '#2da87a';
+          }
+        });
+        setTimeout(() => { currentQIndex++; showQuestion(); }, 1200);
+      }
+    }
+  }, 1000);
 }
 
 window.answerQuestion = function (chosenIdx) {
   if (quizAnswered) return;
   quizAnswered = true;
 
+  if (questionTimer) { clearInterval(questionTimer); questionTimer = null; }
+
   const q = quizQuestions[currentQIndex];
   const correct = chosenIdx === q.answer;
-  if (correct) quizScore += 100;
+  if (correct) quizScore += 5;
 
   // color buttons
   const btns = document.querySelectorAll('#answerBtns button');
@@ -403,7 +450,6 @@ window.answerQuestion = function (chosenIdx) {
     }
   });
 
-  // next question after 1.2s
   setTimeout(() => {
     currentQIndex++;
     showQuestion();

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AkiAlexQuiz</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.2.0/dist/tabler-icons.min.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>AkiAlexQuiz</h1>
+      <span class="header-badge">Beta</span>
+    </header>
+
+    <main class="tab-content">
+
+      <!-- Leaderboard -->
+      <div class="tab-panel active" id="panel-leaderboard">
+        <p class="section-title">Tabela</p>
+        <p class="section-subtitle">Top igrači ove nedelje</p>
+        <ul id="leaderboardList">
+          <!-- Populate dynamically via app.js -->
+        </ul>
+      </div>
+
+      <!-- Quiz -->
+      <div class="tab-panel" id="panel-quiz">
+        <p class="section-title">Takmičenje</p>
+        <p class="section-subtitle">Kreiraj ili se pridruži sobi</p>
+        <div class="room-card">
+          <label>Nova soba</label>
+          <div class="btn-row">
+            <button class="btn-primary" onclick="createRoom()">Kreiraj sobu</button>
+          </div>
+        </div>
+        <div class="room-card">
+          <label>Pridruži se</label>
+          <input class="code-input" type="text" placeholder="ABC1" maxlength="6" id="roomCode">
+          <div class="btn-row">
+            <button class="btn-primary" onclick="joinRoom()" style="width:100%;">Pridruži se →</button>
+          </div>
+        </div>
+        <div id="roomInfo"></div>
+        <div id="countdown"></div>
+        <div id="questionArea"></div>
+      </div>
+
+      <!-- Profile -->
+      <div class="tab-panel" id="panel-profile">
+        <p class="section-title">Profil</p>
+        <p class="section-subtitle">Tvoj nalog i statistika</p>
+        <div class="profile-card" id="profileCard" style="display:none;">
+          <div class="profile-avatar" id="profileAvatar"></div>
+          <div>
+            <div class="profile-name" id="profileName"></div>
+            <div class="profile-email" id="profileEmail"></div>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-cell">
+            <div class="stat-num" id="statQuizzes">0</div>
+            <div class="stat-label">Kvizovi</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="statAccuracy">0%</div>
+            <div class="stat-label">Tačnost</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-num" id="statPoints">0</div>
+            <div class="stat-label">Poeni</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="nickname-section">
+          <label class="nickname-label" for="nicknameInput">Moj nadimak</label>
+          <div class="nickname-row">
+            <input class="nickname-input" type="text" id="nicknameInput" placeholder="Unesi nadimak..." maxlength="20" oninput="onNicknameInput()">
+            <button class="btn-save-nick" id="nicknameSaveBtn" onclick="saveNickname()">Sačuvaj</button>
+          </div>
+          <p class="nickname-hint" id="nicknameHint"></p>
+        </div>
+        <div class="divider"></div>
+        <button class="btn-google" id="loginBtn" onclick="handleLogin()">
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+          </svg>
+          Prijavi se Google nalogom
+        </button>
+        <p id="userInfo"></p>
+
+        <div class="divider"></div>
+        <div class="room-card" style="text-align:center;">
+          <p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#3c4060;font-weight:500;margin-bottom:12px;">O autoru</p>
+          <div style="font-size:17px;font-weight:700;color:#e8eaf0;font-family:'Syne',sans-serif;margin-bottom:4px;">Aki Alex Djina</div>
+          <div style="font-size:13px;color:#5a5f75;margin-bottom:14px;">Osmislila i uz pomoć Tate implementirala</div>
+          <a href="https://www.youtube.com/@AkiAlexDj" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#1a1d2e;border:0.5px solid #2a2d40;border-radius:10px;padding:8px 16px;text-decoration:none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#ff0000">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+            <span style="font-size:13px;font-weight:600;color:#e8eaf0;">@AkiAlexDj</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Admin -->
+      <div class="tab-panel" id="panel-admin">
+        <p class="section-title">Admin</p>
+        <p class="section-subtitle">Upravljanje platformom</p>
+
+        <div id="admin-locked" style="display:none;">
+          <div class="admin-lock">
+            <div class="admin-lock-icon">🔒</div>
+            <div class="admin-lock-title">Pristup ograničen</div>
+            <div class="admin-lock-sub">Ovaj panel je dostupan samo administratorima. Prijavi se sa nalogom koji ima admin privilegije.</div>
+          </div>
+        </div>
+
+        <div id="admin-content">
+          <div class="admin-section">
+            <p class="admin-section-label">Pregled sistema</p>
+            <div class="admin-row">
+              <span class="admin-row-label">Aktivne sobe</span>
+              <span class="admin-row-value" id="adminRooms">—</span>
+            </div>
+            <div class="admin-row">
+              <span class="admin-row-label">Registrovani korisnici</span>
+              <span class="admin-row-value" id="adminUsers">—</span>
+            </div>
+            <div class="admin-row">
+              <span class="admin-row-label">Status servera</span>
+              <span class="tag tag-active">Online</span>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-label">Korisnici</p>
+            <div id="adminUserList">
+              <!-- Populate dynamically via app.js -->
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-label">Akcije</p>
+            <div class="btn-row" style="margin-bottom:8px;">
+              <button class="btn-secondary" onclick="adminClearRooms()">Obriši sobe</button>
+              <button class="btn-secondary" onclick="adminResetLeaderboard()">Resetuj tabelu</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <p class="admin-section-label">Pitanja <span id="adminQuestionCount" style="font-size:11px;color:#3c4060;font-weight:400;margin-left:4px;">—</span></p>
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+              <select id="adminSubjectFilter" class="code-input" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;flex:1;min-width:140px;" onchange="adminFilterQuestions()">
+                <option value="">Svi predmeti</option>
+                <option>Matematika</option>
+                <option>Srpski jezik</option>
+                <option>Priroda i društvo</option>
+                <option>Nemački jezik</option>
+              </select>
+              <input id="adminSearchFilter" class="code-input" type="text" placeholder="Pretraži..." style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;flex:1;min-width:120px;" oninput="adminFilterQuestions()">
+            </div>
+            <div id="adminQuestionList" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+              <p style="color:#3c4060;font-size:13px;padding:8px 0;">Učitavanje...</p>
+            </div>
+            <div class="btn-row" style="margin-top:12px;">
+              <button class="btn-primary" onclick="adminAddQuestions()">+ Dodaj pitanje</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="switchTab('leaderboard', this)">
+        <i class="ti ti-trophy nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Tabela</span>
+      </button>
+      <button class="nav-btn" onclick="switchTab('quiz', this)">
+        <i class="ti ti-sword nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Kviz</span>
+      </button>
+      <button class="nav-btn" onclick="switchTab('profile', this)">
+        <i class="ti ti-user nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Profil</span>
+      </button>
+      <button class="nav-btn admin-btn" onclick="switchTab('admin', this)" id="adminNavBtn">
+        <i class="ti ti-shield nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Admin</span>
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
+
+  <!-- Add Question Modal -->
+  <div id="addQuestionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#13161f;border:0.5px solid #2a2d40;border-radius:16px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <p style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:#e8eaf0;">Novo pitanje</p>
+        <button onclick="closeAddQuestion()" style="background:none;border:none;color:#5a5f75;cursor:pointer;font-size:20px;line-height:1;">✕</button>
+      </div>
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#3c4060;font-weight:500;display:block;margin-bottom:6px;">Predmet</label>
+      <select id="aqSubject" class="code-input" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:14px;">
+        <option>Matematika</option>
+        <option>Srpski jezik</option>
+        <option>Priroda i društvo</option>
+        <option>Nemački jezik</option>
+      </select>
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#3c4060;font-weight:500;display:block;margin-bottom:6px;">Pitanje</label>
+      <input id="aqQuestion" class="code-input" type="text" placeholder="Unesi pitanje..." style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:14px;">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#3c4060;font-weight:500;display:block;margin-bottom:6px;">Odgovori</label>
+      <input id="aqA" class="code-input" type="text" placeholder="A. odgovor" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:8px;">
+      <input id="aqB" class="code-input" type="text" placeholder="B. odgovor" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:8px;">
+      <input id="aqC" class="code-input" type="text" placeholder="C. odgovor" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:8px;">
+      <input id="aqD" class="code-input" type="text" placeholder="D. odgovor" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:14px;">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#3c4060;font-weight:500;display:block;margin-bottom:6px;">Tačan odgovor</label>
+      <select id="aqAnswer" class="code-input" style="font-size:13px;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;margin-bottom:20px;">
+        <option value="0">A</option>
+        <option value="1">B</option>
+        <option value="2">C</option>
+        <option value="3">D</option>
+      </select>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="closeAddQuestion()">Otkaži</button>
+        <button class="btn-primary" onclick="submitAddQuestion()">Sačuvaj pitanje</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

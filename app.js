@@ -425,18 +425,29 @@ function showQuestion() {
       questionTimer = null;
       if (!quizAnswered) {
         quizAnswered = true;
+        // Zaključaj sve dugmiće, ali NE otkrivaj tačan odgovor
         const btns = document.querySelectorAll('#answerBtns button');
-        btns.forEach((btn, i) => {
+        btns.forEach(btn => {
           btn.disabled = true;
           btn.onmouseover = null;
           btn.onmouseout  = null;
-          if (i === q.answer) {
-            btn.style.background = '#0f2e27';
-            btn.style.border     = '0.5px solid #2da87a';
-            btn.style.color      = '#2da87a';
-          }
         });
-        setTimeout(() => { currentQIndex++; showQuestion(); }, 1200);
+        // Zacrveni celu karticu pitanja
+        const card = document.querySelector('#questionArea .room-card');
+        if (card) {
+          card.style.background   = '#2e0a0a';
+          card.style.border       = '0.5px solid #c0392b';
+          card.style.transition   = 'background 0.3s, border 0.3s';
+        }
+        // Prikaži poruku umesto tačnog odgovora
+        const answerArea = document.getElementById('answerBtns');
+        if (answerArea) {
+          const msg = document.createElement('p');
+          msg.style.cssText = 'margin-top:14px;font-size:13px;color:#e05050;text-align:center;font-weight:500;';
+          msg.textContent = '⏱ Vreme je isteklo! Potraži odgovor u knjizi.';
+          answerArea.appendChild(msg);
+        }
+        setTimeout(() => { currentQIndex++; showQuestion(); }, 1800);
       }
     }
   }, 1000);

@@ -69,3 +69,16 @@ document.getElementById('unitForm').onsubmit=async e=>{
  e.target.reset();
  loadUnits();
 };
+
+async function loadTenantData(user){
+
+ document.getElementById(
+   "messageBox"
+ ).innerHTML=
+
+ `Prijavljen zakupac:
+ ${user.email}
+
+ Ovde će biti prikazan samo njegov stan`;
+
+}

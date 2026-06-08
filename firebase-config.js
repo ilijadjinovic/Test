@@ -21,3 +21,4 @@ const provider=new GoogleAuthProvider();
 
 export const login=()=>signInWithPopup(auth,provider);
 export const logout=()=>signOut(auth);
+export const ADMIN_EMAIL = "ilija.djinovic@gmail.com";

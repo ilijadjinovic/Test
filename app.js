@@ -62,10 +62,18 @@ async function loadUnits(){
 
 document.getElementById('unitForm').onsubmit=async e=>{
  e.preventDefault();
- await addDoc(collection(db,'units'),{
-   name:unitName.value,
-   rent:Number(unitRent.value||0)
- });
+await addDoc(collection(db,'units'),{
+
+ name:unitName.value,
+
+ rent:Number(unitRent.value||0),
+
+ tenantEmail:
+    tenantEmail.value
+      .trim()
+      .toLowerCase()
+
+});
  e.target.reset();
  loadUnits();
 };

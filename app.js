@@ -18,10 +18,35 @@ document.querySelectorAll('.tab').forEach(b=>{
  };
 });
 
+import { auth, db, login, logout, ADMIN_EMAIL } from './firebase-config.js';
+
 onAuthStateChanged(auth,user=>{
+
  loginBtn.hidden=!!user;
  logoutBtn.hidden=!user;
- if(user) loadUnits();
+
+ if(!user) return;
+
+ const isAdmin =
+     user.email.toLowerCase() ===
+     ADMIN_EMAIL.toLowerCase();
+
+ if(isAdmin){
+
+     loadUnits();
+
+     document.getElementById("units").style.display="block";
+     document.getElementById("finance").style.display="block";
+
+ }else{
+
+     document.getElementById("units").style.display="none";
+     document.getElementById("finance").style.display="none";
+
+     loadTenantData(user);
+
+ }
+
 });
 
 async function loadUnits(){

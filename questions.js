@@ -4,7 +4,7 @@ export const initialQuestions = [
   { id: "m001", subject: "Matematika", question: "Koliko je 347 + 256?", options: ["593", "603", "613", "583"], answer: 1 },
   { id: "m002", subject: "Matematika", question: "Koliko je 800 - 364?", options: ["436", "446", "426", "436"], answer: 0 },
   { id: "m003", subject: "Matematika", question: "Koliko je 24 × 3?", options: ["62", "72", "68", "76"], answer: 1 },
-  { id: "m004", subject: "Matematika", question: "Koliko je 96 ÷ 4?", options: ["22", "26", "24", "28"], answer: 1 },
+  { id: "m004", subject: "Matematika", question: "Koliko je 96 ÷ 4?", options: ["22", "26", "24", "28"], answer: 2 },
   { id: "m005", subject: "Matematika", question: "Koji broj je najbliži broju 500: 489, 513, 501 ili 498?", options: ["489", "513", "501", "498"], answer: 2 },
   { id: "m006", subject: "Matematika", question: "Koliko je 1000 - 1?", options: ["998", "999", "1001", "990"], answer: 1 },
   { id: "m007", subject: "Matematika", question: "Koliko ima cifara u broju 4728?", options: ["3", "5", "4", "6"], answer: 2 },

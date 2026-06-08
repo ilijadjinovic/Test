@@ -21,7 +21,7 @@ export const initialQuestions = [
   { id: "m018", subject: "Matematika", question: "Površina pravougaonika 5 cm × 4 cm je?", options: ["18 cm²", "20 cm²", "9 cm²", "22 cm²"], answer: 1 },
   { id: "m019", subject: "Matematika", question: "Koliko je 9 × 6?", options: ["54", "63", "48", "56"], answer: 0 },
   { id: "m020", subject: "Matematika", question: "Broj 2748 zaokružen na stotice je?", options: ["2700", "2750", "2800", "3000"], answer: 0 },
-  { id: "m021", subject: "Matematika", question: "Koliko je 63 ÷ 7?", options: ["8", "9", "7", "6"], answer: 3 },
+  { id: "m021", subject: "Matematika", question: "Koliko je 63 ÷ 7?", options: ["8", "9", "7", "6"], answer: 1 },
   { id: "m022", subject: "Matematika", question: "Koji broj nedostaje: 3, 6, 9, __, 15?", options: ["11", "13", "12", "10"], answer: 2 },
   { id: "m023", subject: "Matematika", question: "Koliko minuta ima 2 sata?", options: ["100", "120", "90", "60"], answer: 1 },
   { id: "m024", subject: "Matematika", question: "Koliko je 1 km u metrima?", options: ["100 m", "10 m", "1000 m", "500 m"], answer: 2 },

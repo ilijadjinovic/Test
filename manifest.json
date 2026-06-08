@@ -1,0 +1,10 @@
+
+{
+"name":"Rental Manager",
+"short_name":"Rental",
+"start_url":"./",
+"display":"standalone",
+"background_color":"#ffffff",
+"theme_color":"#222222",
+"icons":[]
+}

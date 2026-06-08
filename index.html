@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rental Manager</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+<h1>Rental Manager</h1>
+<button id="loginBtn">Google Login</button>
+<button id="logoutBtn" hidden>Logout</button>
+</header>
+
+<nav>
+<button class="tab active" data-tab="dashboard">Dashboard</button>
+<button class="tab" data-tab="units">Stanovi</button>
+<button class="tab" data-tab="messages">Poruke</button>
+<button class="tab" data-tab="finance">Finansije</button>
+</nav>
+
+<section id="dashboard" class="panel active">
+<h2>Dashboard</h2>
+<div class="cards">
+<div class="card"><span id="income">0</span><small>Prihod</small></div>
+<div class="card"><span id="expense">0</span><small>Troškovi</small></div>
+<div class="card"><span id="profit">0</span><small>Profit</small></div>
+</div>
+</section>
+
+<section id="units" class="panel">
+<h2>Stanovi</h2>
+<form id="unitForm">
+<input id="unitName" placeholder="Naziv stana" required>
+<input id="unitRent" placeholder="Mesečna renta" type="number">
+<button>Dodaj stan</button>
+</form>
+<ul id="unitList"></ul>
+</section>
+
+<section id="messages" class="panel">
+<h2>Poruke</h2>
+<p>Zakupci vide samo svoje stanove i šalju poruke kroz Firestore kolekciju.</p>
+<div id="messageBox"></div>
+</section>
+
+<section id="finance" class="panel">
+<h2>Finansije</h2>
+<p>Ovde će se prikazivati prihodi, rashodi i obračuni depozita.</p>
+</section>
+
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

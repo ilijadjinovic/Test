@@ -1,0 +1,10 @@
+
+body{font-family:Arial,sans-serif;margin:0;background:#f2f2f2}
+header{display:flex;justify-content:space-between;padding:1rem;background:#222;color:white}
+nav{display:flex;gap:.5rem;padding:.5rem;background:white}
+.tab{padding:.6rem}
+.panel{display:none;padding:1rem}
+.panel.active{display:block}
+.cards{display:flex;gap:1rem}
+.card{background:white;padding:1rem;border-radius:10px;min-width:120px}
+input,button{padding:.7rem;margin:.2rem}

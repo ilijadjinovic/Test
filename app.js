@@ -620,11 +620,21 @@ window.adminResetLeaderboard = async function () {
 };
 
 async function loadAdminQuestions() {
-  const q = query(collection(db, 'questions'), orderBy('subject'));
-  const snap = await getDocs(q);
-  allQuestions = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+  const [questSnap, roomsSnap, usersSnap] = await Promise.all([
+    getDocs(query(collection(db, 'questions'), orderBy('subject'))),
+    getDocs(collection(db, 'rooms')),
+    getDocs(collection(db, 'users')),
+  ]);
+
+  allQuestions = questSnap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
   renderQuestionList();
   updateQuestionCount();
+
+  const roomsEl = document.getElementById('adminRooms');
+  if (roomsEl) roomsEl.textContent = roomsSnap.size;
+
+  const usersEl = document.getElementById('adminUsers');
+  if (usersEl) usersEl.textContent = usersSnap.size;
 }
 
 function updateQuestionCount() {

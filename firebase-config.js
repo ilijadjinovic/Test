@@ -4,12 +4,12 @@ import { getAuth,GoogleAuthProvider,signInWithPopup,signOut } from 'https://www.
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
 
 const firebaseConfig={
- apiKey:'REPLACE',
- authDomain:'REPLACE',
- projectId:'REPLACE',
- storageBucket:'REPLACE',
- messagingSenderId:'REPLACE',
- appId:'REPLACE'
+apiKey: "AIzaSyCHdohv0tfLf8taODtLfMKQDPROJN_lwug",
+  authDomain: "rental-manager-da0fa.firebaseapp.com",
+  projectId: "rental-manager-da0fa",
+  storageBucket: "rental-manager-da0fa.firebasestorage.app",
+  messagingSenderId: "470999148120",
+  appId: "1:470999148120:web:2fde820f24ca194f2c4c2d"
 };
 
 const app=initializeApp(firebaseConfig);

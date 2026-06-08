@@ -90,3 +90,61 @@ async function loadTenantData(user){
  Ovde će biti prikazan samo njegov stan`;
 
 }
+
+import {
+ collection,
+ query,
+ where,
+ getDocs
+
+} from
+'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
+
+
+async function loadTenantData(user){
+
+ const q=query(
+
+   collection(db,'units'),
+
+   where(
+
+      'tenantEmail',
+
+      '==',
+
+      user.email
+        .toLowerCase()
+
+   )
+
+ );
+
+ const snap=await getDocs(q);
+
+ const box=
+ document.getElementById(
+   "messageBox"
+ );
+
+ box.innerHTML='';
+
+ snap.forEach(doc=>{
+
+   const d=doc.data();
+
+   box.innerHTML+=`
+
+   <div>
+
+   <h3>${d.name}</h3>
+
+   renta: ${d.rent}
+
+   </div>
+
+   `;
+
+ });
+
+}

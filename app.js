@@ -1,12 +1,12 @@
 import { auth, db, login, logout, ADMIN_EMAIL } from './firebase-config.js';
-import { onAuthStateChanged, getRedirectResult } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+import { onAuthStateChanged, getRedirectResult } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import {
   collection,
   addDoc,
   getDocs,
   query,
   where
-} from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const loginBtn  = document.getElementById('loginBtn');
 const logoutBtn = document.getElementById('logoutBtn');

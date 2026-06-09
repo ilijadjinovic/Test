@@ -17,6 +17,7 @@ logoutBtn.onclick = logout;
 // Hvatamo rezultat nakon Google redirect prijave
 getRedirectResult(auth).catch(err => console.error('Redirect greška:', err));
 
+// Tab navigacija
 document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -27,8 +28,7 @@ document.querySelectorAll('.tab').forEach(b => {
 });
 
 onAuthStateChanged(auth, user => {
-  loginBtn.hidden  = !!user;
-  logoutBtn.hidden = !user;
+  updateProfileTab(user);
 
   if (!user) return;
 
@@ -44,6 +44,47 @@ onAuthStateChanged(auth, user => {
     loadTenantData(user);
   }
 });
+
+function updateProfileTab(user) {
+  const guest     = document.getElementById('profileGuest');
+  const userDiv   = document.getElementById('profileUser');
+  const topAvatar = document.getElementById('topbarAvatar');
+
+  if (user) {
+    // Prikaži korisnički blok
+    guest.hidden   = true;
+    userDiv.hidden = false;
+
+    document.getElementById('profileName').textContent  = user.displayName || '—';
+    document.getElementById('profileEmail').textContent = user.email || '—';
+
+    const photo = user.photoURL;
+    if (photo) {
+      document.getElementById('profilePhoto').src = photo;
+    } else {
+      // Fallback: inicijali
+      const img = document.getElementById('profilePhoto');
+      img.style.display = 'none';
+    }
+
+    // Mali avatar u topbaru
+    topAvatar.hidden = false;
+    if (photo) {
+      topAvatar.innerHTML = `<img src="${photo}" alt="avatar">`;
+    } else {
+      const initials = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+      topAvatar.innerHTML = `<span>${initials}</span>`;
+    }
+
+    // Označi Profil tab ikonom (badge)
+    document.querySelector('[data-tab="profil"] i').className = 'ti ti-user-check';
+  } else {
+    guest.hidden   = false;
+    userDiv.hidden = true;
+    topAvatar.hidden = true;
+    document.querySelector('[data-tab="profil"] i').className = 'ti ti-user-circle';
+  }
+}
 
 async function loadUnits() {
   const ul   = document.getElementById('unitList');

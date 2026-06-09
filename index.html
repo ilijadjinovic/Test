@@ -12,18 +12,11 @@
 
 <header class="topbar">
   <div class="topbar-title">
-    <i class="ti ti-building" aria-hidden="true"></i>
+    <img src="icon-192.png" alt="Logo" class="topbar-logo">
     Rental Manager
   </div>
   <div class="topbar-actions">
-    <button id="loginBtn" class="btn-ghost">
-      <i class="ti ti-brand-google" aria-hidden="true"></i>
-      Prijavi se
-    </button>
-    <button id="logoutBtn" class="btn-ghost" hidden>
-      <i class="ti ti-logout" aria-hidden="true"></i>
-      Odjavi se
-    </button>
+    <div id="topbarAvatar" class="topbar-avatar" hidden></div>
   </div>
 </header>
 
@@ -98,6 +91,52 @@
     <p class="info-text">Ovde će se prikazivati prihodi, rashodi i obračuni depozita.</p>
   </section>
 
+  <!-- PROFIL TAB -->
+  <section id="profil" class="panel">
+    <div class="page-header">
+      <h2>Profil</h2>
+      <span class="subtitle">Nalog</span>
+    </div>
+
+    <!-- Neprijavljen -->
+    <div id="profileGuest" class="profile-guest">
+      <i class="ti ti-user-circle" aria-hidden="true"></i>
+      <p>Niste prijavljeni</p>
+      <button id="loginBtn" class="btn-primary">
+        <i class="ti ti-brand-google" aria-hidden="true"></i>
+        Prijavi se Google nalogom
+      </button>
+    </div>
+
+    <!-- Prijavljen -->
+    <div id="profileUser" class="profile-user" hidden>
+      <div class="profile-avatar-wrap">
+        <img id="profilePhoto" src="" alt="Avatar" class="profile-photo">
+      </div>
+      <div class="profile-info">
+        <p id="profileName" class="profile-name"></p>
+        <p id="profileEmail" class="profile-email"></p>
+      </div>
+      <button id="logoutBtn" class="btn-outline-danger">
+        <i class="ti ti-logout" aria-hidden="true"></i>
+        Odjavi se
+      </button>
+    </div>
+
+    <!-- O autoru -->
+    <div class="about-card">
+      <div class="about-header">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <span>O autoru</span>
+      </div>
+      <div class="about-body">
+        <!-- Ovde idu podaci o autoru -->
+        <p class="about-placeholder">Podaci o autoru biće dodati uskoro.</p>
+      </div>
+    </div>
+
+  </section>
+
 </main>
 
 <nav class="bottom-nav">
@@ -116,6 +155,10 @@
   <button class="tab" data-tab="finance">
     <i class="ti ti-report-money" aria-hidden="true"></i>
     <span>Finansije</span>
+  </button>
+  <button class="tab" data-tab="profil">
+    <i class="ti ti-user-circle" aria-hidden="true"></i>
+    <span>Profil</span>
   </button>
 </nav>
 

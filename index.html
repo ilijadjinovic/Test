@@ -6,51 +6,118 @@
 <title>Rental Manager</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 </head>
 <body>
-<header>
-<h1>Rental Manager</h1>
-<button id="loginBtn">Google Login</button>
-<button id="logoutBtn" hidden>Logout</button>
+
+<header class="topbar">
+  <div class="topbar-title">
+    <i class="ti ti-building" aria-hidden="true"></i>
+    Rental Manager
+  </div>
+  <div class="topbar-actions">
+    <button id="loginBtn" class="btn-ghost">
+      <i class="ti ti-brand-google" aria-hidden="true"></i>
+      Prijavi se
+    </button>
+    <button id="logoutBtn" class="btn-ghost" hidden>
+      <i class="ti ti-logout" aria-hidden="true"></i>
+      Odjavi se
+    </button>
+  </div>
 </header>
 
-<nav>
-<button class="tab active" data-tab="dashboard">Dashboard</button>
-<button class="tab" data-tab="units">Stanovi</button>
-<button class="tab" data-tab="messages">Poruke</button>
-<button class="tab" data-tab="finance">Finansije</button>
+<main class="content">
+
+  <section id="dashboard" class="panel active">
+    <div class="page-header">
+      <h2>Dashboard</h2>
+      <span class="subtitle">Pregled</span>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card income">
+        <i class="ti ti-trending-up" aria-hidden="true"></i>
+        <span id="income">0 RSD</span>
+        <small>Prihod</small>
+      </div>
+      <div class="stat-card expense">
+        <i class="ti ti-trending-down" aria-hidden="true"></i>
+        <span id="expense">0 RSD</span>
+        <small>Troškovi</small>
+      </div>
+      <div class="stat-card profit">
+        <i class="ti ti-cash" aria-hidden="true"></i>
+        <span id="profit">0 RSD</span>
+        <small>Profit</small>
+      </div>
+    </div>
+  </section>
+
+  <section id="units" class="panel">
+    <div class="page-header">
+      <h2>Stanovi</h2>
+      <span class="subtitle">Upravljanje</span>
+    </div>
+    <form id="unitForm" class="add-form">
+      <div class="form-row">
+        <div class="input-group">
+          <i class="ti ti-home" aria-hidden="true"></i>
+          <input id="unitName" placeholder="Naziv stana" required>
+        </div>
+        <div class="input-group">
+          <i class="ti ti-mail" aria-hidden="true"></i>
+          <input id="tenantEmail" placeholder="Email zakupca" type="email">
+        </div>
+        <div class="input-group">
+          <i class="ti ti-currency-dollar" aria-hidden="true"></i>
+          <input id="unitRent" placeholder="Mesečna renta" type="number">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary">
+        <i class="ti ti-plus" aria-hidden="true"></i>
+        Dodaj stan
+      </button>
+    </form>
+    <ul id="unitList" class="unit-list"></ul>
+  </section>
+
+  <section id="messages" class="panel">
+    <div class="page-header">
+      <h2>Poruke</h2>
+      <span class="subtitle">Komunikacija</span>
+    </div>
+    <p class="info-text">Zakupci vide samo svoje stanove i šalju poruke kroz Firestore.</p>
+    <div id="messageBox" class="message-box"></div>
+  </section>
+
+  <section id="finance" class="panel">
+    <div class="page-header">
+      <h2>Finansije</h2>
+      <span class="subtitle">Prihodi i rashodi</span>
+    </div>
+    <p class="info-text">Ovde će se prikazivati prihodi, rashodi i obračuni depozita.</p>
+  </section>
+
+</main>
+
+<nav class="bottom-nav">
+  <button class="tab active" data-tab="dashboard">
+    <i class="ti ti-layout-dashboard" aria-hidden="true"></i>
+    <span>Dashboard</span>
+  </button>
+  <button class="tab" data-tab="units">
+    <i class="ti ti-building-estate" aria-hidden="true"></i>
+    <span>Stanovi</span>
+  </button>
+  <button class="tab" data-tab="messages">
+    <i class="ti ti-message-2" aria-hidden="true"></i>
+    <span>Poruke</span>
+  </button>
+  <button class="tab" data-tab="finance">
+    <i class="ti ti-report-money" aria-hidden="true"></i>
+    <span>Finansije</span>
+  </button>
 </nav>
-
-<section id="dashboard" class="panel active">
-<h2>Dashboard</h2>
-<div class="cards">
-<div class="card"><span id="income">0</span><small>Prihod</small></div>
-<div class="card"><span id="expense">0</span><small>Troškovi</small></div>
-<div class="card"><span id="profit">0</span><small>Profit</small></div>
-</div>
-</section>
-
-<section id="units" class="panel">
-<h2>Stanovi</h2>
-<form id="unitForm">
-<input id="unitName" placeholder="Naziv stana" required>
-<input id="tenantEmail" placeholder="Email zakupca">
-<input id="unitRent" placeholder="Mesečna renta" type="number">
-<button>Dodaj stan</button>
-</form>
-<ul id="unitList"></ul>
-</section>
-
-<section id="messages" class="panel">
-<h2>Poruke</h2>
-<p>Zakupci vide samo svoje stanove i šalju poruke kroz Firestore kolekciju.</p>
-<div id="messageBox"></div>
-</section>
-
-<section id="finance" class="panel">
-<h2>Finansije</h2>
-<p>Ovde će se prikazivati prihodi, rashodi i obračuni depozita.</p>
-</section>
 
 <script type="module" src="firebase-config.js"></script>
 <script type="module" src="app.js"></script>

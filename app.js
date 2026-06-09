@@ -1,5 +1,5 @@
 import { auth, db, login, logout, ADMIN_EMAIL } from './firebase-config.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+import { onAuthStateChanged, getRedirectResult } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
 import {
   collection,
   addDoc,
@@ -13,6 +13,9 @@ const logoutBtn = document.getElementById('logoutBtn');
 
 loginBtn.onclick  = login;
 logoutBtn.onclick = logout;
+
+// Hvatamo rezultat nakon Google redirect prijave
+getRedirectResult(auth).catch(err => console.error('Redirect greška:', err));
 
 document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => {

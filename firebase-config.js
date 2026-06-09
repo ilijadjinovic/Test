@@ -1,6 +1,6 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
-import { getAuth,GoogleAuthProvider,signInWithPopup,signOut } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+import { getAuth,GoogleAuthProvider,signInWithRedirect,signOut } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
 
 const firebaseConfig={
@@ -19,6 +19,6 @@ export const db=getFirestore(app);
 
 const provider=new GoogleAuthProvider();
 
-export const login=()=>signInWithPopup(auth,provider);
+export const login=()=>signInWithRedirect(auth,provider);
 export const logout=()=>signOut(auth);
 export const ADMIN_EMAIL = "ilija.djinovic@gmail.com";

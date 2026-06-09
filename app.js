@@ -9,16 +9,24 @@ document.getElementById('logoutBtn').onclick = logout;
 
 document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => {
+    const tabId = b.dataset.tab;
+    const el = document.getElementById(tabId);
+    if (el.style.display === 'none') return;
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
-    document.getElementById(b.dataset.tab).classList.add('active');
+    el.classList.add('active');
   };
 });
 
 onAuthStateChanged(auth, user => {
   updateProfileTab(user);
-  if (!user) return;
+
+  if (!user) {
+    document.getElementById('units').style.display   = 'none';
+    document.getElementById('finance').style.display = 'none';
+    return;
+  }
 
   const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   if (isAdmin) {

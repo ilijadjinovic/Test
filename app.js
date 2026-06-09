@@ -1,20 +1,11 @@
 import { auth, db, login, logout, ADMIN_EMAIL } from './firebase-config.js';
-import { onAuthStateChanged, getRedirectResult } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where
+  collection, addDoc, getDocs, query, where
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const loginBtn  = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-
-loginBtn.onclick  = login;
-logoutBtn.onclick = logout;
-
-getRedirectResult(auth).catch(err => console.error('Redirect greška:', err));
+document.getElementById('loginBtn').onclick  = login;
+document.getElementById('logoutBtn').onclick = logout;
 
 document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => {
@@ -53,10 +44,10 @@ function updateProfileTab(user) {
     document.getElementById('profileName').textContent  = user.displayName || '—';
     document.getElementById('profileEmail').textContent = user.email || '—';
 
-    const photo = user.photoURL;
+    const photo   = user.photoURL;
     const photoEl = document.getElementById('profilePhoto');
     if (photo) {
-      photoEl.src = photo;
+      photoEl.src           = photo;
       photoEl.style.display = '';
     } else {
       photoEl.style.display = 'none';
@@ -69,19 +60,19 @@ function updateProfileTab(user) {
 
     document.querySelector('[data-tab="profil"] i').className = 'ti ti-user-check';
   } else {
-    guest.hidden   = false;
-    userDiv.hidden = true;
+    guest.hidden     = false;
+    userDiv.hidden   = true;
     topAvatar.hidden = true;
     document.querySelector('[data-tab="profil"] i').className = 'ti ti-user-circle';
   }
 }
 
 async function loadUnits() {
-  const ul = document.getElementById('unitList');
+  const ul   = document.getElementById('unitList');
   ul.innerHTML = '';
   const snap = await getDocs(collection(db, 'units'));
   snap.forEach(d => {
-    const li = document.createElement('li');
+    const li       = document.createElement('li');
     li.textContent = d.data().name + ' | renta ' + (d.data().rent || 0);
     ul.appendChild(li);
   });
@@ -103,11 +94,9 @@ async function loadTenantData(user) {
   const snap = await getDocs(q);
   const box  = document.getElementById('messageBox');
   box.innerHTML = '';
-
   snap.forEach(doc => {
     const d = doc.data();
     box.innerHTML += `<div><h3>${d.name}</h3><p>Renta: ${d.rent}</p></div>`;
   });
-
   if (snap.empty) box.innerHTML = '<p>Nema dodeljenog stana za ovaj nalog.</p>';
 }

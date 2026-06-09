@@ -4,7 +4,7 @@ import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase
 
 const firebaseConfig = {
   apiKey:            "AIzaSyCHdohv0tfLf8taODtLfMKQDPROJN_lwug",
-  authDomain:        "rental-manager-da0fa.web.app",
+  authDomain:        "rental-manager-da0fa.firebaseapp.com",
   projectId:         "rental-manager-da0fa",
   storageBucket:     "rental-manager-da0fa.firebasestorage.app",
   messagingSenderId: "470999148120",

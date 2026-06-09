@@ -46,7 +46,7 @@
     </div>
   </section>
 
-  <section id="units" class="panel" style="display:none">
+  <section id="units" class="panel">
     <div class="page-header">
       <h2>Stanovi</h2>
       <span class="subtitle">Upravljanje</span>
@@ -79,11 +79,22 @@
       <h2>Poruke</h2>
       <span class="subtitle">Komunikacija</span>
     </div>
-    <p class="info-text">Zakupci vide samo svoje stanove i šalju poruke kroz Firestore.</p>
-    <div id="messageBox" class="message-box"></div>
+    <!-- Admin: lista stanova sa chat-om -->
+    <div id="adminChats"></div>
+    <!-- Stanar: samo njegov chat -->
+    <div id="tenantChat" hidden>
+      <div class="chat-unit-name" id="tenantChatHeader"></div>
+      <div class="chat-messages" id="tenantMessages"></div>
+      <div class="chat-input-row">
+        <input id="tenantMsgInput" placeholder="Upiši poruku..." autocomplete="off">
+        <button id="tenantMsgSend" class="btn-send">
+          <i class="ti ti-send" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
   </section>
 
-  <section id="finance" class="panel" style="display:none">
+  <section id="finance" class="panel">
     <div class="page-header">
       <h2>Finansije</h2>
       <span class="subtitle">Prihodi i rashodi</span>

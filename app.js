@@ -117,7 +117,8 @@ document.getElementById('unitForm').onsubmit = async e => {
     tenantEmail: document.getElementById('tenantEmail').value.trim().toLowerCase()
   });
   e.target.reset();
-  loadUnits();
+  await loadUnits();
+  setupAdminMessages();
 };
 
 // ── Admin messages ──────────────────────────────────────────────

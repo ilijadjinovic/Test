@@ -138,7 +138,7 @@ async function loadUnits() {
       });
       li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (!confirm(\`Obriši stan "\${data.name}"? Ova akcija je nepovratna.\`)) return;
+        if (!confirm(`Obriši stan "${data.name}"? Ova akcija je nepovratna.`)) return;
         try {
           await deleteDoc(doc(db, 'units', d.id));
           await loadUnits();

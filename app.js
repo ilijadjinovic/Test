@@ -1,7 +1,7 @@
 import { auth, db, login, logout, ADMIN_EMAIL } from './firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
 import {
-  collection, addDoc, getDocs, doc, getDoc, setDoc,
+  collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
@@ -125,10 +125,28 @@ async function loadUnits() {
         </div>
         <div class="unit-item-right">
           <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
+          <button class="btn-delete-unit" title="Obriši stan">
+            <i class="ti ti-trash" aria-hidden="true"></i>
+          </button>
           <i class="ti ti-chevron-right" aria-hidden="true"></i>
         </div>
       `;
-      li.onclick = () => openUnitDetail(d.id, data);
+      // klik na red otvara detalje, ali ne ako je kliknuto dugme za brisanje
+      li.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-delete-unit')) return;
+        openUnitDetail(d.id, data);
+      });
+      li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(\`Obriši stan "\${data.name}"? Ova akcija je nepovratna.\`)) return;
+        try {
+          await deleteDoc(doc(db, 'units', d.id));
+          await loadUnits();
+          setupAdminMessages();
+        } catch(err) {
+          alert('Greška pri brisanju: ' + err.message);
+        }
+      });
       ul.appendChild(li);
     });
   } catch(e) {
@@ -161,8 +179,9 @@ async function openUnitDetail(unitId, baseData) {
     const snap = await getDoc(doc(db, 'units', unitId));
     const d = snap.exists() ? snap.data() : {};
     document.getElementById('dAdresa').value     = d.adresa      || '';
-    document.getElementById('dSprat').value      = d.sprat       ?? '';
-    document.getElementById('dKvad').value       = d.kvadratura  ?? '';
+    document.getElementById('dSprat').value       = d.sprat        ?? '';
+    document.getElementById('dBrojStana').value   = d.brojStana    || '';
+    document.getElementById('dKvad').value        = d.kvadratura   ?? '';
     document.getElementById('dStruktura').value  = d.struktura   || '';
     document.getElementById('dSpavace').value    = d.spavace     ?? '';
     document.getElementById('dKupatila').value   = d.kupatila    ?? '';
@@ -171,8 +190,10 @@ async function openUnitDetail(unitId, baseData) {
     document.getElementById('dZakupacDok').value = d.zakupacDok  || '';
     document.getElementById('dZakupOd').value    = d.zakupOd     || '';
     document.getElementById('dZakupDo').value    = d.zakupDo     || '';
-    document.getElementById('dRenta').value      = d.rent        ?? '';
-    document.getElementById('dIsplata').value    = d.isplata     || '';
+    document.getElementById('dVrstaZakupa').value = d.vrstaZakupa  || '';
+    document.getElementById('dRenta').value       = d.rent         ?? '';
+    document.getElementById('dValuta').value      = d.valuta       || '';
+    document.getElementById('dIsplata').value     = d.isplata      || '';
   } catch(e) {
     console.error('Greška pri učitavanju detalja:', e);
   }
@@ -186,8 +207,9 @@ document.getElementById('saveUnitDetail').onclick = async () => {
   try {
     await setDoc(doc(db, 'units', currentUnitId), {
       adresa:      document.getElementById('dAdresa').value.trim(),
-      sprat:       Number(document.getElementById('dSprat').value)    || null,
-      kvadratura:  Number(document.getElementById('dKvad').value)     || null,
+      sprat:       Number(document.getElementById('dSprat').value)     || null,
+      brojStana:   document.getElementById('dBrojStana').value.trim(),
+      kvadratura:  Number(document.getElementById('dKvad').value)      || null,
       struktura:   document.getElementById('dStruktura').value,
       spavace:     Number(document.getElementById('dSpavace').value)  || null,
       kupatila:    Number(document.getElementById('dKupatila').value) || null,
@@ -196,7 +218,9 @@ document.getElementById('saveUnitDetail').onclick = async () => {
       zakupacDok:  document.getElementById('dZakupacDok').value.trim(),
       zakupOd:     document.getElementById('dZakupOd').value,
       zakupDo:     document.getElementById('dZakupDo').value,
-      rent:        Number(document.getElementById('dRenta').value)    || 0,
+      vrstaZakupa: document.getElementById('dVrstaZakupa').value,
+      rent:        Number(document.getElementById('dRenta').value)     || 0,
+      valuta:      document.getElementById('dValuta').value,
       isplata:     document.getElementById('dIsplata').value,
     }, { merge: true });
     btn.innerHTML = '<i class="ti ti-check"></i> Sačuvano';

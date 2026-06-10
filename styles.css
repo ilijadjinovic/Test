@@ -608,3 +608,181 @@ body{
 .detail-row select { cursor: pointer; }
 .detail-row input::placeholder { color: var(--muted); }
 .detail-row select option { background: var(--surface2); color: var(--text); }
+
+/* ── FINANSIJE ───────────────────────────────────────────────────── */
+
+/* Settings bar (kurs + valuta) */
+.fin-settings-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.fin-setting-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 140px;
+}
+.fin-setting-item label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.fin-rate-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.fin-rate-wrap input {
+  width: 72px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 5px 8px;
+  outline: none;
+  text-align: right;
+}
+.fin-rate-wrap span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.fin-currency-toggle {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.fin-cur-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.fin-cur-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Period bar */
+.fin-period-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.fin-period-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.fin-period-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Summary cards */
+.fin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.fin-sum-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fin-sum-card .ti { font-size: 18px; }
+.fin-sum-card span { font-size: 15px; font-weight: 700; }
+.fin-sum-card small { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; line-height: 1.3; }
+.fin-sum-card.income .ti { color: var(--green); }
+.fin-sum-card.income span { color: var(--green); }
+.fin-sum-card.expense .ti { color: var(--red); }
+.fin-sum-card.expense span { color: var(--red); }
+.fin-sum-card.profit .ti { color: var(--accent); }
+
+/* Istorija */
+.fin-history { display: flex; flex-direction: column; }
+.fin-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.fin-history-row:last-child { border-bottom: none; }
+.fin-history-row:hover { background: var(--surface2); }
+
+.fin-history-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 15px;
+}
+.fin-history-icon.inc { background: rgba(46,204,138,.12); color: var(--green); }
+.fin-history-icon.exp { background: rgba(224,90,90,.12);  color: var(--red);   }
+
+.fin-history-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.fin-history-label {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-history-date { font-size: 11px; color: var(--muted); }
+
+.fin-history-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.fin-history-amt {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fin-history-amt.inc { color: var(--green); }
+.fin-history-amt.exp { color: var(--red);   }
+
+.fin-del-btn {
+  width: 26px !important;
+  height: 26px !important;
+}

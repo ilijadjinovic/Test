@@ -4,6 +4,7 @@ import {
   collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+import { setupFinance, getDashboardTotals } from './finance.js';
 
 document.getElementById('loginBtn').onclick  = login;
 document.getElementById('logoutBtn').onclick = logout;
@@ -70,6 +71,8 @@ onAuthStateChanged(auth, user => {
     showTab('finance');
     loadUnits();
     setupAdminMessages();
+    setupFinance();
+    loadDashboard();
   } else {
     hideTab('units');
     hideTab('finance');
@@ -350,4 +353,14 @@ function renderMessage(container, data, isAdmin, currentUserEmail) {
   div.className = 'chat-bubble ' + (isMe ? 'bubble-me' : 'bubble-them');
   div.textContent = data.tekst;
   container.appendChild(div);
+}
+
+// ── Dashboard totali ─────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const { income, expense, profit } = await getDashboardTotals();
+    document.getElementById('income').textContent  = income.toLocaleString('sr-Latn',  { maximumFractionDigits:2 }) + ' RSD';
+    document.getElementById('expense').textContent = expense.toLocaleString('sr-Latn', { maximumFractionDigits:2 }) + ' RSD';
+    document.getElementById('profit').textContent  = profit.toLocaleString('sr-Latn',  { maximumFractionDigits:2 }) + ' RSD';
+  } catch(e) { /* tišina */ }
 }

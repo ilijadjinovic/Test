@@ -22,6 +22,7 @@
 
 <main class="content">
 
+  <!-- DASHBOARD -->
   <section id="dashboard" class="panel active">
     <div class="page-header">
       <h2>Dashboard</h2>
@@ -46,42 +47,161 @@
     </div>
   </section>
 
+  <!-- STANOVI -->
   <section id="units" class="panel">
     <div class="page-header">
       <h2>Stanovi</h2>
       <span class="subtitle">Upravljanje</span>
     </div>
-    <form id="unitForm" class="add-form">
-      <div class="form-row">
-        <div class="input-group">
-          <i class="ti ti-home" aria-hidden="true"></i>
-          <input id="unitName" placeholder="Naziv stana" required>
+
+    <!-- Lista stanova (default prikaz) -->
+    <div id="unitsListView">
+      <form id="unitForm" class="add-form">
+        <div class="form-row">
+          <div class="input-group">
+            <i class="ti ti-home" aria-hidden="true"></i>
+            <input id="unitName" placeholder="Naziv stana" required>
+          </div>
+          <div class="input-group">
+            <i class="ti ti-mail" aria-hidden="true"></i>
+            <input id="tenantEmail" placeholder="Email zakupca" type="email">
+          </div>
+          <div class="input-group">
+            <i class="ti ti-currency-dollar" aria-hidden="true"></i>
+            <input id="unitRent" placeholder="Mesečna renta" type="number">
+          </div>
         </div>
-        <div class="input-group">
-          <i class="ti ti-mail" aria-hidden="true"></i>
-          <input id="tenantEmail" placeholder="Email zakupca" type="email">
+        <button type="submit" class="btn-primary">
+          <i class="ti ti-plus" aria-hidden="true"></i>
+          Dodaj stan
+        </button>
+      </form>
+      <ul id="unitList" class="unit-list"></ul>
+    </div>
+
+    <!-- Detalji stana (prikazuje se klikom na stan) -->
+    <div id="unitDetailView" hidden>
+      <div class="detail-topbar">
+        <button id="backToUnits" class="btn-back">
+          <i class="ti ti-arrow-left" aria-hidden="true"></i>
+          Nazad
+        </button>
+        <h3 id="detailUnitName" class="detail-title"></h3>
+      </div>
+
+      <!-- Sekcija: Osnovni podaci -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="ti ti-building-estate" aria-hidden="true"></i>
+          Podaci o stanu
         </div>
-        <div class="input-group">
-          <i class="ti ti-currency-dollar" aria-hidden="true"></i>
-          <input id="unitRent" placeholder="Mesečna renta" type="number">
+        <div class="detail-form">
+          <div class="detail-row">
+            <label>Adresa</label>
+            <input id="dAdresa" placeholder="Ulica i broj">
+          </div>
+          <div class="detail-row">
+            <label>Sprat</label>
+            <input id="dSprat" placeholder="npr. 2" type="number">
+          </div>
+          <div class="detail-row">
+            <label>Kvadratura (m²)</label>
+            <input id="dKvad" placeholder="npr. 45" type="number">
+          </div>
+          <div class="detail-row">
+            <label>Struktura</label>
+            <select id="dStruktura">
+              <option value="">— Izaberi —</option>
+              <option>Garsonjera</option>
+              <option>Jednosoban</option>
+              <option>Jednoiposoban</option>
+              <option>Dvosoban</option>
+              <option>Dvoiposoban</option>
+              <option>Trosoban</option>
+              <option>Četvorosoban i više</option>
+            </select>
+          </div>
+          <div class="detail-row">
+            <label>Spavaće sobe</label>
+            <input id="dSpavace" placeholder="broj" type="number" min="0">
+          </div>
+          <div class="detail-row">
+            <label>Kupatila</label>
+            <input id="dKupatila" placeholder="broj" type="number" min="0">
+          </div>
+          <div class="detail-row">
+            <label>Terasa</label>
+            <select id="dTerasa">
+              <option value="">— Izaberi —</option>
+              <option value="da">Da</option>
+              <option value="ne">Ne</option>
+            </select>
+          </div>
         </div>
       </div>
-      <button type="submit" class="btn-primary">
-        <i class="ti ti-plus" aria-hidden="true"></i>
-        Dodaj stan
+
+      <!-- Sekcija: Zakupac -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="ti ti-user" aria-hidden="true"></i>
+          Zakupac
+        </div>
+        <div class="detail-form">
+          <div class="detail-row">
+            <label>Ime i prezime</label>
+            <input id="dZakupacIme" placeholder="Ime Prezime">
+          </div>
+          <div class="detail-row">
+            <label>Broj dokumenta</label>
+            <input id="dZakupacDok" placeholder="br. lične karte ili pasoša">
+          </div>
+          <div class="detail-row">
+            <label>Period zakupa od</label>
+            <input id="dZakupOd" type="date">
+          </div>
+          <div class="detail-row">
+            <label>Period zakupa do</label>
+            <input id="dZakupDo" type="date">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sekcija: Renta -->
+      <div class="detail-section">
+        <div class="detail-section-header">
+          <i class="ti ti-cash" aria-hidden="true"></i>
+          Renta
+        </div>
+        <div class="detail-form">
+          <div class="detail-row">
+            <label>Visina rente (RSD)</label>
+            <input id="dRenta" placeholder="iznos" type="number">
+          </div>
+          <div class="detail-row">
+            <label>Način isplate</label>
+            <select id="dIsplata">
+              <option value="">— Izaberi —</option>
+              <option value="racun">Na račun</option>
+              <option value="kes">Keš</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button id="saveUnitDetail" class="btn-primary" style="margin-top:8px">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i>
+        Sačuvaj izmene
       </button>
-    </form>
-    <ul id="unitList" class="unit-list"></ul>
+    </div>
   </section>
 
+  <!-- PORUKE -->
   <section id="messages" class="panel">
     <div class="page-header">
       <h2>Poruke</h2>
       <span class="subtitle">Komunikacija</span>
     </div>
-    <!-- Admin: lista stanova sa chat-om -->
     <div id="adminChats"></div>
-    <!-- Stanar: samo njegov chat -->
     <div id="tenantChat" hidden>
       <div class="chat-unit-name" id="tenantChatHeader"></div>
       <div class="chat-messages" id="tenantMessages"></div>
@@ -94,6 +214,7 @@
     </div>
   </section>
 
+  <!-- FINANSIJE -->
   <section id="finance" class="panel">
     <div class="page-header">
       <h2>Finansije</h2>
@@ -102,14 +223,13 @@
     <p class="info-text">Ovde će se prikazivati prihodi, rashodi i obračuni depozita.</p>
   </section>
 
-  <!-- PROFIL TAB -->
+  <!-- PROFIL -->
   <section id="profil" class="panel">
     <div class="page-header">
       <h2>Profil</h2>
       <span class="subtitle">Nalog</span>
     </div>
 
-    <!-- Neprijavljen -->
     <div id="profileGuest" class="profile-guest">
       <div class="guest-icon-wrap">
         <i class="ti ti-user" aria-hidden="true"></i>
@@ -127,7 +247,6 @@
       </button>
     </div>
 
-    <!-- Prijavljen -->
     <div id="profileUser" class="profile-user" hidden>
       <div class="profile-header-row">
         <img id="profilePhoto" src="" alt="Avatar" class="profile-photo">
@@ -143,7 +262,6 @@
       </button>
     </div>
 
-    <!-- O autoru -->
     <div class="about-card">
       <div class="about-header">
         <i class="ti ti-info-circle" aria-hidden="true"></i>
@@ -181,7 +299,6 @@
         </div>
       </div>
     </div>
-
   </section>
 
 </main>

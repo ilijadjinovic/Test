@@ -105,6 +105,10 @@
             <input id="dSprat" placeholder="npr. 2" type="number">
           </div>
           <div class="detail-row">
+            <label>Broj stana</label>
+            <input id="dBrojStana" placeholder="npr. 12">
+          </div>
+          <div class="detail-row">
             <label>Kvadratura (m²)</label>
             <input id="dKvad" placeholder="npr. 45" type="number">
           </div>
@@ -174,8 +178,24 @@
         </div>
         <div class="detail-form">
           <div class="detail-row">
-            <label>Visina rente (RSD)</label>
+            <label>Vrsta zakupa</label>
+            <select id="dVrstaZakupa">
+              <option value="">— Izaberi —</option>
+              <option value="mesecni">Mesečni zakup</option>
+              <option value="dnevni">Dnevni zakup</option>
+            </select>
+          </div>
+          <div class="detail-row">
+            <label>Iznos rente</label>
             <input id="dRenta" placeholder="iznos" type="number">
+          </div>
+          <div class="detail-row">
+            <label>Valuta</label>
+            <select id="dValuta">
+              <option value="">— Izaberi —</option>
+              <option value="RSD">RSD</option>
+              <option value="EUR">EUR</option>
+            </select>
           </div>
           <div class="detail-row">
             <label>Način isplate</label>

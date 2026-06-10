@@ -121,7 +121,7 @@ body{
 .btn-primary .ti{font-size:17px}
 
 /* UNIT LIST */
-.unit-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+/*.unit-list{list-style:none;display:flex;flex-direction:column;gap:8px}*/
 .unit-list li{
   background:var(--surface);
   border:1px solid var(--border);

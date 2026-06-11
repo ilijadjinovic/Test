@@ -29,12 +29,11 @@ document.querySelectorAll('.tab').forEach(b => {
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     document.getElementById(tabId).classList.add('active');
-    // Sakrij context switcher na profil tabu
+    // Sakrij context switcher na profil tabu, prikaži na ostalima ako treba
     const switcher = document.getElementById('contextSwitcher');
     if (tabId === 'profil') {
       switcher.hidden = true;
     } else if (currentUser) {
-      // Prikaži samo ako je korisnik i landlord i zakupac (kontroliše showContextSwitcher)
       switcher.hidden = switcher.dataset.shouldShow !== 'true';
     }
     if (tabId === 'units')   showUnitList();
@@ -117,9 +116,10 @@ function switchContext(ctx) {
 function showContextSwitcher(hasLandlord, hasTenant) {
   const bar = document.getElementById('contextSwitcher');
   const activeTab = document.querySelector('.tab.active')?.dataset.tab;
-  const shouldShow = !!(currentUser && hasLandlord && hasTenant && activeTab !== 'profil');
+  const shouldShow = !!(currentUser && hasLandlord && hasTenant);
   bar.dataset.shouldShow = shouldShow ? 'true' : 'false';
-  bar.hidden = !shouldShow;
+  // Nikada ne prikazuj na profil tabu
+  bar.hidden = !shouldShow || activeTab === 'profil';
 }
 
 // ── Auth state ───────────────────────────────────────────────────

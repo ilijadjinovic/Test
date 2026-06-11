@@ -9,12 +9,16 @@ import { setupFinance, getDashboardTotals, showFinanceList } from './finance.js'
 document.getElementById('loginBtn').onclick  = login;
 document.getElementById('logoutBtn').onclick = logout;
 
-// ── Sakrij sve tabove osim profil na startu ──────────────────────
-['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTabOnly(id));
+// ── Inicijalni state — prikaži samo Profil, sve ostalo sakrijeno ─
 document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
 document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+['dashboard', 'units', 'messages', 'finance'].forEach(id => {
+  const btn = document.querySelector(`.tab[data-tab="${id}"]`);
+  if (btn) btn.style.display = 'none';
+});
 document.getElementById('profil').classList.add('active');
 document.querySelector('.tab[data-tab="profil"]').classList.add('active');
+document.getElementById('contextSwitcher').hidden = true;
 
 // ── Tab navigation ───────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(b => {
@@ -25,6 +29,14 @@ document.querySelectorAll('.tab').forEach(b => {
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     document.getElementById(tabId).classList.add('active');
+    // Sakrij context switcher na profil tabu
+    const switcher = document.getElementById('contextSwitcher');
+    if (tabId === 'profil') {
+      switcher.hidden = true;
+    } else if (currentUser) {
+      // Prikaži samo ako je korisnik i landlord i zakupac (kontroliše showContextSwitcher)
+      switcher.hidden = switcher.dataset.shouldShow !== 'true';
+    }
     if (tabId === 'units')   showUnitList();
     if (tabId === 'finance') showFinanceList();
   };
@@ -104,9 +116,13 @@ function switchContext(ctx) {
 
 function showContextSwitcher(hasLandlord, hasTenant) {
   const bar = document.getElementById('contextSwitcher');
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab;
   if (hasLandlord && hasTenant) {
-    bar.hidden = false;
+    bar.dataset.shouldShow = 'true';
+    // Prikaži samo ako nije profil aktivan
+    bar.hidden = (activeTab === 'profil');
   } else {
+    bar.dataset.shouldShow = 'false';
     bar.hidden = true;
   }
 }

@@ -1053,12 +1053,7 @@ body{
 .context-switcher {
   display: flex;
   gap: 6px;
-  padding: 8px 16px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: var(--top-h);
-  z-index: 90;
+  margin-bottom: 16px;
 }
 .ctx-btn {
   flex: 1;

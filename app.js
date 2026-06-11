@@ -31,9 +31,9 @@ document.querySelectorAll('.tab').forEach(b => {
     document.getElementById(tabId).classList.add('active');
     // Sakrij context switcher na profil tabu, prikaži na ostalima ako treba
     const switcher = document.getElementById('contextSwitcher');
-    if (tabId === 'profil') {
+    if (tabId === 'profil' || !currentUser) {
       switcher.hidden = true;
-    } else if (currentUser) {
+    } else {
       switcher.hidden = switcher.dataset.shouldShow !== 'true';
     }
     if (tabId === 'units')   showUnitList();
@@ -115,11 +115,9 @@ function switchContext(ctx) {
 
 function showContextSwitcher(hasLandlord, hasTenant) {
   const bar = document.getElementById('contextSwitcher');
-  const activeTab = document.querySelector('.tab.active')?.dataset.tab;
-  const shouldShow = !!(currentUser && hasLandlord && hasTenant);
-  bar.dataset.shouldShow = shouldShow ? 'true' : 'false';
-  // Nikada ne prikazuj na profil tabu
-  bar.hidden = !shouldShow || activeTab === 'profil';
+  bar.dataset.shouldShow = (currentUser && hasLandlord && hasTenant) ? 'true' : 'false';
+  // Switcher se nikada ne prikazuje na profil tabu — vidljivost kontroliše tab click handler
+  bar.hidden = true;
 }
 
 // ── Auth state ───────────────────────────────────────────────────

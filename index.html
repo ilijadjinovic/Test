@@ -225,17 +225,126 @@
       <h2>Poruke</h2>
       <span class="subtitle">Komunikacija</span>
     </div>
-    <div id="adminChats"></div>
-    <div id="tenantChat" hidden>
-      <div class="chat-unit-name" id="tenantChatHeader"></div>
-      <div class="chat-messages" id="tenantMessages"></div>
-      <div class="chat-input-row">
-        <input id="tenantMsgInput" placeholder="Upiši poruku..." autocomplete="off">
-        <button id="tenantMsgSend" class="btn-send">
-          <i class="ti ti-send" aria-hidden="true"></i>
-        </button>
+
+    <!-- Sub-tabovi -->
+    <div class="msg-subtabs">
+      <button class="msg-subtab active" data-subtab="poruke">
+        <i class="ti ti-message-2" aria-hidden="true"></i>
+        Poruke
+      </button>
+      <button class="msg-subtab" data-subtab="kvar">
+        <i class="ti ti-tool" aria-hidden="true"></i>
+        Prijava kvara
+      </button>
+    </div>
+
+    <!-- SEKCIJA: Poruke -->
+    <div id="subtab-poruke" class="msg-subtab-content active">
+      <div id="adminChats"></div>
+      <div id="tenantChat" hidden>
+        <div class="chat-unit-name" id="tenantChatHeader"></div>
+        <div class="chat-messages" id="tenantMessages"></div>
+        <div class="chat-input-row">
+          <input id="tenantMsgInput" placeholder="Upiši poruku..." autocomplete="off">
+          <button id="tenantMsgSend" class="btn-send">
+            <i class="ti ti-send" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
     </div>
+
+    <!-- SEKCIJA: Prijava kvara -->
+    <div id="subtab-kvar" class="msg-subtab-content" hidden>
+
+      <!-- Admin prikaz: lista prijavljenih kvarova -->
+      <div id="kvarAdminView">
+        <p class="info-text" id="kvarAdminEmpty">Učitavam prijave...</p>
+        <div id="kvarAdminList"></div>
+      </div>
+
+      <!-- Zakupac: forma za prijavu -->
+      <div id="kvarTenantView" hidden>
+        <div class="kvar-form-card">
+          <div class="kvar-form-header">
+            <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+            Nova prijava kvara
+          </div>
+
+          <!-- Tip kvara -->
+          <div class="kvar-field">
+            <label class="kvar-label">Tip problema</label>
+            <div class="kvar-type-grid">
+              <button class="kvar-type-btn active" data-type="uredjaj">
+                <i class="ti ti-plug" aria-hidden="true"></i>
+                Kvar na uređaju
+              </button>
+              <button class="kvar-type-btn" data-type="struja">
+                <i class="ti ti-bolt" aria-hidden="true"></i>
+                Problem sa strujom
+              </button>
+              <button class="kvar-type-btn" data-type="lom">
+                <i class="ti ti-hammer" aria-hidden="true"></i>
+                Prijava loma
+              </button>
+              <button class="kvar-type-btn" data-type="havarija">
+                <i class="ti ti-droplet" aria-hidden="true"></i>
+                Havarija
+              </button>
+            </div>
+          </div>
+
+          <!-- Dinamična lista stavki -->
+          <div class="kvar-field">
+            <label class="kvar-label">Stavka</label>
+            <div class="kvar-select-wrap">
+              <select id="kvarStavka">
+                <option value="">— Izaberi stavku —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Opis -->
+          <div class="kvar-field">
+            <label class="kvar-label">Opis problema</label>
+            <textarea id="kvarOpis" class="kvar-textarea" placeholder="Kratko opišite problem..." rows="3"></textarea>
+          </div>
+
+          <!-- Hitnost -->
+          <div class="kvar-field">
+            <label class="kvar-label">Hitnost</label>
+            <div class="kvar-hitnost-row">
+              <button class="kvar-hitnost-btn" data-h="niska">
+                <i class="ti ti-circle" aria-hidden="true"></i>
+                Niska
+              </button>
+              <button class="kvar-hitnost-btn active" data-h="srednja">
+                <i class="ti ti-circle-half-2" aria-hidden="true"></i>
+                Srednja
+              </button>
+              <button class="kvar-hitnost-btn" data-h="visoka">
+                <i class="ti ti-alert-circle" aria-hidden="true"></i>
+                Visoka
+              </button>
+            </div>
+          </div>
+
+          <button id="kvarSubmitBtn" class="btn-primary" style="margin-top:4px">
+            <i class="ti ti-send" aria-hidden="true"></i>
+            Pošalji prijavu
+          </button>
+        </div>
+
+        <!-- Istorija prijava zakupca -->
+        <div class="kvar-history-header">
+          <i class="ti ti-history" aria-hidden="true"></i>
+          Moje prijave
+        </div>
+        <div id="kvarTenantHistory">
+          <p class="info-text">Nema prijava.</p>
+        </div>
+      </div>
+
+    </div><!-- /subtab-kvar -->
   </section>
 
   <!-- FINANSIJE -->

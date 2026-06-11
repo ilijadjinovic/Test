@@ -94,6 +94,7 @@ onAuthStateChanged(auth, user => {
     setupAdminMessages();
     setupFinance();
     loadDashboard();
+    setupKvarView(user);
   } else {
     // Zakupac: samo messages + profil
     hideTab('dashboard');
@@ -106,6 +107,7 @@ onAuthStateChanged(auth, user => {
     document.getElementById('messages').classList.add('active');
     document.querySelector('.tab[data-tab="messages"]').classList.add('active');
     setupTenantMessages(user);
+    setupKvarView(user);
   }
 });
 
@@ -396,3 +398,220 @@ async function loadDashboard() {
 
 // ── Osvježi dashboard kad se promeni valuta u Finansijama ──────
 window.addEventListener('finance:currencyChanged', () => loadDashboard());
+
+// ── MSG SUB-TABOVI ──────────────────────────────────────────────
+document.querySelectorAll('.msg-subtab').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.msg-subtab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.msg-subtab-content').forEach(c => {
+      c.classList.remove('active');
+      c.hidden = true;
+    });
+    btn.classList.add('active');
+    const target = document.getElementById('subtab-' + btn.dataset.subtab);
+    target.classList.add('active');
+    target.hidden = false;
+    // Učitaj podatke kad se otvori kvar tab
+    if (btn.dataset.subtab === 'kvar') {
+      const user = auth.currentUser;
+      if (!user) return;
+      const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      if (isAdmin) loadKvarAdmin();
+      else loadKvarTenantHistory(user);
+    }
+  };
+});
+
+// ── PRIJAVA KVARA — podaci ──────────────────────────────────────
+const KVAR_STAVKE = {
+  uredjaj: [
+    'Mali bojler', 'Veliki bojler', 'Ploča za kuvanje', 'Rerna',
+    'Mikrotalasna', 'Ketler', 'Osvetljenje', 'Mašina za veš',
+    'Mašina za sudove', 'Slavina kuhinjska', 'Slavina umivaonik',
+    'Slavina tuš', 'Klima uređaj', 'Frižider', 'TV', 'Interfon',
+    'Bojler (akumulator)', 'Aspirator'
+  ],
+  struja: [
+    'Prekid napajanja u kompletnom stanu', 'Delimični prekid napajanja',
+    'Neispravan osigurač', 'Isklučio se automatski osigurač',
+    'Strujni udar / varničenje', 'Neispravna utičnica ili prekidač',
+    'Problem sa brojilom', 'Ostalo — struja'
+  ],
+  lom: [
+    'Lom nameštaja', 'Lom stakla', 'Lom uređaja', 'Lom dela opreme',
+    'Lom brave / kvake', 'Lom prozorskog okna', 'Lom sanitarije',
+    'Lom pločice / keramike', 'Ostalo — lom'
+  ],
+  havarija: [
+    'Pukla cev za vodu', 'Pukla cev za kanalizaciju',
+    'Curi mali bojler', 'Curi veliki bojler',
+    'Curi mašina za sudove', 'Curi mašina za veš',
+    'Prodor vode iz drugog stana', 'Prodor vode sa krova',
+    'Elementarna nepogoda', 'Poplava u stanu',
+    'Pukao radijator / grejanje', 'Ostalo — havarija'
+  ]
+};
+
+const KVAR_IKONE = {
+  uredjaj: 'ti-plug', struja: 'ti-bolt', lom: 'ti-hammer', havarija: 'ti-droplet'
+};
+const KVAR_NAZIVI = {
+  uredjaj: 'Kvar na uređaju', struja: 'Problem sa strujom',
+  lom: 'Prijava loma', havarija: 'Havarija'
+};
+
+let kvarTip = 'uredjaj';
+let kvarHitnost = 'srednja';
+
+function updateKvarStavke() {
+  const sel = document.getElementById('kvarStavka');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Izaberi stavku —</option>';
+  (KVAR_STAVKE[kvarTip] || []).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    sel.appendChild(opt);
+  });
+}
+
+document.querySelectorAll('.kvar-type-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.kvar-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    kvarTip = btn.dataset.type;
+    updateKvarStavke();
+  };
+});
+
+document.querySelectorAll('.kvar-hitnost-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.kvar-hitnost-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    kvarHitnost = btn.dataset.h;
+  };
+});
+
+updateKvarStavke();
+
+// ── SUBMIT prijave kvara (zakupac) ──────────────────────────────
+document.getElementById('kvarSubmitBtn').onclick = async () => {
+  const stavka = document.getElementById('kvarStavka').value;
+  const opis   = document.getElementById('kvarOpis').value.trim();
+  if (!stavka) { alert('Izaberi stavku!'); return; }
+
+  const btn = document.getElementById('kvarSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Šaljem...';
+
+  try {
+    const user = auth.currentUser;
+    const q    = query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase()));
+    const snap = await getDocs(q);
+    if (snap.empty) { alert('Nemate dodeljen stan.'); btn.disabled = false; btn.innerHTML = '<i class="ti ti-send"></i> Pošalji prijavu'; return; }
+    const unitId   = snap.docs[0].id;
+    const unitName = snap.docs[0].data().name;
+
+    await addDoc(collection(db, 'kvarovi'), {
+      unitId, unitName,
+      tenantEmail: user.email.toLowerCase(),
+      tip: kvarTip, stavka, opis,
+      hitnost: kvarHitnost,
+      status: 'otvoreno',
+      vreme: serverTimestamp()
+    });
+
+    btn.innerHTML = '<i class="ti ti-check"></i> Poslato!';
+    document.getElementById('kvarStavka').value = '';
+    document.getElementById('kvarOpis').value   = '';
+    loadKvarTenantHistory(user);
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-send"></i> Pošalji prijavu';
+    }, 2000);
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-send"></i> Pošalji prijavu';
+    alert('Greška: ' + e.message);
+  }
+};
+
+// ── Istorija kvarova — zakupac ───────────────────────────────────
+async function loadKvarTenantHistory(user) {
+  const container = document.getElementById('kvarTenantHistory');
+  container.innerHTML = '<p class="info-text">Učitavam...</p>';
+  try {
+    const q    = query(collection(db, 'kvarovi'),
+                       where('tenantEmail', '==', user.email.toLowerCase()),
+                       orderBy('vreme', 'desc'));
+    const snap = await getDocs(q);
+    if (snap.empty) { container.innerHTML = '<p class="info-text">Nema prijava.</p>'; return; }
+    container.innerHTML = '';
+    snap.forEach(d => container.appendChild(renderKvarItem(d.id, d.data(), false)));
+  } catch(e) {
+    container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+  }
+}
+
+// ── Lista kvarova — admin ────────────────────────────────────────
+async function loadKvarAdmin() {
+  const list  = document.getElementById('kvarAdminList');
+  const empty = document.getElementById('kvarAdminEmpty');
+  list.innerHTML = '';
+  empty.textContent = 'Učitavam prijave...';
+  try {
+    const q    = query(collection(db, 'kvarovi'), orderBy('vreme', 'desc'));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.textContent = 'Nema prijavljenih kvarova.'; return; }
+    empty.textContent = '';
+    snap.forEach(d => list.appendChild(renderKvarItem(d.id, d.data(), true)));
+  } catch(e) {
+    empty.textContent = 'Greška pri učitavanju.';
+  }
+}
+
+// ── Render jedne prijave ─────────────────────────────────────────
+function renderKvarItem(id, data, isAdmin) {
+  const div = document.createElement('div');
+  div.className = 'kvar-item';
+  const vreme = data.vreme?.toDate
+    ? data.vreme.toDate().toLocaleDateString('sr-Latn', { day:'2-digit', month:'2-digit', year:'numeric' })
+    : '—';
+  const ikona = KVAR_IKONE[data.tip] || 'ti-tool';
+  div.innerHTML = `
+    <div class="kvar-item-top">
+      <div class="kvar-item-icon ${data.tip}"><i class="ti ${ikona}"></i></div>
+      <div class="kvar-item-title">${data.stavka}</div>
+      <div class="kvar-item-date">${vreme}</div>
+    </div>
+    <div class="kvar-item-meta">
+      <span class="kvar-badge h-${data.hitnost}">${data.hitnost.charAt(0).toUpperCase()+data.hitnost.slice(1)} hitnost</span>
+      <span class="kvar-badge">${KVAR_NAZIVI[data.tip] || data.tip}</span>
+      ${isAdmin ? `<span class="kvar-item-unit">${data.unitName || data.unitId}</span>` : ''}
+      <span class="kvar-badge status ${data.status === 'reseno' ? 'reseno' : ''}">${data.status === 'reseno' ? '✓ Rešeno' : '⏳ Otvoreno'}</span>
+      ${isAdmin ? `<button class="kvar-status-toggle" data-id="${id}" data-status="${data.status}">${data.status === 'reseno' ? 'Ponovo otvori' : 'Označi rešeno'}</button>` : ''}
+    </div>
+    ${data.opis ? `<div class="kvar-item-opis">${data.opis}</div>` : ''}
+  `;
+  if (isAdmin) {
+    div.querySelector('.kvar-status-toggle').onclick = async (e) => {
+      const btn2 = e.currentTarget;
+      const noviStatus = btn2.dataset.status === 'reseno' ? 'otvoreno' : 'reseno';
+      btn2.disabled = true;
+      try {
+        await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
+        loadKvarAdmin();
+      } catch(err) {
+        alert('Greška: ' + err.message);
+        btn2.disabled = false;
+      }
+    };
+  }
+  return div;
+}
+
+// ── Prikaži kvar view za zakupca ili admina ──────────────────────
+function setupKvarView(user) {
+  const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  document.getElementById('kvarAdminView').hidden  = !isAdmin;
+  document.getElementById('kvarTenantView').hidden = isAdmin;
+}

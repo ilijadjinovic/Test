@@ -217,6 +217,7 @@ async function openUnitDetail(unitId, baseData) {
     document.getElementById('dTerasa').value       = d.terasa      || '';
     document.getElementById('dZakupacIme').value   = d.zakupacIme  || '';
     document.getElementById('dZakupacDok').value   = d.zakupacDok  || '';
+    document.getElementById('dTenantEmail').value   = d.tenantEmail || '';
     document.getElementById('dZakupOd').value      = d.zakupOd     || '';
     document.getElementById('dZakupDo').value      = d.zakupDo     || '';
     document.getElementById('dVrstaZakupa').value  = d.vrstaZakupa || '';
@@ -245,6 +246,7 @@ document.getElementById('saveUnitDetail').onclick = async () => {
       terasa:      document.getElementById('dTerasa').value,
       zakupacIme:  document.getElementById('dZakupacIme').value.trim(),
       zakupacDok:  document.getElementById('dZakupacDok').value.trim(),
+      tenantEmail: document.getElementById('dTenantEmail').value.trim().toLowerCase(),
       zakupOd:     document.getElementById('dZakupOd').value,
       zakupDo:     document.getElementById('dZakupDo').value,
       vrstaZakupa: document.getElementById('dVrstaZakupa').value,

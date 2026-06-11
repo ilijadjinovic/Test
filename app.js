@@ -31,10 +31,10 @@ document.querySelectorAll('.tab').forEach(b => {
     document.getElementById(tabId).classList.add('active');
     // Sakrij context switcher na profil tabu, prikaži na ostalima ako treba
     const switcher = document.getElementById('contextSwitcher');
-    if (tabId === 'profil' || !currentUser) {
+    if (tabId === 'profil' || !currentUser || document.body.dataset.ctxSwitcher !== 'true') {
       switcher.hidden = true;
     } else {
-      switcher.hidden = switcher.dataset.shouldShow !== 'true';
+      switcher.hidden = false;
     }
     if (tabId === 'units')   showUnitList();
     if (tabId === 'finance') showFinanceList();
@@ -114,10 +114,12 @@ function switchContext(ctx) {
 }
 
 function showContextSwitcher(hasLandlord, hasTenant) {
-  const bar = document.getElementById('contextSwitcher');
-  bar.dataset.shouldShow = (currentUser && hasLandlord && hasTenant) ? 'true' : 'false';
-  // Switcher se nikada ne prikazuje na profil tabu — vidljivost kontroliše tab click handler
-  bar.hidden = true;
+  if (currentUser && hasLandlord && hasTenant) {
+    document.body.dataset.ctxSwitcher = 'true';
+  } else {
+    delete document.body.dataset.ctxSwitcher;
+  }
+  // Vidljivost kontroliše CSS — ne diramo hidden atribut ovde
 }
 
 // ── Auth state ───────────────────────────────────────────────────
@@ -130,9 +132,8 @@ onAuthStateChanged(auth, async user => {
 
   if (!user) {
     ['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTab(id));
-    const bar = document.getElementById('contextSwitcher');
-    bar.hidden = true;
-    bar.dataset.shouldShow = 'false';
+    delete document.body.dataset.ctxSwitcher;
+    document.getElementById('contextSwitcher').hidden = true;
     return;
   }
 

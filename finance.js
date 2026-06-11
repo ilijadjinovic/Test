@@ -218,7 +218,12 @@ export async function setupFinance() {
       section.querySelectorAll('.fin-cur-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       await saveSettings();
-      if (currentFinanceUnit) refreshFinanceDetail();
+      window.dispatchEvent(new CustomEvent('finance:currencyChanged'));
+      if (currentFinanceUnit) {
+        refreshFinanceDetail();
+      } else {
+        loadFinanceUnitList();
+      }
     });
   });
 
@@ -542,6 +547,15 @@ async function getPeriodTotals(unitId) {
     });
   } catch(e) { /* tišina */ }
   return { income, expense };
+}
+
+// ── Export: vrati na listu finansija ────────────────────────────
+export function showFinanceList() {
+  if (!currentFinanceUnit) return; // već na listi
+  currentFinanceUnit = null;
+  document.getElementById('finUnitList').hidden   = false;
+  document.getElementById('finUnitDetail').hidden = true;
+  loadFinanceUnitList();
 }
 
 // ── Export za dashboard ──────────────────────────────────────────

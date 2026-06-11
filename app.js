@@ -4,7 +4,7 @@ import {
   collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
-import { setupFinance, getDashboardTotals } from './finance.js';
+import { setupFinance, getDashboardTotals, showFinanceList } from './finance.js';
 
 document.getElementById('loginBtn').onclick  = login;
 document.getElementById('logoutBtn').onclick = logout;
@@ -26,6 +26,7 @@ document.querySelectorAll('.tab').forEach(b => {
     b.classList.add('active');
     document.getElementById(tabId).classList.add('active');
     if (tabId === 'units') showUnitList();
+    if (tabId === 'finance') showFinanceList();
   };
 });
 
@@ -390,3 +391,6 @@ async function loadDashboard() {
     document.getElementById('profit').textContent  = profit.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
   } catch(e) { /* tišina */ }
 }
+
+// ── Osvježi dashboard kad se promeni valuta u Finansijama ──────
+window.addEventListener('finance:currencyChanged', () => loadDashboard());

@@ -19,4 +19,7 @@ const provider = new GoogleAuthProvider();
 
 export const login  = () => signInWithPopup(auth, provider);
 export const logout = () => signOut(auth);
-export const ADMIN_EMAIL = "ilija.djinovic@gmail.com";
+
+// Master admin — vidi sve, bez ownerId filtera
+export const MASTER_ADMIN_UID   = 'HCH4eYH0cYTsmRTUv4rDXfiHg173';
+export const MASTER_ADMIN_EMAIL = 'ilija.djinovic@gmail.com';

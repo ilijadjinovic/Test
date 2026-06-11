@@ -1048,3 +1048,70 @@ body{
   flex-shrink: 0;
 }
 .kvar-status-toggle:hover { border-color: var(--green); color: var(--green); }
+
+/* ── CONTEXT SWITCHER ────────────────────────────────────────── */
+.context-switcher {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: var(--top-h);
+  z-index: 90;
+}
+.ctx-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+}
+.ctx-btn .ti { font-size: 16px; }
+.ctx-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.ctx-btn:not(.active):hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ── ONBOARDING MSG ──────────────────────────────────────────── */
+.onboarding-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 16px;
+  gap: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.onboarding-msg .ti {
+  font-size: 40px;
+  color: var(--accent);
+  opacity: .7;
+}
+.onboarding-msg p {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.onboarding-msg span {
+  font-size: 13px;
+  color: var(--muted);
+}

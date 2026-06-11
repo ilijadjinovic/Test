@@ -78,8 +78,8 @@ document.getElementById('backToUnits').onclick = showUnitList;
 let currentContext = 'landlord'; // 'landlord' | 'tenant'
 let currentUser    = null;
 
-document.getElementById('ctxLandlordBtn').onclick = () => switchContext('landlord');
-document.getElementById('ctxTenantBtn').onclick   = () => switchContext('tenant');
+document.getElementById('ctxLandlordBtn').onclick = () => { if (currentUser) switchContext('landlord'); };
+document.getElementById('ctxTenantBtn').onclick   = () => { if (currentUser) switchContext('tenant'); };
 
 function switchContext(ctx) {
   currentContext = ctx;
@@ -117,14 +117,9 @@ function switchContext(ctx) {
 function showContextSwitcher(hasLandlord, hasTenant) {
   const bar = document.getElementById('contextSwitcher');
   const activeTab = document.querySelector('.tab.active')?.dataset.tab;
-  if (hasLandlord && hasTenant) {
-    bar.dataset.shouldShow = 'true';
-    // Prikaži samo ako nije profil aktivan
-    bar.hidden = (activeTab === 'profil');
-  } else {
-    bar.dataset.shouldShow = 'false';
-    bar.hidden = true;
-  }
+  const shouldShow = !!(currentUser && hasLandlord && hasTenant && activeTab !== 'profil');
+  bar.dataset.shouldShow = shouldShow ? 'true' : 'false';
+  bar.hidden = !shouldShow;
 }
 
 // ── Auth state ───────────────────────────────────────────────────
@@ -137,7 +132,9 @@ onAuthStateChanged(auth, async user => {
 
   if (!user) {
     ['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTab(id));
-    document.getElementById('contextSwitcher').hidden = true;
+    const bar = document.getElementById('contextSwitcher');
+    bar.hidden = true;
+    bar.dataset.shouldShow = 'false';
     return;
   }
 

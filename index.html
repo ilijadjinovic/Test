@@ -23,7 +23,7 @@
 <main class="content">
 
   <!-- Context switcher — vidljiv samo kada je korisnik i landlord i zakupac -->
-  <div id="contextSwitcher" class="context-switcher" hidden>
+  <div id="contextSwitcher" class="context-switcher" style="display:none">
     <button id="ctxLandlordBtn" class="ctx-btn active">
       <i class="ti ti-building-estate" aria-hidden="true"></i>
       Moji stanovi
@@ -68,7 +68,6 @@
 
     <!-- Lista stanova (default prikaz) -->
     <div id="unitsListView">
-      <ul id="unitList" class="unit-list"></ul>
       <form id="unitForm" class="add-form">
         <div class="form-row">
           <div class="input-group">
@@ -89,6 +88,7 @@
           Dodaj stan
         </button>
       </form>
+      <ul id="unitList" class="unit-list"></ul>
     </div>
 
     <!-- Detalji stana (prikazuje se klikom na stan) -->

@@ -18,7 +18,7 @@ document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
 });
 document.getElementById('profil').classList.add('active');
 document.querySelector('.tab[data-tab="profil"]').classList.add('active');
-document.getElementById('contextSwitcher').hidden = true;
+document.getElementById('contextSwitcher').style.display = 'none';
 
 // ── Tab navigation ───────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(b => {
@@ -29,17 +29,17 @@ document.querySelectorAll('.tab').forEach(b => {
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     document.getElementById(tabId).classList.add('active');
-    // Sakrij context switcher na profil tabu, prikaži na ostalima ako treba
-    const switcher = document.getElementById('contextSwitcher');
-    if (tabId === 'profil' || !currentUser || document.body.dataset.ctxSwitcher !== 'true') {
-      switcher.hidden = true;
-    } else {
-      switcher.hidden = false;
-    }
+    updateSwitcherVisibility(tabId);
     if (tabId === 'units')   showUnitList();
     if (tabId === 'finance') showFinanceList();
   };
 });
+
+function updateSwitcherVisibility(tabId) {
+  const switcher = document.getElementById('contextSwitcher');
+  const show = currentUser && document.body.dataset.ctxSwitcher === 'true' && tabId !== 'profil';
+  switcher.style.display = show ? 'flex' : 'none';
+}
 
 function hideTabOnly(tabId) {
   const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
@@ -117,9 +117,11 @@ function showContextSwitcher(hasLandlord, hasTenant) {
   if (currentUser && hasLandlord && hasTenant) {
     document.body.dataset.ctxSwitcher = 'true';
   } else {
-    delete document.body.dataset.ctxSwitcher;
+    document.body.dataset.ctxSwitcher = 'false';
   }
-  // Vidljivost kontroliše CSS — ne diramo hidden atribut ovde
+  // Prikaži na trenutnom tabu ako treba
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+  updateSwitcherVisibility(activeTab || 'profil');
 }
 
 // ── Auth state ───────────────────────────────────────────────────
@@ -132,8 +134,8 @@ onAuthStateChanged(auth, async user => {
 
   if (!user) {
     ['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTab(id));
-    delete document.body.dataset.ctxSwitcher;
-    document.getElementById('contextSwitcher').hidden = true;
+    document.body.dataset.ctxSwitcher = 'false';
+    document.getElementById('contextSwitcher').style.display = 'none';
     return;
   }
 

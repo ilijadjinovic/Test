@@ -546,7 +546,16 @@ async function getPeriodTotals(unitId) {
 
 // ── Export za dashboard ──────────────────────────────────────────
 export async function getDashboardTotals() {
-  // Uzima sve stanove, sabira prihode/troškove za trenutni mesec
+  // Učitaj settings ako finance modul još nije inicijalizovan
+  try {
+    const settSnap = await getDoc(doc(db, 'settings', 'finance'));
+    if (settSnap.exists()) {
+      const sd = settSnap.data();
+      if (sd.exchangeRate)    financeExchangeRate    = sd.exchangeRate;
+      if (sd.displayCurrency) financeDisplayCurrency = sd.displayCurrency;
+    }
+  } catch(e) { /* tišina */ }
+
   const saved = financePeriod;
   financePeriod = 'month';
   let totalIncome = 0, totalExpense = 0;
@@ -559,7 +568,12 @@ export async function getDashboardTotals() {
     }
   } catch(e) { /* tišina */ }
   financePeriod = saved;
-  return { income: totalIncome, expense: totalExpense, profit: totalIncome - totalExpense };
+  return {
+    income:   totalIncome,
+    expense:  totalExpense,
+    profit:   totalIncome - totalExpense,
+    currency: financeDisplayCurrency
+  };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────

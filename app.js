@@ -9,6 +9,13 @@ import { setupFinance, getDashboardTotals } from './finance.js';
 document.getElementById('loginBtn').onclick  = login;
 document.getElementById('logoutBtn').onclick = logout;
 
+// ── Sakrij sve tabove osim profil na startu ──────────────────────
+['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTabOnly(id));
+document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+document.getElementById('profil').classList.add('active');
+document.querySelector('.tab[data-tab="profil"]').classList.add('active');
+
 // ── Tab navigation ──────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => {
@@ -18,23 +25,30 @@ document.querySelectorAll('.tab').forEach(b => {
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     document.getElementById(tabId).classList.add('active');
-    // kad se vrati na Stanovi tab, uvek pokaži listu
     if (tabId === 'units') showUnitList();
   };
 });
 
+// Samo sakrij tab dugme (bez redirect logike) — koristi se na init
+function hideTabOnly(tabId) {
+  const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  if (btn) btn.style.display = 'none';
+}
+
 function showTab(tabId) {
-  document.querySelector(`.tab[data-tab="${tabId}"]`).style.display = '';
+  const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  if (btn) btn.style.display = '';
 }
 function hideTab(tabId) {
   const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  if (!btn) return;
   btn.style.display = 'none';
   const panel = document.getElementById(tabId);
-  if (panel.classList.contains('active')) {
+  if (panel && panel.classList.contains('active')) {
     panel.classList.remove('active');
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    document.getElementById('dashboard').classList.add('active');
-    document.querySelector('.tab[data-tab="dashboard"]').classList.add('active');
+    document.getElementById('profil').classList.add('active');
+    document.querySelector('.tab[data-tab="profil"]').classList.add('active');
   }
 }
 
@@ -58,24 +72,38 @@ onAuthStateChanged(auth, user => {
   updateProfileTab(user);
 
   if (!user) {
-    hideTab('units');
-    hideTab('finance');
-    hideTab('messages');
+    // Gost: samo profil
+    ['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTab(id));
     return;
   }
 
-  showTab('messages');
   const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   if (isAdmin) {
+    // Admin: sve tabove
+    showTab('dashboard');
     showTab('units');
+    showTab('messages');
     showTab('finance');
+    // Aktiviraj dashboard
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.getElementById('dashboard').classList.add('active');
+    document.querySelector('.tab[data-tab="dashboard"]').classList.add('active');
     loadUnits();
     setupAdminMessages();
     setupFinance();
     loadDashboard();
   } else {
+    // Zakupac: samo messages + profil
+    hideTab('dashboard');
     hideTab('units');
     hideTab('finance');
+    showTab('messages');
+    // Aktiviraj messages
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.getElementById('messages').classList.add('active');
+    document.querySelector('.tab[data-tab="messages"]').classList.add('active');
     setupTenantMessages(user);
   }
 });
@@ -134,7 +162,6 @@ async function loadUnits() {
           <i class="ti ti-chevron-right" aria-hidden="true"></i>
         </div>
       `;
-      // klik na red otvara detalje, ali ne ako je kliknuto dugme za brisanje
       li.addEventListener('click', (e) => {
         if (e.target.closest('.btn-delete-unit')) return;
         openUnitDetail(d.id, data);
@@ -176,27 +203,25 @@ async function openUnitDetail(unitId, baseData) {
   currentUnitId = unitId;
   document.getElementById('detailUnitName').textContent = baseData.name;
   showUnitDetail();
-
-  // učitaj sačuvane detalje ako postoje
   try {
     const snap = await getDoc(doc(db, 'units', unitId));
     const d = snap.exists() ? snap.data() : {};
-    document.getElementById('dAdresa').value     = d.adresa      || '';
-    document.getElementById('dSprat').value       = d.sprat        ?? '';
-    document.getElementById('dBrojStana').value   = d.brojStana    || '';
-    document.getElementById('dKvad').value        = d.kvadratura   ?? '';
-    document.getElementById('dStruktura').value  = d.struktura   || '';
-    document.getElementById('dSpavace').value    = d.spavace     ?? '';
-    document.getElementById('dKupatila').value   = d.kupatila    ?? '';
-    document.getElementById('dTerasa').value     = d.terasa      || '';
-    document.getElementById('dZakupacIme').value = d.zakupacIme  || '';
-    document.getElementById('dZakupacDok').value = d.zakupacDok  || '';
-    document.getElementById('dZakupOd').value    = d.zakupOd     || '';
-    document.getElementById('dZakupDo').value    = d.zakupDo     || '';
-    document.getElementById('dVrstaZakupa').value = d.vrstaZakupa  || '';
-    document.getElementById('dRenta').value       = d.rent         ?? '';
-    document.getElementById('dValuta').value      = d.valuta       || '';
-    document.getElementById('dIsplata').value     = d.isplata      || '';
+    document.getElementById('dAdresa').value      = d.adresa      || '';
+    document.getElementById('dSprat').value        = d.sprat       ?? '';
+    document.getElementById('dBrojStana').value    = d.brojStana   || '';
+    document.getElementById('dKvad').value         = d.kvadratura  ?? '';
+    document.getElementById('dStruktura').value    = d.struktura   || '';
+    document.getElementById('dSpavace').value      = d.spavace     ?? '';
+    document.getElementById('dKupatila').value     = d.kupatila    ?? '';
+    document.getElementById('dTerasa').value       = d.terasa      || '';
+    document.getElementById('dZakupacIme').value   = d.zakupacIme  || '';
+    document.getElementById('dZakupacDok').value   = d.zakupacDok  || '';
+    document.getElementById('dZakupOd').value      = d.zakupOd     || '';
+    document.getElementById('dZakupDo').value      = d.zakupDo     || '';
+    document.getElementById('dVrstaZakupa').value  = d.vrstaZakupa || '';
+    document.getElementById('dRenta').value        = d.rent        ?? '';
+    document.getElementById('dValuta').value       = d.valuta      || '';
+    document.getElementById('dIsplata').value      = d.isplata     || '';
   } catch(e) {
     console.error('Greška pri učitavanju detalja:', e);
   }
@@ -210,9 +235,9 @@ document.getElementById('saveUnitDetail').onclick = async () => {
   try {
     await setDoc(doc(db, 'units', currentUnitId), {
       adresa:      document.getElementById('dAdresa').value.trim(),
-      sprat:       Number(document.getElementById('dSprat').value)     || null,
+      sprat:       Number(document.getElementById('dSprat').value)    || null,
       brojStana:   document.getElementById('dBrojStana').value.trim(),
-      kvadratura:  Number(document.getElementById('dKvad').value)      || null,
+      kvadratura:  Number(document.getElementById('dKvad').value)     || null,
       struktura:   document.getElementById('dStruktura').value,
       spavace:     Number(document.getElementById('dSpavace').value)  || null,
       kupatila:    Number(document.getElementById('dKupatila').value) || null,
@@ -222,7 +247,7 @@ document.getElementById('saveUnitDetail').onclick = async () => {
       zakupOd:     document.getElementById('dZakupOd').value,
       zakupDo:     document.getElementById('dZakupDo').value,
       vrstaZakupa: document.getElementById('dVrstaZakupa').value,
-      rent:        Number(document.getElementById('dRenta').value)     || 0,
+      rent:        Number(document.getElementById('dRenta').value)    || 0,
       valuta:      document.getElementById('dValuta').value,
       isplata:     document.getElementById('dIsplata').value,
     }, { merge: true });
@@ -231,7 +256,7 @@ document.getElementById('saveUnitDetail').onclick = async () => {
       btn.disabled = false;
       btn.innerHTML = '<i class="ti ti-device-floppy"></i> Sačuvaj izmene';
     }, 2000);
-    loadUnits(); // osvezi listu (renta se mogla promeniti)
+    loadUnits();
   } catch(e) {
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-device-floppy"></i> Sačuvaj izmene';
@@ -358,9 +383,10 @@ function renderMessage(container, data, isAdmin, currentUserEmail) {
 // ── Dashboard totali ─────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const { income, expense, profit } = await getDashboardTotals();
-    document.getElementById('income').textContent  = income.toLocaleString('sr-Latn',  { maximumFractionDigits:2 }) + ' RSD';
-    document.getElementById('expense').textContent = expense.toLocaleString('sr-Latn', { maximumFractionDigits:2 }) + ' RSD';
-    document.getElementById('profit').textContent  = profit.toLocaleString('sr-Latn',  { maximumFractionDigits:2 }) + ' RSD';
+    const { income, expense, profit, currency } = await getDashboardTotals();
+    const cur = currency || 'RSD';
+    document.getElementById('income').textContent  = income.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
+    document.getElementById('expense').textContent = expense.toLocaleString('sr-Latn', { maximumFractionDigits: 2 }) + ' ' + cur;
+    document.getElementById('profit').textContent  = profit.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
   } catch(e) { /* tišina */ }
 }

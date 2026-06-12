@@ -1110,3 +1110,42 @@ body{
   font-size: 13px;
   color: var(--muted);
 }
+
+/* ── TOPBAR LOGO ICON (zamjena za img) ───────────────────────── */
+.topbar-logo-icon {
+  display:flex;align-items:center;
+}
+.topbar-logo-icon .ti {
+  font-size:22px;color:var(--accent);
+}
+
+/* ── TENANT UNIT SECTION ─────────────────────────────────────── */
+.tenant-unit-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.tenant-unit-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.tenant-unit-card-header .ti {
+  font-size: 20px;
+  color: var(--accent);
+}
+.tenant-unit-card .detail-row span {
+  font-size: 14px;
+  color: var(--text);
+  padding: 6px 0;
+  display: block;
+}
+.tenant-add-form {
+  margin-top: 8px;
+}

@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rental Manager</title>
-<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 </head>
@@ -12,7 +11,7 @@
 
 <header class="topbar">
   <div class="topbar-title">
-    <img src="icon-192.png" alt="Logo" class="topbar-logo">
+    <span class="topbar-logo-icon"><i class="ti ti-building-estate" aria-hidden="true"></i></span>
     Rental Manager
   </div>
   <div class="topbar-actions">
@@ -89,6 +88,40 @@
         </button>
       </form>
       <ul id="unitList" class="unit-list"></ul>
+    </div>
+
+    <!-- Sekcija za zakupca: unos svog stana (vidljiva samo zakupcu bez dodeljenog stana) -->
+    <div id="tenantUnitSection" hidden>
+      <div class="page-header" style="margin-top:8px">
+        <h2>Moj stan</h2>
+        <span class="subtitle">Podaci o stanu u kome živim</span>
+      </div>
+      <div id="tenantUnitInfo" class="tenant-unit-info">
+        <!-- Ovdje se prikazuje info o stanu ako je dodeljen -->
+      </div>
+      <div id="tenantAddUnitForm" class="tenant-add-form" hidden>
+        <div class="onboarding-msg">
+          <i class="ti ti-home-search"></i>
+          <p>Vaš stan još nije dodeljen</p>
+          <span>Kontaktirajte svog stanodavca da Vas doda u sistem, ili unesite adresu stana.</span>
+        </div>
+        <form id="tenantUnitForm" class="add-form" style="margin-top:12px">
+          <div class="form-row">
+            <div class="input-group">
+              <i class="ti ti-home" aria-hidden="true"></i>
+              <input id="tuAdresa" placeholder="Adresa stana (ulica i broj)" required>
+            </div>
+            <div class="input-group">
+              <i class="ti ti-mail" aria-hidden="true"></i>
+              <input id="tuLandlordEmail" placeholder="Email stanodavca" type="email" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">
+            <i class="ti ti-send" aria-hidden="true"></i>
+            Pošalji zahtev stanodavcu
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Detalji stana (prikazuje se klikom na stan) -->
@@ -467,7 +500,7 @@
 </nav>
 
 <script type="module" src="firebase-config.js"></script>
-<script type="module" src="finance.js"></script>
-<script type="module" src="app.js"></script>
+<script type="module" src="finance.js?v=3"></script>
+<script type="module" src="app.js?v=3"></script>
 </body>
 </html>

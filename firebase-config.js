@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -17,8 +17,21 @@ export const db   = getFirestore(app);
 
 const provider = new GoogleAuthProvider();
 
-export const login  = () => signInWithPopup(auth, provider);
+export const login  = () => signInWithRedirect(auth, provider);
 export const logout = () => signOut(auth);
+
+// Obradi redirect rezultat pri učitavanju stranice
+getRedirectResult(auth)
+  .then(result => {
+    if (result) {
+      console.log('[RM] Redirect login uspešan:', result.user.email);
+    } else {
+      console.log('[RM] Nema redirect rezultata — koristi se postojeća sesija');
+    }
+  })
+  .catch(err => {
+    console.error('[RM] Redirect greška:', err.code, err.message);
+  });
 
 // Master admin — vidi sve, bez ownerId filtera
 export const MASTER_ADMIN_UID   = 'HCH4eYH0cYTsmRTUv4rDXfiHg173';

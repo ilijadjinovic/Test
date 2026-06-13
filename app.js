@@ -283,9 +283,15 @@ async function loadUnitsTenant(user) {
           const ownerSnap = await getDoc(doc(db, 'users', data.ownerId));
           if (ownerSnap.exists()) {
             const op = ownerSnap.data();
-            ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || '—');
+            ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || data.ownerEmail || '—');
+          } else {
+            ownerLabel = data.ownerEmail || '—';
           }
-        } catch(e) {}
+        } catch(e) {
+          ownerLabel = data.ownerEmail || '—';
+        }
+      } else if (data.ownerEmail) {
+        ownerLabel = data.ownerEmail;
       }
       const li = document.createElement('li');
       li.className = 'unit-list-item';
@@ -525,7 +531,8 @@ document.getElementById('unitForm').onsubmit = async e => {
   await addDoc(collection(db, 'units'), {
     name:        document.getElementById('unitName').value.trim(),
     tenantEmail: document.getElementById('tenantEmail').value.trim().toLowerCase(),
-    ownerId:     user.uid
+    ownerId:     user.uid,
+    ownerEmail:  user.email.toLowerCase()
   });
   e.target.reset();
   // Nakon dodavanja stana korisnik je landlord — uvek reload kao landlord
@@ -542,6 +549,36 @@ async function openUnitDetail(unitId, baseData) {
   currentUnitId = unitId;
   document.getElementById('detailUnitName').textContent = baseData.name;
   showUnitDetail();
+
+  // Proveri da li je trenutni korisnik vlasnik stana
+  const user      = auth.currentUser;
+  const isOwner   = user && (baseData.ownerId === user.uid || user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  const saveBtn   = document.getElementById('saveUnitDetail');
+  const detailForm = document.getElementById('unitDetailForm');
+
+  // Prikaži/sakrij dugme za čuvanje i read-only state
+  if (saveBtn)    saveBtn.style.display    = isOwner ? '' : 'none';
+  if (detailForm) {
+    detailForm.querySelectorAll('input, select, textarea').forEach(el => {
+      el.disabled = !isOwner;
+    });
+  }
+
+  // Prikaz read-only napomene za zakupca
+  let roNote = document.getElementById('detailReadonlyNote');
+  if (!isOwner) {
+    if (!roNote) {
+      roNote = document.createElement('p');
+      roNote.id = 'detailReadonlyNote';
+      roNote.className = 'info-text';
+      roNote.style.cssText = 'margin-bottom:8px;font-size:13px';
+      roNote.textContent = 'Detalje stana može menjati samo vlasnik.';
+      detailForm?.prepend(roNote);
+    }
+  } else {
+    roNote?.remove();
+  }
+
   try {
     const snap = await getDoc(doc(db, 'units', unitId));
     const d = snap.exists() ? snap.data() : {};
@@ -569,6 +606,12 @@ async function openUnitDetail(unitId, baseData) {
 
 document.getElementById('saveUnitDetail').onclick = async () => {
   if (!currentUnitId) return;
+  // Sigurnosna provjera — samo vlasnik ili admin može sačuvati
+  const user = auth.currentUser;
+  const snap0 = await getDoc(doc(db, 'units', currentUnitId));
+  const unitData0 = snap0.exists() ? snap0.data() : {};
+  const isOwner = user && (unitData0.ownerId === user.uid || user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  if (!isOwner) { alert('Nemate dozvolu za izmenu detalja ovog stana.'); return; }
   const btn = document.getElementById('saveUnitDetail');
   btn.disabled = true;
   btn.textContent = 'Čuvam...';
@@ -732,9 +775,15 @@ async function setupTenantMessages(user) {
         const ownerSnap = await getDoc(doc(db, 'users', unitData.ownerId));
         if (ownerSnap.exists()) {
           const op = ownerSnap.data();
-          ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || '—');
+          ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || unitData.ownerEmail || '—');
+        } else {
+          ownerLabel = unitData.ownerEmail || '—';
         }
-      } catch(e) {}
+      } catch(e) {
+        ownerLabel = unitData.ownerEmail || '—';
+      }
+    } else if (unitData.ownerEmail) {
+      ownerLabel = unitData.ownerEmail;
     }
 
     header.innerHTML = `

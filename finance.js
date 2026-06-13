@@ -1,7 +1,7 @@
 import { db, auth, ADMIN_EMAIL } from './firebase-config.js';
 import {
   collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc,
-  query, orderBy, Timestamp
+  query, orderBy, where, Timestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
 // ── Konstante ────────────────────────────────────────────────────

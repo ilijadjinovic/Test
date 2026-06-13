@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+import { initializeFirestore, CACHE_SIZE_UNLIMITED } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyCHdohv0tfLf8taODtLfMKQDPROJN_lwug",
@@ -13,7 +13,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db   = getFirestore(app);
+
+// Koristimo initializeFirestore umesto getFirestore da bismo
+// isključili IndexedDB persistence koja pravi greške pre logovanja
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: false,
+  ignoreUndefinedProperties: true
+});
 
 const provider = new GoogleAuthProvider();
 

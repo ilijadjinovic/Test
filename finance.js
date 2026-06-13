@@ -300,7 +300,8 @@ async function saveSettings() {
   } catch(e) { /* tišina */ }
 }
 
-// ── Lista stanova ───────────────────────────────────────────async function loadFinanceUnitList() {
+// ── Lista stanova ───────────────────────────────────────────
+async function loadFinanceUnitList() {
   const listEl = document.getElementById('finUnitList');
   listEl.innerHTML = '<p class="info-text">Učitavam...</p>';
   try {
@@ -394,8 +395,6 @@ async function saveSettings() {
   } catch(e) {
     listEl.innerHTML = `<p class="info-text">Greška: ${e.message}</p>`;
     console.error(e);
-  }
-}
   }
 }
 

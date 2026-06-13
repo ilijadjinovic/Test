@@ -249,7 +249,7 @@ function buildUnitLi(unitId, data, canDelete) {
   if (canDelete) {
     li.querySelector('.btn-delete-unit').addEventListener('click', async e => {
       e.stopPropagation();
-      if (!confirm(\`Obriši stan "\${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara.\`)) return;
+      if (!confirm(`Obriši stan "${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara.`)) return;
       try {
         await deleteUnitCascade(unitId);
         const isMasterAdmin = auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -319,56 +319,8 @@ async function loadUnitsLandlord(user) {
   } catch(e) {
     ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
   }
-}user) {
-  const ul = document.getElementById('unitList');
-  ul.innerHTML = '';
-  // Prikaži formu za dodavanje stana
-  const form = document.getElementById('unitForm');
-  if (form) form.style.display = '';
-  try {
-    const snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
-    if (snap.empty) {
-      ul.innerHTML = '<li style="color:var(--muted);font-size:14px">Nemate unetih stanova.</li>';
-      return;
-    }
-    snap.forEach(d => {
-      const data = d.data();
-      const li = document.createElement('li');
-      li.className = 'unit-list-item';
-      li.innerHTML = `
-        <div class="unit-item-info">
-          <span class="unit-item-name">${data.name}</span>
-          <span class="unit-item-sub">${data.tenantEmail || 'bez zakupca'}</span>
-        </div>
-        <div class="unit-item-right">
-          <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
-          <button class="btn-delete-unit" title="Obriši stan">
-            <i class="ti ti-trash" aria-hidden="true"></i>
-          </button>
-          <i class="ti ti-chevron-right" aria-hidden="true"></i>
-        </div>
-      `;
-      li.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-delete-unit')) return;
-        openUnitDetail(d.id, data);
-      });
-      li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm(`Obriši stan "${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara. Ova akcija je nepovratna.`)) return;
-        try {
-          await deleteUnitCascade(d.id);
-          await loadUnitsLandlord(user);
-          setupLandlordMessages(user);
-        } catch(err) {
-          alert('Greška pri brisanju: ' + err.message);
-        }
-      });
-      ul.appendChild(li);
-    });
-  } catch(e) {
-    ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
-  }
 }
+
 
 // ── Landlord messages ────────────────────────────────────────────
 async function setupLandlordMessages(user) {
@@ -550,54 +502,6 @@ async function loadUnits() {
   } catch(e) {
     ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
     console.error(e);
-  }
-}{
-  const ul = document.getElementById('unitList');
-  ul.innerHTML = '';
-  const form = document.getElementById('unitForm');
-  if (form) form.style.display = '';
-  try {
-    const snap = await getDocs(collection(db, 'units'));
-    if (snap.empty) {
-      ul.innerHTML = '<li style="color:var(--muted);font-size:14px">Nema unetih stanova.</li>';
-      return;
-    }
-    snap.forEach(d => {
-      const data = d.data();
-      const li = document.createElement('li');
-      li.className = 'unit-list-item';
-      li.innerHTML = `
-        <div class="unit-item-info">
-          <span class="unit-item-name">${data.name}</span>
-          <span class="unit-item-sub">${data.tenantEmail || 'bez zakupca'}</span>
-        </div>
-        <div class="unit-item-right">
-          <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
-          <button class="btn-delete-unit" title="Obriši stan">
-            <i class="ti ti-trash" aria-hidden="true"></i>
-          </button>
-          <i class="ti ti-chevron-right" aria-hidden="true"></i>
-        </div>
-      `;
-      li.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-delete-unit')) return;
-        openUnitDetail(d.id, data);
-      });
-      li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm(`Obriši stan "${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara. Ova akcija je nepovratna.`)) return;
-        try {
-          await deleteUnitCascade(d.id);
-          await loadUnits();
-          setupAdminMessages();
-        } catch(err) {
-          alert('Greška pri brisanju: ' + err.message);
-        }
-      });
-      ul.appendChild(li);
-    });
-  } catch(e) {
-    ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
   }
 }
 

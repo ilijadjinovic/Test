@@ -305,23 +305,31 @@ async function loadFinanceUnitList() {
   const listEl = document.getElementById('finUnitList');
   listEl.innerHTML = '<p class="info-text">Učitavam...</p>';
   try {
-    const user         = auth.currentUser;
+    const user          = auth.currentUser;
     const isMasterAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-    const snap          = await getDocs(collection(db, 'units'));
-    listEl.innerHTML    = '';
+
+    // Master admin čita sve, landlord samo svoje stanove
+    const unitsQuery = isMasterAdmin
+      ? collection(db, 'units')
+      : query(collection(db, 'units'), where('ownerId', '==', user.uid));
+
+    const snap = await getDocs(unitsQuery);
+    listEl.innerHTML = '';
     if (snap.empty) { listEl.innerHTML = '<p class="info-text">Nema stanova u bazi.</p>'; return; }
 
     const allDocs  = snap.docs.map(d => ({ id: d.id, data: d.data() }));
     const ownerIds = [...new Set(allDocs.map(d => d.data.ownerId).filter(Boolean))];
 
-    // Učitaj profile
+    // Učitaj profile (samo za master admina)
     const profiles = {};
-    await Promise.all(ownerIds.map(async uid => {
-      try {
-        const s = await getDoc(doc(db, 'users', uid));
-        if (s.exists()) profiles[uid] = s.data();
-      } catch(e) {}
-    }));
+    if (isMasterAdmin) {
+      await Promise.all(ownerIds.map(async uid => {
+        try {
+          const s = await getDoc(doc(db, 'users', uid));
+          if (s.exists()) profiles[uid] = s.data();
+        } catch(e) {}
+      }));
+    }
 
     const renderUnitCard = (d) => {
       const unit = d.data;

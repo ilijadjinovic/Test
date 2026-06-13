@@ -662,7 +662,12 @@ document.getElementById('saveUnitDetail').onclick = async () => {
       btn.disabled = false;
       btn.innerHTML = '<i class="ti ti-device-floppy"></i> Sačuvaj izmene';
     }, 2000);
-    loadUnits();
+    // Osvježi listu prema ulozi
+    const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    if (isMasterAdmin) await loadUnits();
+    else await loadUnitsLandlord(user);
+    // Vrati na listu stanova
+    showUnitList();
   } catch(e) {
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-device-floppy"></i> Sačuvaj izmene';

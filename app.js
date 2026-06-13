@@ -89,6 +89,9 @@ onAuthStateChanged(auth, async user => {
   currentUserObj = user;
   const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
+  // Sačuvaj profil u Firestore da ga drugi mogu videti
+  saveUserProfile(user).catch(() => {});
+
   let isLandlord = false;
   let isTenant   = false;
 
@@ -224,6 +227,40 @@ function updateProfileTab(user, isMasterAdmin, isLandlord, isTenant) {
   }
 }
 
+// ── Unit list item builder ──────────────────────────────────────
+function buildUnitLi(unitId, data, canDelete) {
+  const li = document.createElement('li');
+  li.className = 'unit-list-item';
+  li.innerHTML = `
+    <div class="unit-item-info">
+      <span class="unit-item-name">${data.name}</span>
+      <span class="unit-item-sub">${data.tenantEmail || 'bez zakupca'}</span>
+    </div>
+    <div class="unit-item-right">
+      <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
+      ${canDelete ? `<button class="btn-delete-unit" title="Obriši stan"><i class="ti ti-trash" aria-hidden="true"></i></button>` : ''}
+      <i class="ti ti-chevron-right" aria-hidden="true"></i>
+    </div>
+  `;
+  li.addEventListener('click', e => {
+    if (e.target.closest('.btn-delete-unit')) return;
+    openUnitDetail(unitId, data);
+  });
+  if (canDelete) {
+    li.querySelector('.btn-delete-unit').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(\`Obriši stan "\${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara.\`)) return;
+      try {
+        await deleteUnitCascade(unitId);
+        const isMasterAdmin = auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        if (isMasterAdmin) { await loadUnits(); setupAdminMessages(); }
+        else { await loadUnitsLandlord(auth.currentUser); setupLandlordMessages(auth.currentUser); }
+      } catch(err) { alert('Greška: ' + err.message); }
+    });
+  }
+  return li;
+}
+
 // ── Units — lista (zakupac / novi korisnik) ──────────────────────
 async function loadUnitsTenant(user) {
   const ul = document.getElementById('unitList');
@@ -259,8 +296,30 @@ async function loadUnitsTenant(user) {
   }
 }
 
-// ── Units — lista (landlord) ─────────────────────────────────────
+// ── Units — lista (landlord) ─────────────────────────────────
 async function loadUnitsLandlord(user) {
+  const ul   = document.getElementById('unitList');
+  const form = document.getElementById('unitForm');
+  ul.innerHTML = '';
+  if (form) form.style.display = '';
+  try {
+    const snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
+    const profile = (await getDoc(doc(db, 'users', user.uid))).data() || {};
+    const name  = profile.displayName || user.displayName || '—';
+    const email = profile.email || user.email;
+    ul.appendChild(renderOwnerSection(name, email));
+    if (snap.empty) {
+      const li = document.createElement('li');
+      li.style.cssText = 'color:var(--muted);font-size:14px;padding:8px 0';
+      li.textContent = 'Nemate unetih stanova.';
+      ul.appendChild(li);
+      return;
+    }
+    snap.forEach(d => ul.appendChild(buildUnitLi(d.id, d.data(), true)));
+  } catch(e) {
+    ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
+  }
+}user) {
   const ul = document.getElementById('unitList');
   ul.innerHTML = '';
   // Prikaži formu za dodavanje stana
@@ -392,8 +451,107 @@ async function deleteUnitCascade(unitId) {
   await deleteDoc(doc(db, 'units', unitId));
 }
 
+// ── User profili ─────────────────────────────────────────────────
+async function saveUserProfile(user) {
+  const ref = doc(db, 'users', user.uid);
+  await setDoc(ref, {
+    displayName: user.displayName || '',
+    email:       user.email || '',
+    photoURL:    user.photoURL || ''
+  }, { merge: true });
+}
+
+// Učitaj profile više korisnika odjednom; vraća map uid -> {displayName, email}
+async function getUserProfiles(uids) {
+  const map = {};
+  if (!uids.length) return map;
+  const unique = [...new Set(uids)];
+  await Promise.all(unique.map(async uid => {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (snap.exists()) map[uid] = snap.data();
+    } catch(e) {}
+  }));
+  return map;
+}
+
+// Renderuj owner-sekciju (za listu stanova i poruke)
+function renderOwnerSection(label, sublabel) {
+  const section = document.createElement('div');
+  section.className = 'owner-section';
+  section.innerHTML = `
+    <div class="owner-section-header">
+      <i class="ti ti-user-circle"></i>
+      <div>
+        <span class="owner-section-name">${label}</span>
+        <span class="owner-section-email">${sublabel}</span>
+      </div>
+    </div>
+  `;
+  return section;
+}
+
 // ── Units — lista (master admin) ─────────────────────────────────
 async function loadUnits() {
+  const ul   = document.getElementById('unitList');
+  const form = document.getElementById('unitForm');
+  ul.innerHTML = '';
+  if (form) form.style.display = '';
+  try {
+    const snap = await getDocs(collection(db, 'units'));
+    if (snap.empty) {
+      ul.innerHTML = '<li style="color:var(--muted);font-size:14px">Nema unetih stanova.</li>';
+      return;
+    }
+    const allDocs = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+
+    // Učitaj profile svih ownera
+    const ownerIds = [...new Set(allDocs.map(d => d.data.ownerId).filter(Boolean))];
+    const profiles = await getUserProfiles(ownerIds);
+
+    // Grupiši po ownerId
+    const myUid   = auth.currentUser.uid;
+    const myUnits = allDocs.filter(d => d.data.ownerId === myUid);
+    const others  = allDocs.filter(d => d.data.ownerId !== myUid);
+
+    // Grupiši ostale po ownerId
+    const byOwner = {};
+    others.forEach(d => {
+      const oid = d.data.ownerId || '__unknown__';
+      if (!byOwner[oid]) byOwner[oid] = [];
+      byOwner[oid].push(d);
+    });
+
+    // Sortiraj po displayName/email abecedno
+    const ownerOrder = Object.keys(byOwner).sort((a, b) => {
+      const na = (profiles[a]?.displayName || profiles[a]?.email || a).toLowerCase();
+      const nb = (profiles[b]?.displayName || profiles[b]?.email || b).toLowerCase();
+      return na.localeCompare(nb);
+    });
+
+    // Moji stanovi
+    if (myUnits.length) {
+      const myProfile = profiles[myUid];
+      const myName    = myProfile?.displayName || 'Master Admin';
+      const myEmail   = myProfile?.email || auth.currentUser.email;
+      ul.appendChild(renderOwnerSection(myName, myEmail));
+      myUnits.forEach(d => ul.appendChild(buildUnitLi(d.id, d.data, true)));
+    }
+
+    // Stanovi ostalih landlordova
+    ownerOrder.forEach(oid => {
+      const p     = profiles[oid] || {};
+      const name  = p.displayName || '—';
+      const email = p.email || oid;
+      ul.appendChild(renderOwnerSection(name, email));
+      byOwner[oid].forEach(d => ul.appendChild(buildUnitLi(d.id, d.data, true)));
+    });
+
+  } catch(e) {
+    ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
+    console.error(e);
+  }
+}{
   const ul = document.getElementById('unitList');
   ul.innerHTML = '';
   const form = document.getElementById('unitForm');
@@ -534,53 +692,81 @@ document.getElementById('saveUnitDetail').onclick = async () => {
 async function setupAdminMessages() {
   const container = document.getElementById('adminChats');
   document.getElementById('tenantChat').hidden = true;
-  container.innerHTML = '<p class="info-text">Učitavam stanove...</p>';
+  container.innerHTML = '<p class="info-text">Učitavam...</p>';
   try {
     const snap = await getDocs(collection(db, 'units'));
     container.innerHTML = '';
-    if (snap.empty) {
-      container.innerHTML = '<p class="info-text">Nema stanova u bazi.</p>';
-      return;
-    }
-    snap.forEach(docSnap => {
-      const unit   = docSnap.data();
-      const unitId = docSnap.id;
-      const card   = document.createElement('div');
-      card.className = 'chat-card';
-      card.innerHTML = `
-        <div class="chat-card-header">
-          <i class="ti ti-home"></i>
-          <span>${unit.name}</span>
-          <small>${unit.tenantEmail || 'bez zakupca'}</small>
-        </div>
-        <div class="chat-messages" id="msgs-${unitId}"></div>
-        <div class="chat-input-row">
-          <input class="admin-msg-input" data-unit="${unitId}" placeholder="Odgovori..." autocomplete="off">
-          <button class="btn-send admin-msg-send" data-unit="${unitId}">
-            <i class="ti ti-send"></i>
-          </button>
-        </div>
-      `;
-      container.appendChild(card);
-      const msgsRef = collection(db, 'units', unitId, 'messages');
-      const q = query(msgsRef, orderBy('vreme', 'asc'));
-      onSnapshot(q, snapshot => {
-        const box = document.getElementById(`msgs-${unitId}`);
-        if (!box) return;
-        box.innerHTML = '';
-        snapshot.forEach(m => renderMessage(box, m.data(), true));
-        box.scrollTop = box.scrollHeight;
-      });
+    if (snap.empty) { container.innerHTML = '<p class="info-text">Nema stanova u bazi.</p>'; return; }
+
+    const allDocs  = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+    const ownerIds = [...new Set(allDocs.map(d => d.data.ownerId).filter(Boolean))];
+    const profiles = await getUserProfiles(ownerIds);
+
+    const myUid   = auth.currentUser.uid;
+    const myUnits = allDocs.filter(d => d.data.ownerId === myUid);
+    const others  = allDocs.filter(d => d.data.ownerId !== myUid);
+
+    const byOwner = {};
+    others.forEach(d => {
+      const oid = d.data.ownerId || '__unknown__';
+      if (!byOwner[oid]) byOwner[oid] = [];
+      byOwner[oid].push(d);
     });
+    const ownerOrder = Object.keys(byOwner).sort((a, b) => {
+      const na = (profiles[a]?.displayName || profiles[a]?.email || a).toLowerCase();
+      const nb = (profiles[b]?.displayName || profiles[b]?.email || b).toLowerCase();
+      return na.localeCompare(nb);
+    });
+
+    const renderGroup = (groupDocs, ownerLabel, ownerEmail) => {
+      container.appendChild(renderOwnerSection(ownerLabel, ownerEmail));
+      groupDocs.forEach(({ id: unitId, data: unit }) => {
+        const card = document.createElement('div');
+        card.className = 'chat-card';
+        card.innerHTML = `
+          <div class="chat-card-header">
+            <i class="ti ti-home"></i>
+            <span>${unit.name}</span>
+            <small>${unit.tenantEmail || 'bez zakupca'}</small>
+          </div>
+          <div class="chat-messages" id="msgs-${unitId}"></div>
+          <div class="chat-input-row">
+            <input class="admin-msg-input" data-unit="${unitId}" placeholder="Odgovori..." autocomplete="off">
+            <button class="btn-send admin-msg-send" data-unit="${unitId}">
+              <i class="ti ti-send"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+        const q = query(collection(db, 'units', unitId, 'messages'), orderBy('vreme', 'asc'));
+        onSnapshot(q, snapshot => {
+          const box = document.getElementById('msgs-' + unitId);
+          if (!box) return;
+          box.innerHTML = '';
+          snapshot.forEach(m => renderMessage(box, m.data(), true));
+          box.scrollTop = box.scrollHeight;
+        });
+      });
+    };
+
+    if (myUnits.length) {
+      const p = profiles[myUid] || {};
+      renderGroup(myUnits, p.displayName || 'Master Admin', p.email || auth.currentUser.email);
+    }
+    ownerOrder.forEach(oid => {
+      const p = profiles[oid] || {};
+      renderGroup(byOwner[oid], p.displayName || '—', p.email || oid);
+    });
+
     container.addEventListener('click', async e => {
       const btn = e.target.closest('.admin-msg-send');
       if (!btn) return;
       const unitId = btn.dataset.unit;
-      const input  = container.querySelector(`.admin-msg-input[data-unit="${unitId}"]`);
+      const input  = container.querySelector('.admin-msg-input[data-unit="' + unitId + '"]');
       const tekst  = input.value.trim();
       if (!tekst) return;
       input.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: ADMIN_EMAIL, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: auth.currentUser.email, tekst, vreme: serverTimestamp() });
     });
     container.addEventListener('keydown', async e => {
       if (e.key !== 'Enter') return;
@@ -590,10 +776,11 @@ async function setupAdminMessages() {
       const tekst  = input.value.trim();
       if (!tekst) return;
       input.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: ADMIN_EMAIL, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: auth.currentUser.email, tekst, vreme: serverTimestamp() });
     });
   } catch(err) {
     container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+    console.error(err);
   }
 }
 
@@ -648,13 +835,106 @@ function renderMessage(container, data, isAdmin, currentUserEmail) {
 
 // ── Dashboard totali ─────────────────────────────────────────────
 async function loadDashboard(ownerId = null) {
+  const isMasterAdmin = !ownerId && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  const landlordEl = document.getElementById('dashboardLandlord');
+  const adminEl    = document.getElementById('dashboardAdmin');
+  if (landlordEl) landlordEl.style.display = isMasterAdmin ? 'none' : '';
+  if (adminEl)    adminEl.style.display    = isMasterAdmin ? '' : 'none';
+
+  if (!isMasterAdmin) {
+    // Landlord — obični prikaz
+    try {
+      const { income, expense, profit, currency } = await getDashboardTotals(ownerId);
+      const cur = currency || 'RSD';
+      document.getElementById('income').textContent  = income.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
+      document.getElementById('expense').textContent = expense.toLocaleString('sr-Latn', { maximumFractionDigits: 2 }) + ' ' + cur;
+      document.getElementById('profit').textContent  = profit.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
+    } catch(e) {}
+    return;
+  }
+
+  // Master admin — prikaz po grupama
+  const summaryEl  = document.getElementById('dashboardSummary');
+  const groupsEl   = document.getElementById('dashboardGroups');
+  if (!summaryEl || !groupsEl) return; // stari HTML, skip
+
+  summaryEl.innerHTML = '<p class="info-text">Učitavam...</p>';
+  groupsEl.innerHTML  = '';
+
   try {
-    const { income, expense, profit, currency } = await getDashboardTotals(ownerId);
-    const cur = currency || 'RSD';
-    document.getElementById('income').textContent  = income.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
-    document.getElementById('expense').textContent = expense.toLocaleString('sr-Latn', { maximumFractionDigits: 2 }) + ' ' + cur;
-    document.getElementById('profit').textContent  = profit.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
-  } catch(e) { /* tišina */ }
+    const snap     = await getDocs(collection(db, 'units'));
+    const allDocs  = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+    const ownerIds = [...new Set(allDocs.map(d => d.data.ownerId).filter(Boolean))];
+    const profiles = await getUserProfiles(ownerIds);
+    const myUid    = auth.currentUser.uid;
+
+    const myUnits = allDocs.filter(d => d.data.ownerId === myUid);
+    const byOwner = {};
+    allDocs.filter(d => d.data.ownerId !== myUid).forEach(d => {
+      const oid = d.data.ownerId || '__unknown__';
+      if (!byOwner[oid]) byOwner[oid] = [];
+      byOwner[oid].push(d);
+    });
+    const ownerOrder = Object.keys(byOwner).sort((a, b) => {
+      const na = (profiles[a]?.displayName || profiles[a]?.email || a).toLowerCase();
+      const nb = (profiles[b]?.displayName || profiles[b]?.email || b).toLowerCase();
+      return na.localeCompare(nb);
+    });
+
+    // Ukupno za sve
+    const totals = await getDashboardTotals(null);
+    const cur    = totals.currency || 'RSD';
+    summaryEl.innerHTML = `
+      <div class="dash-total-row">
+        <div class="dash-kpi"><span class="dash-kpi-label">Ukupni prihod</span><span class="dash-kpi-val green">${totals.income.toLocaleString('sr-Latn',{maximumFractionDigits:2})} ${cur}</span></div>
+        <div class="dash-kpi"><span class="dash-kpi-label">Ukupni rashod</span><span class="dash-kpi-val red">${totals.expense.toLocaleString('sr-Latn',{maximumFractionDigits:2})} ${cur}</span></div>
+        <div class="dash-kpi"><span class="dash-kpi-label">Neto profit</span><span class="dash-kpi-val ${totals.profit>=0?'green':'red'}">${totals.profit.toLocaleString('sr-Latn',{maximumFractionDigits:2})} ${cur}</span></div>
+      </div>
+    `;
+
+    // Render po grupama
+    const renderDashGroup = async (units, name, email) => {
+      let inc = 0, exp = 0;
+      for (const u of units) {
+        const t = await getDashboardTotals(u.data.ownerId);
+        // Zapravo trebamo per-unit sums — koristimo getDashboardTotals po unitId
+      }
+      // Koristimo ownerId filter
+      const oid = units[0]?.data?.ownerId;
+      const t   = oid ? await getDashboardTotals(oid) : { income:0, expense:0, profit:0, currency: cur };
+      const section = document.createElement('div');
+      section.className = 'dash-owner-section';
+      section.innerHTML = `
+        <div class="owner-section-header">
+          <i class="ti ti-user-circle"></i>
+          <div>
+            <span class="owner-section-name">${name}</span>
+            <span class="owner-section-email">${email}</span>
+          </div>
+        </div>
+        <div class="dash-kpi-row">
+          <div class="dash-kpi"><span class="dash-kpi-label">Prihod</span><span class="dash-kpi-val green">${t.income.toLocaleString('sr-Latn',{maximumFractionDigits:2})} ${cur}</span></div>
+          <div class="dash-kpi"><span class="dash-kpi-label">Rashod</span><span class="dash-kpi-val red">${t.expense.toLocaleString('sr-Latn',{maximumFractionDigits:2})} ${cur}</span></div>
+          <div class="dash-kpi"><span class="dash-kpi-label">Profit</span><span class="dash-kpi-val ${t.profit>=0?'green':'red'}">${t.profit.toLocaleString('sr-Latn',{maximumFractionDigits:2})} ${cur}</span></div>
+        </div>
+        <ul class="dash-unit-list">${units.map(u=>`<li>${u.data.name}</li>`).join('')}</ul>
+      `;
+      groupsEl.appendChild(section);
+    };
+
+    if (myUnits.length) {
+      const p = profiles[myUid] || {};
+      await renderDashGroup(myUnits, p.displayName || 'Master Admin', p.email || auth.currentUser.email);
+    }
+    for (const oid of ownerOrder) {
+      const p = profiles[oid] || {};
+      await renderDashGroup(byOwner[oid], p.displayName || '—', p.email || oid);
+    }
+  } catch(e) {
+    summaryEl.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+    console.error(e);
+  }
 }
 
 // ── Osvježi dashboard kad se promeni valuta u Finansijama ──────

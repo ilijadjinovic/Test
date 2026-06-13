@@ -1100,3 +1100,97 @@ body{
   background: var(--hover);
   color: var(--text);
 }
+
+/* ── Owner sekcije (stanovi, poruke, finansije) ────────────────── */
+.owner-section {
+  margin: 12px 0 4px;
+}
+.owner-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+}
+.owner-section-header i {
+  font-size: 20px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.owner-section-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.owner-section-email {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Dashboard admin prikaz ────────────────────────────────────── */
+.dash-total-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dash-kpi {
+  flex: 1;
+  min-width: 100px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dash-kpi-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.dash-kpi-val {
+  font-size: 16px;
+  font-weight: 700;
+}
+.dash-kpi-val.green { color: var(--green); }
+.dash-kpi-val.red   { color: var(--red, #ff5050); }
+.dash-owner-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.dash-kpi-row {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 8px;
+  flex-wrap: wrap;
+}
+.dash-kpi-row .dash-kpi {
+  border: 1px solid var(--border);
+  background: var(--bg, #1a1a1a);
+}
+.dash-unit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dash-unit-list li {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--hover);
+  border-radius: 6px;
+  padding: 3px 8px;
+}

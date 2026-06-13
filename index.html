@@ -28,22 +28,30 @@
       <h2>Dashboard</h2>
       <span class="subtitle">Pregled</span>
     </div>
-    <div class="stat-grid">
-      <div class="stat-card income">
-        <i class="ti ti-trending-up" aria-hidden="true"></i>
-        <span id="income">0 RSD</span>
-        <small>Prihod</small>
+    <!-- Landlord prikaz (stari) -->
+    <div id="dashboardLandlord">
+      <div class="stat-grid">
+        <div class="stat-card income">
+          <i class="ti ti-trending-up" aria-hidden="true"></i>
+          <span id="income">0 RSD</span>
+          <small>Prihod</small>
+        </div>
+        <div class="stat-card expense">
+          <i class="ti ti-trending-down" aria-hidden="true"></i>
+          <span id="expense">0 RSD</span>
+          <small>Troškovi</small>
+        </div>
+        <div class="stat-card profit">
+          <i class="ti ti-cash" aria-hidden="true"></i>
+          <span id="profit">0 RSD</span>
+          <small>Profit</small>
+        </div>
       </div>
-      <div class="stat-card expense">
-        <i class="ti ti-trending-down" aria-hidden="true"></i>
-        <span id="expense">0 RSD</span>
-        <small>Troškovi</small>
-      </div>
-      <div class="stat-card profit">
-        <i class="ti ti-cash" aria-hidden="true"></i>
-        <span id="profit">0 RSD</span>
-        <small>Profit</small>
-      </div>
+    </div>
+    <!-- Master admin prikaz — grupno -->
+    <div id="dashboardAdmin" style="display:none">
+      <div id="dashboardSummary"></div>
+      <div id="dashboardGroups"></div>
     </div>
   </section>
 

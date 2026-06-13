@@ -1,4 +1,4 @@
-import { db, ADMIN_EMAIL } from './firebase-config.js';
+import { db, auth, ADMIN_EMAIL } from './firebase-config.js';
 import {
   collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc,
   query, orderBy, Timestamp
@@ -300,43 +300,102 @@ async function saveSettings() {
   } catch(e) { /* tišina */ }
 }
 
-// ── Lista stanova ────────────────────────────────────────────────
-async function loadFinanceUnitList() {
+// ── Lista stanova ───────────────────────────────────────────async function loadFinanceUnitList() {
   const listEl = document.getElementById('finUnitList');
   listEl.innerHTML = '<p class="info-text">Učitavam...</p>';
   try {
-    const snap = await getDocs(collection(db, 'units'));
-    listEl.innerHTML = '';
-    if (snap.empty) {
-      listEl.innerHTML = '<p class="info-text">Nema stanova u bazi.</p>';
-      return;
-    }
-    // Za svaki stan učitaj sumu prihoda i troškova za odabrani period
-    for (const d of snap.docs) {
-      const unit = d.data();
-      const unitId = d.id;
-      const { income, expense } = await getPeriodTotals(unitId);
-      const profit = income - expense;
+    const user         = auth.currentUser;
+    const isMasterAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    const snap          = await getDocs(collection(db, 'units'));
+    listEl.innerHTML    = '';
+    if (snap.empty) { listEl.innerHTML = '<p class="info-text">Nema stanova u bazi.</p>'; return; }
 
-      const card = document.createElement('div');
-      card.className = 'unit-list-item';
-      card.innerHTML = `
-        <div class="unit-item-info">
-          <span class="unit-item-name">${unit.name}</span>
-          <span class="unit-item-sub">${unit.tenantEmail || 'bez zakupca'} · ${periodLabel()}</span>
-        </div>
-        <div class="unit-item-right" style="gap:2px">
-          <span style="font-size:12px;color:var(--green);font-weight:600">+${fmt(income)}</span>
-          <span style="font-size:12px;color:var(--red);font-weight:600">-${fmt(expense)}</span>
-          <span style="font-size:13px;color:${profit>=0?'var(--accent)':'var(--red)'};font-weight:700">${profit>=0?'+':''}${fmt(profit)}</span>
-          <i class="ti ti-chevron-right" style="color:var(--muted);font-size:14px;margin-top:2px"></i>
+    const allDocs  = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+    const ownerIds = [...new Set(allDocs.map(d => d.data.ownerId).filter(Boolean))];
+
+    // Učitaj profile
+    const profiles = {};
+    await Promise.all(ownerIds.map(async uid => {
+      try {
+        const s = await getDoc(doc(db, 'users', uid));
+        if (s.exists()) profiles[uid] = s.data();
+      } catch(e) {}
+    }));
+
+    const renderUnitCard = (d) => {
+      const unit = d.data;
+      const unitId = d.id;
+      return getPeriodTotals(unitId).then(({ income, expense }) => {
+        const profit = income - expense;
+        const card = document.createElement('div');
+        card.className = 'unit-list-item';
+        card.innerHTML = `
+          <div class="unit-item-info">
+            <span class="unit-item-name">${unit.name}</span>
+            <span class="unit-item-sub">${unit.tenantEmail || 'bez zakupca'} · ${periodLabel()}</span>
+          </div>
+          <div class="unit-item-right" style="gap:2px">
+            <span style="font-size:12px;color:var(--green);font-weight:600">+${fmt(income)}</span>
+            <span style="font-size:12px;color:var(--red);font-weight:600">-${fmt(expense)}</span>
+            <span style="font-size:13px;color:${profit>=0?'var(--accent)':'var(--red)'};font-weight:700">${profit>=0?'+':''}${fmt(profit)}</span>
+            <i class="ti ti-chevron-right" style="color:var(--muted);font-size:14px;margin-top:2px"></i>
+          </div>
+        `;
+        card.addEventListener('click', () => openFinanceUnit(unitId, unit));
+        return card;
+      });
+    };
+
+    const renderSection = (name, email) => {
+      const section = document.createElement('div');
+      section.className = 'owner-section';
+      section.innerHTML = `
+        <div class="owner-section-header">
+          <i class="ti ti-user-circle"></i>
+          <div>
+            <span class="owner-section-name">${name}</span>
+            <span class="owner-section-email">${email}</span>
+          </div>
         </div>
       `;
-      card.addEventListener('click', () => openFinanceUnit(d.id, unit));
-      listEl.appendChild(card);
+      listEl.appendChild(section);
+    };
+
+    if (isMasterAdmin) {
+      const myUid   = user.uid;
+      const myUnits = allDocs.filter(d => d.data.ownerId === myUid);
+      const others  = allDocs.filter(d => d.data.ownerId !== myUid);
+      const byOwner = {};
+      others.forEach(d => {
+        const oid = d.data.ownerId || '__unknown__';
+        if (!byOwner[oid]) byOwner[oid] = [];
+        byOwner[oid].push(d);
+      });
+      const ownerOrder = Object.keys(byOwner).sort((a, b) => {
+        const na = (profiles[a]?.displayName || profiles[a]?.email || a).toLowerCase();
+        const nb = (profiles[b]?.displayName || profiles[b]?.email || b).toLowerCase();
+        return na.localeCompare(nb);
+      });
+
+      if (myUnits.length) {
+        const p = profiles[myUid] || {};
+        renderSection(p.displayName || 'Master Admin', p.email || user.email);
+        for (const d of myUnits) listEl.appendChild(await renderUnitCard(d));
+      }
+      for (const oid of ownerOrder) {
+        const p = profiles[oid] || {};
+        renderSection(p.displayName || '—', p.email || oid);
+        for (const d of byOwner[oid]) listEl.appendChild(await renderUnitCard(d));
+      }
+    } else {
+      // Landlord — samo njegovi stanovi, bez sekcija
+      for (const d of allDocs) listEl.appendChild(await renderUnitCard(d));
     }
   } catch(e) {
     listEl.innerHTML = `<p class="info-text">Greška: ${e.message}</p>`;
+    console.error(e);
+  }
+}
   }
 }
 

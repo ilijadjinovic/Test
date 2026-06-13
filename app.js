@@ -103,8 +103,9 @@ onAuthStateChanged(auth, async user => {
       ]);
       isLandlord = !landlordSnap.empty;
       isTenant   = !tenantSnap.empty;
+      console.log('[Auth] isLandlord:', isLandlord, 'isTenant:', isTenant, 'uid:', user.uid, 'email:', user.email);
     } catch(e) {
-      console.error('Greška pri detekciji uloge:', e);
+      console.error('[Auth] Greška pri detekciji uloge:', e);
     }
   }
 
@@ -135,6 +136,12 @@ onAuthStateChanged(auth, async user => {
 function applyContext(user, preferredTab) {
   const role = currentUserRole;
   const isLandlordCtx = role === 'masterAdmin' || role === 'landlord' || (role === 'both' && currentContext === 'landlord');
+
+  // Osvježi badge svaki put (uloga se mogla promeniti)
+  const isMasterAdmin = role === 'masterAdmin';
+  const isLandlord    = role === 'landlord' || role === 'both';
+  const isTenant      = role === 'tenant'   || role === 'both';
+  updateProfileTab(user, isMasterAdmin, isLandlord, isTenant);
 
   if (role === 'masterAdmin') {
     currentOwnerUid = null;
@@ -410,14 +417,29 @@ async function setupLandlordMessages(user) {
 
 // ── Kaskadno brisanje stana ──────────────────────────────────────
 async function deleteUnitCascade(unitId) {
-  // Briši subkolekcije
+  const user          = auth.currentUser;
+  const isMasterAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Briši subkolekcije (poruke, prihodi, troškovi)
   for (const sub of ['messages', 'income', 'expenses']) {
-    const snap = await getDocs(collection(db, 'units', unitId, sub));
-    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    try {
+      const snap = await getDocs(collection(db, 'units', unitId, sub));
+      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    } catch(e) {
+      console.warn(`Ne mogu obrisati ${sub}:`, e.message);
+    }
   }
-  // Briši kvarove vezane za ovaj stan
-  const kvarSnap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', unitId)));
-  await Promise.all(kvarSnap.docs.map(d => deleteDoc(d.ref)));
+
+  // Kvarove briše samo master admin (landlord nema dozvolu po Rules)
+  if (isMasterAdmin) {
+    try {
+      const kvarSnap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', unitId)));
+      await Promise.all(kvarSnap.docs.map(d => deleteDoc(d.ref)));
+    } catch(e) {
+      console.warn('Ne mogu obrisati kvarove:', e.message);
+    }
+  }
+
   // Briši sam stan
   await deleteDoc(doc(db, 'units', unitId));
 }

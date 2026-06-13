@@ -103,52 +103,37 @@ onAuthStateChanged(auth, async user => {
   updateProfileTab(user, isMasterAdmin, isLandlord, isTenant);
 
   if (isMasterAdmin) {
-    currentOwnerUid = null; // master admin vidi sve
-    // Master admin: sve tabove
-    showTab('dashboard');
-    showTab('units');
-    showTab('messages');
-    showTab('finance');
-
-    const targetTab = currentTab || 'dashboard';
-    activateTab(targetTab);
-
-    loadUnits();
-    setupAdminMessages();
-    setupFinance();
-    loadDashboard();
+    currentOwnerUid = null;
+    showTab('dashboard'); showTab('units'); showTab('messages'); showTab('finance');
+    activateTab(currentTab || 'dashboard');
+    loadUnits(); setupAdminMessages(); setupFinance(); loadDashboard();
     setupKvarView(user, 'masterAdmin');
 
   } else if (isLandlord) {
-    currentOwnerUid = user.uid; // landlord vidi samo svoje
-    // Landlord: dashboard (samo njegovi stanovi) + units, messages, finance
-    showTab('dashboard');
-    showTab('units');
-    showTab('messages');
-    showTab('finance');
+    // Samo landlord, ili oboje u IZDAVANJE kontekstu — sve tabove
+    currentOwnerUid = user.uid;
+    showTab('dashboard'); showTab('units'); showTab('messages'); showTab('finance');
+    const invisible = [];
+    activateTab((currentTab && !invisible.includes(currentTab)) ? currentTab : 'units');
+    loadUnitsLandlord(user); setupLandlordMessages(user); setupFinance();
+    loadDashboard(user.uid); setupKvarView(user, 'landlord');
 
-    const targetTab = currentTab || 'units';
-    activateTab(targetTab);
-
-    loadUnitsLandlord(user);
-    setupLandlordMessages(user);
-    setupFinance();
-    loadDashboard(user.uid);
-    setupKvarView(user, 'landlord');
+  } else if (isTenant) {
+    // Samo zakupac — stanovi + poruke (bez dashboard, bez finance)
+    hideTab('dashboard'); showTab('units'); showTab('messages'); hideTab('finance');
+    const invisible = ['dashboard', 'finance'];
+    activateTab((currentTab && !invisible.includes(currentTab)) ? currentTab : 'messages');
+    setupTenantMessages(user); setupKvarView(user, 'tenant');
+    // Stanovi tab za zakupca — prikaži njegove stanove (read-only)
+    loadUnitsTenant(user);
 
   } else {
-    // Zakupac: samo messages + profil
-    hideTab('dashboard');
-    hideTab('units');
-    hideTab('finance');
-    showTab('messages');
-
-    const tenantInvisible = ['dashboard', 'finance', 'units'];
-    const targetTab = (currentTab && !tenantInvisible.includes(currentTab)) ? currentTab : 'messages';
-    activateTab(targetTab);
-
-    setupTenantMessages(user);
-    setupKvarView(user, 'tenant');
+    // Novi/nepoznat korisnik — stanovi + poruke
+    hideTab('dashboard'); showTab('units'); showTab('messages'); hideTab('finance');
+    const invisible = ['dashboard', 'finance'];
+    activateTab((currentTab && !invisible.includes(currentTab)) ? currentTab : 'units');
+    setupTenantMessages(user); setupKvarView(user, 'tenant');
+    loadUnitsTenant(user);
   }
 });
 
@@ -204,10 +189,48 @@ function updateProfileTab(user, isMasterAdmin, isLandlord, isTenant) {
   }
 }
 
+// ── Units — lista (zakupac / novi korisnik) ──────────────────────
+async function loadUnitsTenant(user) {
+  const ul = document.getElementById('unitList');
+  ul.innerHTML = '';
+  // Forma za dodavanje stana uvek vidljiva
+  const form = document.getElementById('unitForm');
+  if (form) form.style.display = '';
+  try {
+    const snap = await getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())));
+    if (snap.empty) {
+      ul.innerHTML = '<li style="color:var(--muted);font-size:14px;padding:8px 0">Nemate dodeljenih stanova.</li>';
+      return;
+    }
+    snap.forEach(d => {
+      const data = d.data();
+      const li = document.createElement('li');
+      li.className = 'unit-list-item';
+      li.innerHTML = `
+        <div class="unit-item-info">
+          <span class="unit-item-name">${data.name}</span>
+          <span class="unit-item-sub">${data.tenantEmail || ''}</span>
+        </div>
+        <div class="unit-item-right">
+          <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </div>
+      `;
+      li.addEventListener('click', () => openUnitDetail(d.id, data));
+      ul.appendChild(li);
+    });
+  } catch(e) {
+    ul.innerHTML = '<li style="color:var(--muted);font-size:14px">Greška pri učitavanju.</li>';
+  }
+}
+
 // ── Units — lista (landlord) ─────────────────────────────────────
 async function loadUnitsLandlord(user) {
   const ul = document.getElementById('unitList');
   ul.innerHTML = '';
+  // Prikaži formu za dodavanje stana
+  const form = document.getElementById('unitForm');
+  if (form) form.style.display = '';
   try {
     const snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
     if (snap.empty) {
@@ -324,6 +347,8 @@ async function setupLandlordMessages(user) {
 async function loadUnits() {
   const ul = document.getElementById('unitList');
   ul.innerHTML = '';
+  const form = document.getElementById('unitForm');
+  if (form) form.style.display = '';
   try {
     const snap = await getDocs(collection(db, 'units'));
     if (snap.empty) {
@@ -379,9 +404,11 @@ document.getElementById('unitForm').onsubmit = async e => {
     ownerId:     user.uid
   });
   e.target.reset();
+  // Nakon dodavanja stana korisnik je landlord — uvek reload kao landlord
+  await loadUnitsLandlord(user);
   const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  if (isMasterAdmin) { await loadUnits(); setupAdminMessages(); }
-  else               { await loadUnitsLandlord(user); setupLandlordMessages(user); }
+  if (isMasterAdmin) setupAdminMessages();
+  else setupLandlordMessages(user);
 };
 
 // ── Unit — detalji ──────────────────────────────────────────────

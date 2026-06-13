@@ -260,9 +260,9 @@ async function loadUnitsLandlord(user) {
       });
       li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (!confirm(`Obriši stan "${data.name}"? Ova akcija je nepovratna.`)) return;
+        if (!confirm(`Obriši stan "${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara. Ova akcija je nepovratna.`)) return;
         try {
-          await deleteDoc(doc(db, 'units', d.id));
+          await deleteUnitCascade(d.id);
           await loadUnitsLandlord(user);
           setupLandlordMessages(user);
         } catch(err) {
@@ -343,6 +343,20 @@ async function setupLandlordMessages(user) {
   }
 }
 
+// ── Kaskadno brisanje stana ──────────────────────────────────────
+async function deleteUnitCascade(unitId) {
+  // Briši subkolekcije
+  for (const sub of ['messages', 'income', 'expenses']) {
+    const snap = await getDocs(collection(db, 'units', unitId, sub));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  }
+  // Briši kvarove vezane za ovaj stan
+  const kvarSnap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', unitId)));
+  await Promise.all(kvarSnap.docs.map(d => deleteDoc(d.ref)));
+  // Briši sam stan
+  await deleteDoc(doc(db, 'units', unitId));
+}
+
 // ── Units — lista (master admin) ─────────────────────────────────
 async function loadUnits() {
   const ul = document.getElementById('unitList');
@@ -378,9 +392,9 @@ async function loadUnits() {
       });
       li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (!confirm(`Obriši stan "${data.name}"? Ova akcija je nepovratna.`)) return;
+        if (!confirm(`Obriši stan "${data.name}"? Biće obrisane i sve poruke, finansije i prijave kvara. Ova akcija je nepovratna.`)) return;
         try {
-          await deleteDoc(doc(db, 'units', d.id));
+          await deleteUnitCascade(d.id);
           await loadUnits();
           setupAdminMessages();
         } catch(err) {
@@ -816,6 +830,7 @@ function renderKvarItem(id, data, isAdmin) {
       ${isAdmin ? `<span class="kvar-item-unit">${data.unitName || data.unitId}</span>` : ''}
       <span class="kvar-badge status ${data.status === 'reseno' ? 'reseno' : ''}">${data.status === 'reseno' ? '✓ Rešeno' : '⏳ Otvoreno'}</span>
       ${isAdmin ? `<button class="kvar-status-toggle" data-id="${id}" data-status="${data.status}">${data.status === 'reseno' ? 'Ponovo otvori' : 'Označi rešeno'}</button>` : ''}
+      ${data.status === 'reseno' ? `<button class="kvar-delete-btn" data-id="${id}" title="Obriši prijavu"><i class="ti ti-trash"></i></button>` : ''}
     </div>
     ${data.opis ? `<div class="kvar-item-opis">${data.opis}</div>` : ''}
   `;
@@ -830,6 +845,22 @@ function renderKvarItem(id, data, isAdmin) {
       } catch(err) {
         alert('Greška: ' + err.message);
         btn2.disabled = false;
+      }
+    };
+  }
+  const deleteBtn = div.querySelector('.kvar-delete-btn');
+  if (deleteBtn) {
+    deleteBtn.onclick = async () => {
+      if (!confirm('Obriši ovu prijavu kvara? Akcija je nepovratna.')) return;
+      try {
+        await deleteDoc(doc(db, 'kvarovi', id));
+        if (isAdmin) loadKvarAdmin();
+        else {
+          const user = auth.currentUser;
+          if (user) loadKvarTenantHistory(user);
+        }
+      } catch(err) {
+        alert('Greška: ' + err.message);
       }
     };
   }

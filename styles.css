@@ -299,25 +299,6 @@ body{
   padding:2px 7px;
   letter-spacing:.3px;
 }
-.profile-badges{
-  display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;
-}
-.profile-badges .profile-badge{ margin-top:0; }
-.badge-master{
-  color:#f0b429;
-  background:rgba(240,180,41,.1);
-  border-color:rgba(240,180,41,.3);
-}
-.badge-landlord{
-  color:var(--accent);
-  background:rgba(124,106,247,.1);
-  border-color:rgba(124,106,247,.3);
-}
-.badge-tenant{
-  color:var(--green);
-  background:rgba(46,204,138,.1);
-  border-color:rgba(46,204,138,.25);
-}
 .btn-logout{
   display:flex;align-items:center;gap:7px;
   padding:8px 14px;
@@ -1067,3 +1048,14 @@ body{
   flex-shrink: 0;
 }
 .kvar-status-toggle:hover { border-color: var(--green); color: var(--green); }
+.kvar-delete-btn {
+  background: none;
+  border: 1px solid rgba(255,80,80,.3);
+  color: #ff5050;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.kvar-delete-btn:hover { background: rgba(255,80,80,.1); border-color: #ff5050; }

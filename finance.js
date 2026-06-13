@@ -1,7 +1,7 @@
-import { auth, db, ADMIN_EMAIL } from './firebase-config.js';
+import { db, ADMIN_EMAIL } from './firebase-config.js';
 import {
   collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc,
-  query, where, orderBy, Timestamp
+  query, orderBy, Timestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
 // ── Konstante ────────────────────────────────────────────────────
@@ -18,6 +18,7 @@ const VAR_EXPENSE_TYPES = [
   { id: 'ciscenje',   label: 'Trošak čišćenja',      icon: 'ti-sparkles' },
   { id: 'ostalo',     label: 'Ostalo',               icon: 'ti-dots' },
 ];
+
 const PERIODS = [
   { id: 'day',   label: 'Dan' },
   { id: 'week',  label: 'Sedmica' },
@@ -25,13 +26,16 @@ const PERIODS = [
   { id: 'year',  label: 'Godina' },
 ];
 
-let currentFinanceUnit      = null;
-let financeExchangeRate     = 117;
-let financeDisplayCurrency  = 'RSD';
-let financePeriod           = 'month';
+let currentFinanceUnit = null; // { id, data }
+let financeExchangeRate = 117;  // default EUR→RSD
+let financeDisplayCurrency = 'RSD';
+let financePeriod = 'month';
 
 // ── Entry point ──────────────────────────────────────────────────
 export async function setupFinance() {
+  // Učitaj postavke PRIJE generisanja HTML-a da bi se active klase pravilno renderovale
+  await loadSettings();
+
   const section = document.getElementById('finance');
   section.innerHTML = `
     <div class="page-header">
@@ -39,6 +43,7 @@ export async function setupFinance() {
       <span class="subtitle">Prihodi i rashodi</span>
     </div>
 
+    <!-- Kurs + valuta prikaza -->
     <div class="fin-settings-bar">
       <div class="fin-setting-item">
         <label>Kurs EUR</label>
@@ -56,12 +61,15 @@ export async function setupFinance() {
       </div>
     </div>
 
+    <!-- Period filter -->
     <div class="fin-period-bar">
       ${PERIODS.map(p=>`<button class="fin-period-btn ${financePeriod===p.id?'active':''}" data-period="${p.id}">${p.label}</button>`).join('')}
     </div>
 
+    <!-- Lista stanova -->
     <div id="finUnitList"></div>
 
+    <!-- Detalji stana -->
     <div id="finUnitDetail" hidden>
       <div class="detail-topbar">
         <button id="finBackBtn" class="btn-back">
@@ -71,8 +79,10 @@ export async function setupFinance() {
         <h3 id="finDetailTitle" class="detail-title"></h3>
       </div>
 
+      <!-- Summary cards -->
       <div class="fin-summary-grid" id="finSummary"></div>
 
+      <!-- Unos rente -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-trending-up"></i>
@@ -107,6 +117,7 @@ export async function setupFinance() {
         </div>
       </div>
 
+      <!-- Unos fiksnih troškova -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-trending-down"></i>
@@ -134,6 +145,10 @@ export async function setupFinance() {
             <label>Datum</label>
             <input id="finFixedDate" type="date">
           </div>
+          <div class="detail-row">
+            <label>Napomena</label>
+            <input id="finFixedNote" placeholder="opis troška">
+          </div>
         </div>
         <div style="padding:0 12px 12px">
           <button id="finAddFixed" class="btn-primary">
@@ -143,6 +158,7 @@ export async function setupFinance() {
         </div>
       </div>
 
+      <!-- Unos varijabilnih troškova -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-tool"></i>
@@ -183,6 +199,7 @@ export async function setupFinance() {
         </div>
       </div>
 
+      <!-- Istorija transakcija -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-list"></i>
@@ -193,12 +210,15 @@ export async function setupFinance() {
     </div>
   `;
 
+  // ── Event listeneri ──────────────────────────────────────────
+  // Kurs
   document.getElementById('finExchangeRate').addEventListener('input', async e => {
     financeExchangeRate = parseFloat(e.target.value) || 117;
     await saveSettings();
     if (currentFinanceUnit) refreshFinanceDetail();
   });
 
+  // Valuta toggle
   section.querySelectorAll('.fin-cur-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       financeDisplayCurrency = btn.dataset.cur;
@@ -206,42 +226,52 @@ export async function setupFinance() {
       btn.classList.add('active');
       await saveSettings();
       window.dispatchEvent(new CustomEvent('finance:currencyChanged'));
-      if (currentFinanceUnit) refreshFinanceDetail();
-      else loadFinanceUnitList();
+      if (currentFinanceUnit) {
+        refreshFinanceDetail();
+      } else {
+        loadFinanceUnitList();
+      }
     });
   });
 
+  // Period
   section.querySelectorAll('.fin-period-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       financePeriod = btn.dataset.period;
       section.querySelectorAll('.fin-period-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       if (currentFinanceUnit) refreshFinanceDetail();
-      else loadFinanceUnitList();
     });
   });
 
+  // Nazad
   document.getElementById('finBackBtn').addEventListener('click', () => {
     currentFinanceUnit = null;
-    document.getElementById('finUnitList').hidden   = false;
+    document.getElementById('finUnitList').hidden = false;
     document.getElementById('finUnitDetail').hidden = true;
     loadFinanceUnitList();
   });
 
+  // Dodaj prihod
   document.getElementById('finAddIncome').addEventListener('click', addIncome);
+
+  // Dodaj fiksni
   document.getElementById('finAddFixed').addEventListener('click', addFixedExpense);
+
+  // Dodaj varijabilni
   document.getElementById('finAddVar').addEventListener('click', addVarExpense);
 
+  // Postavi današnji datum kao default
   const today = todayStr();
   document.getElementById('finIncomeDate').value = today;
   document.getElementById('finFixedDate').value  = today;
   document.getElementById('finVarDate').value    = today;
 
-  await loadSettings();
+  // Učitaj listu stanova
   await loadFinanceUnitList();
 }
 
-// ── Postavke ─────────────────────────────────────────────────────
+// ── Postavke (kurs, valuta) ──────────────────────────────────────
 async function loadSettings() {
   try {
     const snap = await getDoc(doc(db, 'settings', 'finance'));
@@ -249,8 +279,7 @@ async function loadSettings() {
       const d = snap.data();
       if (d.exchangeRate) {
         financeExchangeRate = d.exchangeRate;
-        const el = document.getElementById('finExchangeRate');
-        if (el) el.value = financeExchangeRate;
+        document.getElementById('finExchangeRate').value = financeExchangeRate;
       }
       if (d.displayCurrency) {
         financeDisplayCurrency = d.displayCurrency;
@@ -271,30 +300,20 @@ async function saveSettings() {
   } catch(e) { /* tišina */ }
 }
 
-// ── Lista stanova (samo landlordovi) ─────────────────────────────
+// ── Lista stanova ────────────────────────────────────────────────
 async function loadFinanceUnitList() {
   const listEl = document.getElementById('finUnitList');
-  if (!listEl) return;
   listEl.innerHTML = '<p class="info-text">Učitavam...</p>';
-
-  const user    = auth.currentUser;
-  if (!user) return;
-  const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
   try {
-    let snap;
-    if (isAdmin) {
-      snap = await getDocs(collection(db, 'units'));
-    } else {
-      snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
-    }
+    const snap = await getDocs(collection(db, 'units'));
     listEl.innerHTML = '';
     if (snap.empty) {
       listEl.innerHTML = '<p class="info-text">Nema stanova u bazi.</p>';
       return;
     }
+    // Za svaki stan učitaj sumu prihoda i troškova za odabrani period
     for (const d of snap.docs) {
-      const unit   = d.data();
+      const unit = d.data();
       const unitId = d.id;
       const { income, expense } = await getPeriodTotals(unitId);
       const profit = income - expense;
@@ -325,20 +344,28 @@ async function loadFinanceUnitList() {
 async function openFinanceUnit(unitId, unitData) {
   currentFinanceUnit = { id: unitId, data: unitData };
   document.getElementById('finDetailTitle').textContent = unitData.name;
+
+  // Popuni predlog iznosa rente iz podataka stana
   if (unitData.rent) {
     document.getElementById('finIncomeAmount').value   = unitData.rent;
     document.getElementById('finIncomeCurrency').value = unitData.valuta || 'RSD';
   }
+
   document.getElementById('finUnitList').hidden   = true;
   document.getElementById('finUnitDetail').hidden = false;
+
   await refreshFinanceDetail();
 }
 
+// ── Osvježi prikaz detalja ───────────────────────────────────────
 async function refreshFinanceDetail() {
   if (!currentFinanceUnit) return;
   const { id } = currentFinanceUnit;
+
+  // Summary
   const { income, expense } = await getPeriodTotals(id);
   const profit = income - expense;
+  const cur = financeDisplayCurrency;
   document.getElementById('finSummary').innerHTML = `
     <div class="fin-sum-card income">
       <i class="ti ti-trending-up"></i>
@@ -356,18 +383,23 @@ async function refreshFinanceDetail() {
       <small>Profit · ${periodLabel()}</small>
     </div>
   `;
+
+  // Istorija
   await loadHistory(id);
 }
 
+// ── Istorija transakcija ─────────────────────────────────────────
 async function loadHistory(unitId) {
   const box = document.getElementById('finHistory');
   box.innerHTML = '<p class="info-text" style="padding:12px">Učitavam...</p>';
+
   const { from, to } = getPeriodRange();
   try {
     const [incSnap, expSnap] = await Promise.all([
       getDocs(query(collection(db, 'units', unitId, 'income'),   orderBy('datum', 'desc'))),
       getDocs(query(collection(db, 'units', unitId, 'expenses'), orderBy('datum', 'desc'))),
     ]);
+
     const items = [];
     incSnap.forEach(d => {
       const data = d.data();
@@ -381,20 +413,26 @@ async function loadHistory(unitId) {
       if (dt >= from && dt <= to)
         items.push({ ...data, _id: d.id, _type: 'expense', _date: dt });
     });
+
     items.sort((a, b) => b._date - a._date);
+
     if (items.length === 0) {
       box.innerHTML = '<p class="info-text" style="padding:12px 16px">Nema transakcija za ovaj period.</p>';
       return;
     }
+
     box.innerHTML = '';
     items.forEach(item => {
       const isIncome = item._type === 'income';
-      const label    = isIncome ? (item.napomena || 'Prihod') : (item.napomena || typeLabel(item.vrsta));
-      const amtRSD   = toRSD(item.iznos, item.valuta);
-      const dispAmt  = toDisplay(amtRSD);
-      const row      = document.createElement('div');
-      row.className  = 'fin-history-row';
-      row.innerHTML  = `
+      const label = isIncome
+        ? (item.napomena || 'Prihod')
+        : (item.napomena || typeLabel(item.vrsta));
+      const amtRSD = toRSD(item.iznos, item.valuta);
+      const dispAmt = toDisplay(amtRSD);
+
+      const row = document.createElement('div');
+      row.className = 'fin-history-row';
+      row.innerHTML = `
         <div class="fin-history-icon ${isIncome ? 'inc' : 'exp'}">
           <i class="ti ${isIncome ? 'ti-trending-up' : 'ti-trending-down'}"></i>
         </div>
@@ -427,9 +465,9 @@ async function loadHistory(unitId) {
 
 // ── Dodaj prihod ─────────────────────────────────────────────────
 async function addIncome() {
-  const iznos    = parseFloat(document.getElementById('finIncomeAmount').value);
-  const valuta   = document.getElementById('finIncomeCurrency').value;
-  const datum    = document.getElementById('finIncomeDate').value;
+  const iznos   = parseFloat(document.getElementById('finIncomeAmount').value);
+  const valuta  = document.getElementById('finIncomeCurrency').value;
+  const datum   = document.getElementById('finIncomeDate').value;
   const napomena = document.getElementById('finIncomeNote').value.trim();
   if (!iznos || !datum) { alert('Unesi iznos i datum.'); return; }
   const btn = document.getElementById('finAddIncome');
@@ -452,15 +490,17 @@ async function addFixedExpense() {
   const iznos  = parseFloat(document.getElementById('finFixedAmount').value);
   const valuta = document.getElementById('finFixedCurrency').value;
   const datum  = document.getElementById('finFixedDate').value;
+  const napomena = document.getElementById('finFixedNote').value.trim();
   if (!iznos || !datum) { alert('Unesi iznos i datum.'); return; }
   const btn = document.getElementById('finAddFixed');
   btn.disabled = true;
   try {
     await addDoc(collection(db, 'units', currentFinanceUnit.id, 'expenses'), {
       vrsta, iznos, valuta, datum: dateStrToTs(datum),
-      kategorija: 'fiksni', napomena: '', unet: Timestamp.now()
+      kategorija: 'fiksni', napomena, unet: Timestamp.now()
     });
     document.getElementById('finFixedAmount').value = '';
+    document.getElementById('finFixedNote').value   = '';
     document.getElementById('finFixedDate').value   = todayStr();
     await refreshFinanceDetail();
     loadFinanceUnitList();
@@ -470,10 +510,10 @@ async function addFixedExpense() {
 
 // ── Dodaj varijabilni trošak ─────────────────────────────────────
 async function addVarExpense() {
-  const vrsta    = document.getElementById('finVarType').value;
-  const iznos    = parseFloat(document.getElementById('finVarAmount').value);
-  const valuta   = document.getElementById('finVarCurrency').value;
-  const datum    = document.getElementById('finVarDate').value;
+  const vrsta   = document.getElementById('finVarType').value;
+  const iznos   = parseFloat(document.getElementById('finVarAmount').value);
+  const valuta  = document.getElementById('finVarCurrency').value;
+  const datum   = document.getElementById('finVarDate').value;
   const napomena = document.getElementById('finVarNote').value.trim();
   if (!iznos || !datum) { alert('Unesi iznos i datum.'); return; }
   const btn = document.getElementById('finAddVar');
@@ -503,30 +543,30 @@ async function getPeriodTotals(unitId) {
     ]);
     incSnap.forEach(d => {
       const data = d.data();
-      const dt   = tsToDate(data.datum);
+      const dt = tsToDate(data.datum);
       if (dt >= from && dt <= to) income += toDisplay(toRSD(data.iznos, data.valuta));
     });
     expSnap.forEach(d => {
       const data = d.data();
-      const dt   = tsToDate(data.datum);
+      const dt = tsToDate(data.datum);
       if (dt >= from && dt <= to) expense += toDisplay(toRSD(data.iznos, data.valuta));
     });
   } catch(e) { /* tišina */ }
   return { income, expense };
 }
 
-// ── Exports ───────────────────────────────────────────────────────
+// ── Export: vrati na listu finansija ────────────────────────────
 export function showFinanceList() {
-  if (!currentFinanceUnit) return;
+  if (!currentFinanceUnit) return; // već na listi
   currentFinanceUnit = null;
-  const listEl   = document.getElementById('finUnitList');
-  const detailEl = document.getElementById('finUnitDetail');
-  if (listEl)   listEl.hidden   = false;
-  if (detailEl) detailEl.hidden = true;
+  document.getElementById('finUnitList').hidden   = false;
+  document.getElementById('finUnitDetail').hidden = true;
   loadFinanceUnitList();
 }
 
+// ── Export za dashboard ──────────────────────────────────────────
 export async function getDashboardTotals() {
+  // Učitaj settings ako finance modul još nije inicijalizovan
   try {
     const settSnap = await getDoc(doc(db, 'settings', 'finance'));
     if (settSnap.exists()) {
@@ -536,20 +576,11 @@ export async function getDashboardTotals() {
     }
   } catch(e) { /* tišina */ }
 
-  const user    = auth.currentUser;
-  if (!user) return { income: 0, expense: 0, profit: 0, currency: financeDisplayCurrency };
-  const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
   const saved = financePeriod;
   financePeriod = 'month';
   let totalIncome = 0, totalExpense = 0;
   try {
-    let snap;
-    if (isAdmin) {
-      snap = await getDocs(collection(db, 'units'));
-    } else {
-      snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
-    }
+    const snap = await getDocs(collection(db, 'units'));
     for (const d of snap.docs) {
       const { income, expense } = await getPeriodTotals(d.id);
       totalIncome  += income;
@@ -565,16 +596,37 @@ export async function getDashboardTotals() {
   };
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
-function todayStr()       { return new Date().toISOString().slice(0, 10); }
-function dateStrToTs(str) { return Timestamp.fromDate(new Date(str + 'T12:00:00')); }
-function tsToDate(ts)     { if (!ts) return new Date(0); if (ts.toDate) return ts.toDate(); return new Date(ts); }
-function formatDate(d)    { return d.toLocaleDateString('sr-Latn', { day:'2-digit', month:'2-digit', year:'numeric' }); }
-function toRSD(iznos, valuta)  { return valuta === 'EUR' ? iznos * financeExchangeRate : iznos; }
-function toDisplay(rsd)        { return financeDisplayCurrency === 'EUR' ? rsd / financeExchangeRate : rsd; }
-function fmt(val)              { return val.toLocaleString('sr-Latn', { maximumFractionDigits: 2 }) + ' ' + financeDisplayCurrency; }
-function periodLabel()         { return PERIODS.find(p => p.id === financePeriod)?.label || ''; }
-function typeLabel(vrsta)      { const all = [...FIXED_EXPENSE_TYPES, ...VAR_EXPENSE_TYPES]; return all.find(t => t.id === vrsta)?.label || vrsta || 'Trošak'; }
+// ── Helpers ──────────────────────────────────────────────────────
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function dateStrToTs(str) {
+  return Timestamp.fromDate(new Date(str + 'T12:00:00'));
+}
+function tsToDate(ts) {
+  if (!ts) return new Date(0);
+  if (ts.toDate) return ts.toDate();
+  return new Date(ts);
+}
+function formatDate(d) {
+  return d.toLocaleDateString('sr-Latn', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function toRSD(iznos, valuta) {
+  return valuta === 'EUR' ? iznos * financeExchangeRate : iznos;
+}
+function toDisplay(rsd) {
+  return financeDisplayCurrency === 'EUR' ? rsd / financeExchangeRate : rsd;
+}
+function fmt(val) {
+  return val.toLocaleString('sr-Latn', { maximumFractionDigits: 2 }) + ' ' + financeDisplayCurrency;
+}
+function periodLabel() {
+  return PERIODS.find(p => p.id === financePeriod)?.label || '';
+}
+function typeLabel(vrsta) {
+  const all = [...FIXED_EXPENSE_TYPES, ...VAR_EXPENSE_TYPES];
+  return all.find(t => t.id === vrsta)?.label || vrsta || 'Trošak';
+}
 function getPeriodRange() {
   const now = new Date();
   let from, to;
@@ -582,13 +634,13 @@ function getPeriodRange() {
     from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     to   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   } else if (financePeriod === 'week') {
-    const day = now.getDay() || 7;
+    const day = now.getDay() || 7; // ponedeljak = 1
     from = new Date(now); from.setDate(now.getDate() - day + 1); from.setHours(0,0,0,0);
     to   = new Date(from); to.setDate(from.getDate() + 6); to.setHours(23,59,59,999);
   } else if (financePeriod === 'month') {
     from = new Date(now.getFullYear(), now.getMonth(), 1);
     to   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  } else {
+  } else { // year
     from = new Date(now.getFullYear(), 0, 1);
     to   = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
   }

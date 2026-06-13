@@ -10,33 +10,6 @@
 </head>
 <body>
 
-<!-- ── ONBOARDING MODAL ──────────────────────────────────────── -->
-<div id="onboardingModal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-header">
-      <i class="ti ti-home-2"></i>
-      <h2>Dobrodošli u Rental Manager</h2>
-      <p>Unesite osnovne podatke da biste nastavili</p>
-    </div>
-    <div class="modal-body">
-      <div class="detail-row">
-        <label>Ime i prezime</label>
-        <input id="onboardingName" placeholder="Vaše ime" type="text">
-      </div>
-      <div class="detail-row" style="margin-top:8px">
-        <label>Firma / agencija</label>
-        <input id="onboardingCompany" placeholder="opciono" type="text">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button id="onboardingSubmit" class="btn-primary">
-        <i class="ti ti-arrow-right"></i>
-        Nastavi
-      </button>
-    </div>
-  </div>
-</div>
-
 <header class="topbar">
   <div class="topbar-title">
     <img src="icon-192.png" alt="Logo" class="topbar-logo">
@@ -50,7 +23,7 @@
 <main class="content">
 
   <!-- DASHBOARD -->
-  <section id="dashboard" class="panel">
+  <section id="dashboard" class="panel active">
     <div class="page-header">
       <h2>Dashboard</h2>
       <span class="subtitle">Pregled</span>
@@ -81,8 +54,11 @@
       <span class="subtitle">Upravljanje</span>
     </div>
 
+    <!-- Lista stanova (default prikaz) -->
     <div id="unitsListView">
-      <form id="unitForm" class="add-form">
+      <ul id="unitList" class="unit-list"></ul>
+
+      <form id="unitForm" class="add-form" style="margin-top:16px;margin-bottom:0">
         <div class="form-row">
           <div class="input-group">
             <i class="ti ti-home" aria-hidden="true"></i>
@@ -92,19 +68,15 @@
             <i class="ti ti-mail" aria-hidden="true"></i>
             <input id="tenantEmail" placeholder="Email zakupca" type="email">
           </div>
-          <div class="input-group">
-            <i class="ti ti-currency-dollar" aria-hidden="true"></i>
-            <input id="unitRent" placeholder="Mesečna renta" type="number">
-          </div>
         </div>
         <button type="submit" class="btn-primary">
           <i class="ti ti-plus" aria-hidden="true"></i>
           Dodaj stan
         </button>
       </form>
-      <ul id="unitList" class="unit-list"></ul>
     </div>
 
+    <!-- Detalji stana (prikazuje se klikom na stan) -->
     <div id="unitDetailView" hidden>
       <div class="detail-topbar">
         <button id="backToUnits" class="btn-back">
@@ -114,48 +86,92 @@
         <h3 id="detailUnitName" class="detail-title"></h3>
       </div>
 
+      <!-- Sekcija: Osnovni podaci -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-building-estate" aria-hidden="true"></i>
           Podaci o stanu
         </div>
         <div class="detail-form">
-          <div class="detail-row"><label>Adresa</label><input id="dAdresa" placeholder="Ulica i broj"></div>
-          <div class="detail-row"><label>Sprat</label><input id="dSprat" placeholder="npr. 2" type="number"></div>
-          <div class="detail-row"><label>Broj stana</label><input id="dBrojStana" placeholder="npr. 12"></div>
-          <div class="detail-row"><label>Kvadratura (m²)</label><input id="dKvad" placeholder="npr. 45" type="number"></div>
+          <div class="detail-row">
+            <label>Adresa</label>
+            <input id="dAdresa" placeholder="Ulica i broj">
+          </div>
+          <div class="detail-row">
+            <label>Sprat</label>
+            <input id="dSprat" placeholder="npr. 2" type="number">
+          </div>
+          <div class="detail-row">
+            <label>Broj stana</label>
+            <input id="dBrojStana" placeholder="npr. 12">
+          </div>
+          <div class="detail-row">
+            <label>Kvadratura (m²)</label>
+            <input id="dKvad" placeholder="npr. 45" type="number">
+          </div>
           <div class="detail-row">
             <label>Struktura</label>
             <select id="dStruktura">
               <option value="">— Izaberi —</option>
-              <option>Garsonjera</option><option>Jednosoban</option><option>Jednoiposoban</option>
-              <option>Dvosoban</option><option>Dvoiposoban</option><option>Trosoban</option>
+              <option>Garsonjera</option>
+              <option>Jednosoban</option>
+              <option>Jednoiposoban</option>
+              <option>Dvosoban</option>
+              <option>Dvoiposoban</option>
+              <option>Trosoban</option>
               <option>Četvorosoban i više</option>
             </select>
           </div>
-          <div class="detail-row"><label>Spavaće sobe</label><input id="dSpavace" placeholder="broj" type="number" min="0"></div>
-          <div class="detail-row"><label>Kupatila</label><input id="dKupatila" placeholder="broj" type="number" min="0"></div>
+          <div class="detail-row">
+            <label>Spavaće sobe</label>
+            <input id="dSpavace" placeholder="broj" type="number" min="0">
+          </div>
+          <div class="detail-row">
+            <label>Kupatila</label>
+            <input id="dKupatila" placeholder="broj" type="number" min="0">
+          </div>
           <div class="detail-row">
             <label>Terasa</label>
-            <select id="dTerasa"><option value="">— Izaberi —</option><option value="da">Da</option><option value="ne">Ne</option></select>
+            <select id="dTerasa">
+              <option value="">— Izaberi —</option>
+              <option value="da">Da</option>
+              <option value="ne">Ne</option>
+            </select>
           </div>
         </div>
       </div>
 
+      <!-- Sekcija: Zakupac -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-user" aria-hidden="true"></i>
           Zakupac
         </div>
         <div class="detail-form">
-          <div class="detail-row"><label>Ime i prezime</label><input id="dZakupacIme" placeholder="Ime Prezime"></div>
-          <div class="detail-row"><label>Broj dokumenta</label><input id="dZakupacDok" placeholder="br. lične karte ili pasoša"></div>
-          <div class="detail-row"><label>Email zakupca</label><input id="dTenantEmail" placeholder="email@primer.com" type="email"></div>
-          <div class="detail-row"><label>Period zakupa od</label><input id="dZakupOd" type="date"></div>
-          <div class="detail-row"><label>Period zakupa do</label><input id="dZakupDo" type="date"></div>
+          <div class="detail-row">
+            <label>Ime i prezime</label>
+            <input id="dZakupacIme" placeholder="Ime Prezime">
+          </div>
+          <div class="detail-row">
+            <label>Broj dokumenta</label>
+            <input id="dZakupacDok" placeholder="br. lične karte ili pasoša">
+          </div>
+          <div class="detail-row">
+            <label>Email zakupca</label>
+            <input id="dTenantEmail" placeholder="email@primer.com" type="email">
+          </div>
+          <div class="detail-row">
+            <label>Period zakupa od</label>
+            <input id="dZakupOd" type="date">
+          </div>
+          <div class="detail-row">
+            <label>Period zakupa do</label>
+            <input id="dZakupDo" type="date">
+          </div>
         </div>
       </div>
 
+      <!-- Sekcija: Renta -->
       <div class="detail-section">
         <div class="detail-section-header">
           <i class="ti ti-cash" aria-hidden="true"></i>
@@ -170,7 +186,10 @@
               <option value="dnevni">Dnevni zakup</option>
             </select>
           </div>
-          <div class="detail-row"><label>Iznos rente</label><input id="dRenta" placeholder="iznos" type="number"></div>
+          <div class="detail-row">
+            <label>Iznos rente</label>
+            <input id="dRenta" placeholder="iznos" type="number">
+          </div>
           <div class="detail-row">
             <label>Valuta</label>
             <select id="dValuta">
@@ -204,6 +223,7 @@
       <span class="subtitle">Komunikacija</span>
     </div>
 
+    <!-- Sub-tabovi -->
     <div class="msg-subtabs">
       <button class="msg-subtab active" data-subtab="poruke">
         <i class="ti ti-message-2" aria-hidden="true"></i>
@@ -215,6 +235,7 @@
       </button>
     </div>
 
+    <!-- SEKCIJA: Poruke -->
     <div id="subtab-poruke" class="msg-subtab-content active">
       <div id="adminChats"></div>
       <div id="tenantChat" hidden>
@@ -229,61 +250,109 @@
       </div>
     </div>
 
+    <!-- SEKCIJA: Prijava kvara -->
     <div id="subtab-kvar" class="msg-subtab-content" hidden>
+
+      <!-- Admin prikaz: lista prijavljenih kvarova -->
       <div id="kvarAdminView">
         <p class="info-text" id="kvarAdminEmpty">Učitavam prijave...</p>
         <div id="kvarAdminList"></div>
       </div>
 
+      <!-- Zakupac: forma za prijavu -->
       <div id="kvarTenantView" hidden>
         <div class="kvar-form-card">
           <div class="kvar-form-header">
             <i class="ti ti-alert-triangle" aria-hidden="true"></i>
             Nova prijava kvara
           </div>
+
+          <!-- Stan -->
+          <div class="kvar-field" id="kvarStanField">
+            <label class="kvar-label">Stan</label>
+            <div id="kvarStanNaziv" style="font-size:14px;font-weight:600;color:var(--accent)">Učitavam...</div>
+          </div>
+
+          <!-- Tip kvara -->
           <div class="kvar-field">
             <label class="kvar-label">Tip problema</label>
             <div class="kvar-type-grid">
-              <button class="kvar-type-btn active" data-type="uredjaj"><i class="ti ti-plug" aria-hidden="true"></i>Kvar na uređaju</button>
-              <button class="kvar-type-btn" data-type="struja"><i class="ti ti-bolt" aria-hidden="true"></i>Problem sa strujom</button>
-              <button class="kvar-type-btn" data-type="lom"><i class="ti ti-hammer" aria-hidden="true"></i>Prijava loma</button>
-              <button class="kvar-type-btn" data-type="havarija"><i class="ti ti-droplet" aria-hidden="true"></i>Havarija</button>
+              <button class="kvar-type-btn active" data-type="uredjaj">
+                <i class="ti ti-plug" aria-hidden="true"></i>
+                Kvar na uređaju
+              </button>
+              <button class="kvar-type-btn" data-type="struja">
+                <i class="ti ti-bolt" aria-hidden="true"></i>
+                Problem sa strujom
+              </button>
+              <button class="kvar-type-btn" data-type="lom">
+                <i class="ti ti-hammer" aria-hidden="true"></i>
+                Prijava loma
+              </button>
+              <button class="kvar-type-btn" data-type="havarija">
+                <i class="ti ti-droplet" aria-hidden="true"></i>
+                Havarija
+              </button>
             </div>
           </div>
+
+          <!-- Dinamična lista stavki -->
           <div class="kvar-field">
             <label class="kvar-label">Stavka</label>
             <div class="kvar-select-wrap">
-              <select id="kvarStavka"><option value="">— Izaberi stavku —</option></select>
+              <select id="kvarStavka">
+                <option value="">— Izaberi stavku —</option>
+              </select>
             </div>
           </div>
+
+          <!-- Opis -->
           <div class="kvar-field">
             <label class="kvar-label">Opis problema</label>
             <textarea id="kvarOpis" class="kvar-textarea" placeholder="Kratko opišite problem..." rows="3"></textarea>
           </div>
+
+          <!-- Hitnost -->
           <div class="kvar-field">
             <label class="kvar-label">Hitnost</label>
             <div class="kvar-hitnost-row">
-              <button class="kvar-hitnost-btn" data-h="niska"><i class="ti ti-circle" aria-hidden="true"></i>Niska</button>
-              <button class="kvar-hitnost-btn active" data-h="srednja"><i class="ti ti-circle-half-2" aria-hidden="true"></i>Srednja</button>
-              <button class="kvar-hitnost-btn" data-h="visoka"><i class="ti ti-alert-circle" aria-hidden="true"></i>Visoka</button>
+              <button class="kvar-hitnost-btn" data-h="niska">
+                <i class="ti ti-circle" aria-hidden="true"></i>
+                Niska
+              </button>
+              <button class="kvar-hitnost-btn active" data-h="srednja">
+                <i class="ti ti-circle-half-2" aria-hidden="true"></i>
+                Srednja
+              </button>
+              <button class="kvar-hitnost-btn" data-h="visoka">
+                <i class="ti ti-alert-circle" aria-hidden="true"></i>
+                Visoka
+              </button>
             </div>
           </div>
+
           <button id="kvarSubmitBtn" class="btn-primary" style="margin-top:4px">
             <i class="ti ti-send" aria-hidden="true"></i>
             Pošalji prijavu
           </button>
         </div>
+
+        <!-- Istorija prijava zakupca -->
         <div class="kvar-history-header">
           <i class="ti ti-history" aria-hidden="true"></i>
           Moje prijave
         </div>
-        <div id="kvarTenantHistory"><p class="info-text">Nema prijava.</p></div>
+        <div id="kvarTenantHistory">
+          <p class="info-text">Nema prijava.</p>
+        </div>
       </div>
-    </div>
+
+    </div><!-- /subtab-kvar -->
   </section>
 
   <!-- FINANSIJE -->
-  <section id="finance" class="panel"></section>
+  <section id="finance" class="panel">
+  </section>
 
   <!-- PROFIL -->
   <section id="profil" class="panel">
@@ -338,11 +407,26 @@
           </div>
         </div>
         <div class="about-links">
-          <a class="about-link" href="mailto:info@bzv.rs"><i class="ti ti-mail" aria-hidden="true"></i>info@bzv.rs</a>
-          <a class="about-link" href="https://www.bzv.rs" target="_blank" rel="noopener"><i class="ti ti-world" aria-hidden="true"></i>www.bzv.rs</a>
-          <a class="about-link" href="tel:+38162303303"><i class="ti ti-phone" aria-hidden="true"></i>+381(0)62303303</a>
-          <div class="about-link about-app"><i class="ti ti-activity" aria-hidden="true"></i>Rental Manager v2.0</div>
-          <div class="about-link about-app"><i class="ti ti-building" aria-hidden="true"></i>Biro za veštačenja</div>
+          <a class="about-link" href="mailto:info@bzv.rs">
+            <i class="ti ti-mail" aria-hidden="true"></i>
+            info@bzv.rs
+          </a>
+          <a class="about-link" href="https://www.bzv.rs" target="_blank" rel="noopener">
+            <i class="ti ti-world" aria-hidden="true"></i>
+            www.bzv.rs
+          </a>
+          <a class="about-link" href="tel:+38162303303">
+            <i class="ti ti-phone" aria-hidden="true"></i>
+            +381(0)62303303
+          </a>
+          <div class="about-link about-app">
+            <i class="ti ti-activity" aria-hidden="true"></i>
+            Rental Manager v1.0
+          </div>
+          <div class="about-link about-app">
+            <i class="ti ti-building" aria-hidden="true"></i>
+            Biro za veštačenja
+          </div>
         </div>
       </div>
     </div>
@@ -350,20 +434,8 @@
 
 </main>
 
-<!-- ── CONTEXT SWITCHER + BOTTOM NAV ────────────────────────── -->
-<div id="contextSwitcher" class="context-switcher" style="display:none">
-  <button id="ctxIzdavanje" class="ctx-btn active">
-    <i class="ti ti-home-2" aria-hidden="true"></i>
-    Izdavanje
-  </button>
-  <button id="ctxZakup" class="ctx-btn">
-    <i class="ti ti-key" aria-hidden="true"></i>
-    Zakup
-  </button>
-</div>
-
 <nav class="bottom-nav">
-  <button class="tab" data-tab="dashboard">
+  <button class="tab active" data-tab="dashboard">
     <i class="ti ti-layout-dashboard" aria-hidden="true"></i>
     <span>Dashboard</span>
   </button>

@@ -234,7 +234,7 @@ function buildUnitLi(unitId, data, canDelete) {
   li.innerHTML = `
     <div class="unit-item-info">
       <span class="unit-item-name">${data.name}</span>
-      <span class="unit-item-sub">${data.tenantEmail || 'bez zakupca'}</span>
+      <span class="unit-item-sub"><span class="unit-label">Zakupac:</span> ${data.tenantEmail || 'bez zakupca'}</span>
     </div>
     <div class="unit-item-right">
       <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
@@ -274,14 +274,25 @@ async function loadUnitsTenant(user) {
       ul.innerHTML = '<li style="color:var(--muted);font-size:14px;padding:8px 0">Nemate dodeljenih stanova.</li>';
       return;
     }
-    snap.forEach(d => {
+    snap.forEach(async d => {
       const data = d.data();
+      // Učitaj profil vlasnika
+      let ownerLabel = '—';
+      if (data.ownerId) {
+        try {
+          const ownerSnap = await getDoc(doc(db, 'users', data.ownerId));
+          if (ownerSnap.exists()) {
+            const op = ownerSnap.data();
+            ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || '—');
+          }
+        } catch(e) {}
+      }
       const li = document.createElement('li');
       li.className = 'unit-list-item';
       li.innerHTML = `
         <div class="unit-item-info">
           <span class="unit-item-name">${data.name}</span>
-          <span class="unit-item-sub">${data.tenantEmail || ''}</span>
+          <span class="unit-item-sub"><span class="unit-label">Vlasnik:</span> ${ownerLabel}</span>
         </div>
         <div class="unit-item-right">
           <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
@@ -343,7 +354,9 @@ async function setupLandlordMessages(user) {
         <div class="chat-card-header">
           <i class="ti ti-home"></i>
           <span>${unit.name}</span>
-          <small>${unit.tenantEmail || 'bez zakupca'}</small>
+          <div class="chat-header-meta">
+            <small><span class="unit-label">Zakupac:</span> ${unit.tenantEmail || 'bez zakupca'}</small>
+          </div>
         </div>
         <div class="chat-messages" id="msgs-${unitId}"></div>
         <div class="chat-input-row">
@@ -631,7 +644,9 @@ async function setupAdminMessages() {
           <div class="chat-card-header">
             <i class="ti ti-home"></i>
             <span>${unit.name}</span>
-            <small>${unit.tenantEmail || 'bez zakupca'}</small>
+            <div class="chat-header-meta">
+              <small><span class="unit-label">Zakupac:</span> ${unit.tenantEmail || 'bez zakupca'}</small>
+            </div>
           </div>
           <div class="chat-messages" id="msgs-${unitId}"></div>
           <div class="chat-input-row">
@@ -708,7 +723,24 @@ async function setupTenantMessages(user) {
     }
     const unitDoc = snap.docs[0];
     const unitId  = unitDoc.id;
-    header.textContent = unitDoc.data().name;
+    const unitData = unitDoc.data();
+
+    // Učitaj profil vlasnika
+    let ownerLabel = '—';
+    if (unitData.ownerId) {
+      try {
+        const ownerSnap = await getDoc(doc(db, 'users', unitData.ownerId));
+        if (ownerSnap.exists()) {
+          const op = ownerSnap.data();
+          ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || '—');
+        }
+      } catch(e) {}
+    }
+
+    header.innerHTML = `
+      <span class="tenant-chat-unit">${unitData.name}</span>
+      <span class="tenant-chat-owner"><span class="unit-label">Vlasnik:</span> ${ownerLabel}</span>
+    `;
     const mq = query(collection(db, 'units', unitId, 'messages'), orderBy('vreme', 'asc'));
     unsubscribeMessages = onSnapshot(mq, snapshot => {
       msgsBox.innerHTML = '';

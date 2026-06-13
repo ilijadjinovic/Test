@@ -1194,3 +1194,36 @@ body{
   border-radius: 6px;
   padding: 3px 8px;
 }
+
+/* ── Unit label (Zakupac/Vlasnik) ──────────────────────────────── */
+.unit-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  margin-right: 2px;
+}
+
+/* ── Chat header meta (Zakupac u header kartice) ───────────────── */
+.chat-header-meta {
+  margin-left: auto;
+  text-align: right;
+}
+.chat-header-meta small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Tenant chat header (naziv stana + vlasnik) ─────────────────── */
+.tenant-chat-unit {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.tenant-chat-owner {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}

@@ -1059,3 +1059,44 @@ body{
   transition: border-color .2s, background .2s;
 }
 .kvar-delete-btn:hover { background: rgba(255,80,80,.1); border-color: #ff5050; }
+
+/* ── Context switcher ─────────────────────────────────────────── */
+#contextSwitcher {
+  position: fixed;
+  bottom: calc(var(--nav-h, 64px) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+}
+.context-switcher-inner {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.ctx-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.ctx-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.ctx-btn:not(.active):hover {
+  background: var(--hover);
+  color: var(--text);
+}

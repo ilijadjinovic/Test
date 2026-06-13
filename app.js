@@ -67,23 +67,28 @@ document.getElementById('backToUnits').onclick = showUnitList;
 
 // ── Auth state ──────────────────────────────────────────────────
 let unsubscribeMessages = null;
+let currentUserRole = null; // 'masterAdmin' | 'landlord' | 'tenant' | 'both' | 'new'
+let currentUserObj  = null;
+let currentContext  = 'landlord'; // 'landlord' | 'tenant' (za 'both' ulogu)
 
 onAuthStateChanged(auth, async user => {
   if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
 
-  // Zapamti trenutno aktivan tab pre promene konteksta
   const activeTabBtn = document.querySelector('.tab.active');
-  const currentTab = activeTabBtn ? activeTabBtn.dataset.tab : null;
+  const currentTab   = activeTabBtn ? activeTabBtn.dataset.tab : null;
 
   if (!user) {
+    currentUserObj  = null;
+    currentUserRole = null;
     updateProfileTab(user, false, false, false);
     ['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTab(id));
+    document.getElementById('contextSwitcher').style.display = 'none';
     return;
   }
 
+  currentUserObj = user;
   const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-  // Proveri uloge u Firestoru (osim za master admina)
   let isLandlord = false;
   let isTenant   = false;
 
@@ -102,44 +107,75 @@ onAuthStateChanged(auth, async user => {
 
   updateProfileTab(user, isMasterAdmin, isLandlord, isTenant);
 
-  if (isMasterAdmin) {
+  if (isMasterAdmin)            currentUserRole = 'masterAdmin';
+  else if (isLandlord && isTenant) currentUserRole = 'both';
+  else if (isLandlord)          currentUserRole = 'landlord';
+  else if (isTenant)            currentUserRole = 'tenant';
+  else                          currentUserRole = 'new';
+
+  // Prikaži/sakrij context switcher
+  const switcher = document.getElementById('contextSwitcher');
+  if (currentUserRole === 'both') {
+    switcher.style.display = 'flex';
+    document.querySelectorAll('.ctx-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.ctx === currentContext);
+    });
+  } else {
+    switcher.style.display = 'none';
+    currentContext = (currentUserRole === 'tenant') ? 'tenant' : 'landlord';
+  }
+
+  applyContext(user, currentTab);
+});
+
+// ── Primeni kontekst ─────────────────────────────────────────────
+function applyContext(user, preferredTab) {
+  const role = currentUserRole;
+  const isLandlordCtx = role === 'masterAdmin' || role === 'landlord' || (role === 'both' && currentContext === 'landlord');
+
+  if (role === 'masterAdmin') {
     currentOwnerUid = null;
     showTab('dashboard'); showTab('units'); showTab('messages'); showTab('finance');
-    activateTab(currentTab || 'dashboard');
+    activateTab(preferredTab || 'dashboard');
     loadUnits(); setupAdminMessages(); setupFinance(); loadDashboard();
     setupKvarView(user, 'masterAdmin');
 
-  } else if (isLandlord) {
-    // Samo landlord, ili oboje u IZDAVANJE kontekstu — sve tabove
+  } else if (isLandlordCtx) {
     currentOwnerUid = user.uid;
     showTab('dashboard'); showTab('units'); showTab('messages'); showTab('finance');
-    const invisible = [];
-    activateTab((currentTab && !invisible.includes(currentTab)) ? currentTab : 'units');
+    const safe = ['dashboard','units','messages','finance','profil'];
+    activateTab((preferredTab && safe.includes(preferredTab)) ? preferredTab : 'units');
     loadUnitsLandlord(user); setupLandlordMessages(user); setupFinance();
     loadDashboard(user.uid); setupKvarView(user, 'landlord');
 
-  } else if (isTenant) {
-    // Samo zakupac — stanovi + poruke (bez dashboard, bez finance)
-    hideTab('dashboard'); showTab('units'); showTab('messages'); hideTab('finance');
-    const invisible = ['dashboard', 'finance'];
-    activateTab((currentTab && !invisible.includes(currentTab)) ? currentTab : 'messages');
-    setupTenantMessages(user); setupKvarView(user, 'tenant');
-    // Stanovi tab za zakupca — prikaži njegove stanove (read-only)
-    loadUnitsTenant(user);
-
   } else {
-    // Novi/nepoznat korisnik — stanovi + poruke
+    // tenant ili new ili both u zakup kontekstu
+    currentOwnerUid = null;
     hideTab('dashboard'); showTab('units'); showTab('messages'); hideTab('finance');
-    const invisible = ['dashboard', 'finance'];
-    activateTab((currentTab && !invisible.includes(currentTab)) ? currentTab : 'units');
-    setupTenantMessages(user); setupKvarView(user, 'tenant');
+    const safe = ['units','messages','profil'];
+    activateTab((preferredTab && safe.includes(preferredTab)) ? preferredTab : (role === 'new' ? 'units' : 'messages'));
+    setupTenantMessages(user); setupKvarView(user, role === 'new' ? 'new' : 'tenant');
     loadUnitsTenant(user);
   }
+}
+
+// ── Context switcher klikovi ─────────────────────────────────────
+document.querySelectorAll('.ctx-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!currentUserObj || currentUserRole !== 'both') return;
+    const newCtx = btn.dataset.ctx;
+    if (newCtx === currentContext) return;
+    currentContext = newCtx;
+    document.querySelectorAll('.ctx-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.ctx === currentContext);
+    });
+    const activeTabBtn = document.querySelector('.tab.active');
+    applyContext(currentUserObj, activeTabBtn ? activeTabBtn.dataset.tab : null);
+  });
 });
 
 // Aktiviraj tab bez redirect logike
 function activateTab(tabId) {
-  // Provjeri da li tab postoji i nije skriven
   const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
   const safe = (btn && btn.style.display !== 'none') ? tabId : 'profil';
   document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
@@ -148,7 +184,6 @@ function activateTab(tabId) {
   const safeBtn = document.querySelector(`.tab[data-tab="${safe}"]`);
   if (safeBtn) safeBtn.classList.add('active');
 }
-
 // ── Profile tab ─────────────────────────────────────────────────
 function updateProfileTab(user, isMasterAdmin, isLandlord, isTenant) {
   const guest     = document.getElementById('profileGuest');
@@ -771,6 +806,7 @@ document.getElementById('kvarSubmitBtn').onclick = async () => {
 // ── Istorija kvarova — zakupac ───────────────────────────────────
 async function loadKvarTenantHistory(user) {
   const container = document.getElementById('kvarTenantHistory');
+  if (!container) return;
   container.innerHTML = '<p class="info-text">Učitavam...</p>';
   try {
     const q    = query(collection(db, 'kvarovi'),
@@ -778,7 +814,6 @@ async function loadKvarTenantHistory(user) {
     const snap = await getDocs(q);
     if (snap.empty) { container.innerHTML = '<p class="info-text">Nema prijava.</p>'; return; }
     container.innerHTML = '';
-    // Sortiraj u JS-u da ne treba composite index
     const docs = [];
     snap.forEach(d => docs.push({ id: d.id, data: d.data() }));
     docs.sort((a, b) => {
@@ -788,7 +823,7 @@ async function loadKvarTenantHistory(user) {
     });
     docs.forEach(d => container.appendChild(renderKvarItem(d.id, d.data, false)));
   } catch(e) {
-    container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+    container.innerHTML = '<p class="info-text">Nema prijava.</p>';
     console.error('loadKvarTenantHistory:', e);
   }
 }
@@ -869,13 +904,11 @@ function renderKvarItem(id, data, isAdmin) {
 
 // ── Prikaži kvar view za zakupca ili admina ──────────────────────
 function setupKvarView(user, role) {
-  // 'masterAdmin' i 'landlord' vide admin view, 'tenant' vidi tenant view
   const showAdmin = (role === 'masterAdmin' || role === 'landlord');
   document.getElementById('kvarAdminView').hidden  = !showAdmin;
   document.getElementById('kvarTenantView').hidden = showAdmin;
 
   if (!showAdmin) {
-    // Učitaj naziv stana za zakupca
     const stanEl = document.getElementById('kvarStanNaziv');
     if (stanEl) {
       getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())))
@@ -885,9 +918,12 @@ function setupKvarView(user, role) {
             stanEl.style.color = 'var(--muted)';
           } else {
             stanEl.textContent = snap.docs[0].data().name;
+            stanEl.style.color = '';
           }
         })
         .catch(() => { stanEl.textContent = '—'; });
     }
+    // Učitaj istoriju kvarova za tenant/new (new nema kvarova — prikazaće "Nema prijava")
+    loadKvarTenantHistory(user);
   }
 }

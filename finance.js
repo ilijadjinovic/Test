@@ -565,7 +565,7 @@ export function showFinanceList() {
 }
 
 // ── Export za dashboard ──────────────────────────────────────────
-export async function getDashboardTotals() {
+export async function getDashboardTotals(ownerId = null) {
   // Učitaj settings ako finance modul još nije inicijalizovan
   try {
     const settSnap = await getDoc(doc(db, 'settings', 'finance'));
@@ -580,7 +580,11 @@ export async function getDashboardTotals() {
   financePeriod = 'month';
   let totalIncome = 0, totalExpense = 0;
   try {
-    const snap = await getDocs(collection(db, 'units'));
+    // Ako je prosleđen ownerId (landlord), filtriraj samo njegove stanove
+    const unitsQuery = ownerId
+      ? query(collection(db, 'units'), where('ownerId', '==', ownerId))
+      : collection(db, 'units');
+    const snap = await getDocs(unitsQuery);
     for (const d of snap.docs) {
       const { income, expense } = await getPeriodTotals(d.id);
       totalIncome  += income;

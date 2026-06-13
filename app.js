@@ -68,40 +68,74 @@ document.getElementById('backToUnits').onclick = showUnitList;
 // ── Auth state ──────────────────────────────────────────────────
 let unsubscribeMessages = null;
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
-  updateProfileTab(user);
 
   // Zapamti trenutno aktivan tab pre promene konteksta
   const activeTabBtn = document.querySelector('.tab.active');
   const currentTab = activeTabBtn ? activeTabBtn.dataset.tab : null;
 
   if (!user) {
-    // Gost: samo profil
+    updateProfileTab(user, false, false, false);
     ['dashboard', 'units', 'messages', 'finance'].forEach(id => hideTab(id));
     return;
   }
 
-  const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  if (isAdmin) {
-    // Admin: sve tabove
+  const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Proveri uloge u Firestoru (osim za master admina)
+  let isLandlord = false;
+  let isTenant   = false;
+
+  if (!isMasterAdmin) {
+    try {
+      const [landlordSnap, tenantSnap] = await Promise.all([
+        getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid))),
+        getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())))
+      ]);
+      isLandlord = !landlordSnap.empty;
+      isTenant   = !tenantSnap.empty;
+    } catch(e) {
+      console.error('Greška pri detekciji uloge:', e);
+    }
+  }
+
+  updateProfileTab(user, isMasterAdmin, isLandlord, isTenant);
+
+  if (isMasterAdmin) {
+    currentOwnerUid = null; // master admin vidi sve
+    // Master admin: sve tabove
     showTab('dashboard');
     showTab('units');
     showTab('messages');
     showTab('finance');
 
-    // Ostani na trenutnom tabu ako je validan, inače dashboard
     const targetTab = currentTab || 'dashboard';
-    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    document.getElementById(targetTab).classList.add('active');
-    document.querySelector(`.tab[data-tab="${targetTab}"]`).classList.add('active');
+    activateTab(targetTab);
 
     loadUnits();
     setupAdminMessages();
     setupFinance();
     loadDashboard();
-    setupKvarView(user);
+    setupKvarView(user, 'masterAdmin');
+
+  } else if (isLandlord) {
+    currentOwnerUid = user.uid; // landlord vidi samo svoje
+    // Landlord: dashboard (samo njegovi stanovi) + units, messages, finance
+    showTab('dashboard');
+    showTab('units');
+    showTab('messages');
+    showTab('finance');
+
+    const targetTab = currentTab || 'units';
+    activateTab(targetTab);
+
+    loadUnitsLandlord(user);
+    setupLandlordMessages(user);
+    setupFinance();
+    loadDashboard(user.uid);
+    setupKvarView(user, 'landlord');
+
   } else {
     // Zakupac: samo messages + profil
     hideTab('dashboard');
@@ -109,23 +143,29 @@ onAuthStateChanged(auth, user => {
     hideTab('finance');
     showTab('messages');
 
-    // Tabovi nedostupni zakupcu — prebaci na messages
-    const tenantInvisible = ['dashboard', 'finance'];
+    const tenantInvisible = ['dashboard', 'finance', 'units'];
     const targetTab = (currentTab && !tenantInvisible.includes(currentTab)) ? currentTab : 'messages';
-
-    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    document.getElementById(targetTab).classList.add('active');
-    const targetBtn = document.querySelector(`.tab[data-tab="${targetTab}"]`);
-    if (targetBtn) targetBtn.classList.add('active');
+    activateTab(targetTab);
 
     setupTenantMessages(user);
-    setupKvarView(user);
+    setupKvarView(user, 'tenant');
   }
 });
 
+// Aktiviraj tab bez redirect logike
+function activateTab(tabId) {
+  // Provjeri da li tab postoji i nije skriven
+  const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  const safe = (btn && btn.style.display !== 'none') ? tabId : 'profil';
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.getElementById(safe).classList.add('active');
+  const safeBtn = document.querySelector(`.tab[data-tab="${safe}"]`);
+  if (safeBtn) safeBtn.classList.add('active');
+}
+
 // ── Profile tab ─────────────────────────────────────────────────
-function updateProfileTab(user) {
+function updateProfileTab(user, isMasterAdmin, isLandlord, isTenant) {
   const guest     = document.getElementById('profileGuest');
   const userDiv   = document.getElementById('profileUser');
   const topAvatar = document.getElementById('topbarAvatar');
@@ -143,6 +183,19 @@ function updateProfileTab(user) {
       ? `<img src="${photo}" alt="avatar">`
       : `<span>${(user.displayName || user.email || '?').charAt(0).toUpperCase()}</span>`;
     document.querySelector('[data-tab="profil"] i').className = 'ti ti-user-check';
+
+    // Bedževi uloga
+    const badgeWrap = document.getElementById('profileBadges');
+    if (badgeWrap) {
+      badgeWrap.innerHTML = '';
+      if (isMasterAdmin) {
+        badgeWrap.innerHTML += `<span class="profile-badge badge-master">Master Admin</span>`;
+      } else {
+        if (isLandlord) badgeWrap.innerHTML += `<span class="profile-badge badge-landlord">Landlord</span>`;
+        if (isTenant)   badgeWrap.innerHTML += `<span class="profile-badge badge-tenant">Zakupac</span>`;
+        if (!isLandlord && !isTenant) badgeWrap.innerHTML += `<span class="profile-badge">Aktivan nalog</span>`;
+      }
+    }
   } else {
     guest.style.display     = 'block';
     userDiv.style.display   = 'none';
@@ -151,7 +204,123 @@ function updateProfileTab(user) {
   }
 }
 
-// ── Units — lista ───────────────────────────────────────────────
+// ── Units — lista (landlord) ─────────────────────────────────────
+async function loadUnitsLandlord(user) {
+  const ul = document.getElementById('unitList');
+  ul.innerHTML = '';
+  try {
+    const snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
+    if (snap.empty) {
+      ul.innerHTML = '<li style="color:var(--muted);font-size:14px">Nemate unetih stanova.</li>';
+      return;
+    }
+    snap.forEach(d => {
+      const data = d.data();
+      const li = document.createElement('li');
+      li.className = 'unit-list-item';
+      li.innerHTML = `
+        <div class="unit-item-info">
+          <span class="unit-item-name">${data.name}</span>
+          <span class="unit-item-sub">${data.tenantEmail || 'bez zakupca'}</span>
+        </div>
+        <div class="unit-item-right">
+          <span class="rent">${(data.rent || 0).toLocaleString('sr')} ${data.valuta || 'RSD'}</span>
+          <button class="btn-delete-unit" title="Obriši stan">
+            <i class="ti ti-trash" aria-hidden="true"></i>
+          </button>
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </div>
+      `;
+      li.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-delete-unit')) return;
+        openUnitDetail(d.id, data);
+      });
+      li.querySelector('.btn-delete-unit').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Obriši stan "${data.name}"? Ova akcija je nepovratna.`)) return;
+        try {
+          await deleteDoc(doc(db, 'units', d.id));
+          await loadUnitsLandlord(user);
+          setupLandlordMessages(user);
+        } catch(err) {
+          alert('Greška pri brisanju: ' + err.message);
+        }
+      });
+      ul.appendChild(li);
+    });
+  } catch(e) {
+    ul.innerHTML = '<li>Greška pri učitavanju — proveri Firestore Rules.</li>';
+  }
+}
+
+// ── Landlord messages ────────────────────────────────────────────
+async function setupLandlordMessages(user) {
+  const container = document.getElementById('adminChats');
+  document.getElementById('tenantChat').hidden = true;
+  container.innerHTML = '<p class="info-text">Učitavam stanove...</p>';
+  try {
+    const snap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)));
+    container.innerHTML = '';
+    if (snap.empty) {
+      container.innerHTML = '<p class="info-text">Nemate stanova u bazi.</p>';
+      return;
+    }
+    snap.forEach(docSnap => {
+      const unit   = docSnap.data();
+      const unitId = docSnap.id;
+      const card   = document.createElement('div');
+      card.className = 'chat-card';
+      card.innerHTML = `
+        <div class="chat-card-header">
+          <i class="ti ti-home"></i>
+          <span>${unit.name}</span>
+          <small>${unit.tenantEmail || 'bez zakupca'}</small>
+        </div>
+        <div class="chat-messages" id="msgs-${unitId}"></div>
+        <div class="chat-input-row">
+          <input class="admin-msg-input" data-unit="${unitId}" placeholder="Odgovori..." autocomplete="off">
+          <button class="btn-send admin-msg-send" data-unit="${unitId}">
+            <i class="ti ti-send"></i>
+          </button>
+        </div>
+      `;
+      container.appendChild(card);
+      const msgsRef = collection(db, 'units', unitId, 'messages');
+      const q = query(msgsRef, orderBy('vreme', 'asc'));
+      onSnapshot(q, snapshot => {
+        const box = document.getElementById(`msgs-${unitId}`);
+        if (!box) return;
+        box.innerHTML = '';
+        snapshot.forEach(m => renderMessage(box, m.data(), true, user.email));
+        box.scrollTop = box.scrollHeight;
+      });
+    });
+    container.addEventListener('click', async e => {
+      const btn = e.target.closest('.admin-msg-send');
+      if (!btn) return;
+      const unitId = btn.dataset.unit;
+      const input  = container.querySelector(`.admin-msg-input[data-unit="${unitId}"]`);
+      const tekst  = input.value.trim();
+      if (!tekst) return;
+      input.value = '';
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, tekst, vreme: serverTimestamp() });
+    });
+    container.addEventListener('keydown', async e => {
+      if (e.key !== 'Enter') return;
+      const input = e.target.closest('.admin-msg-input');
+      if (!input) return;
+      const unitId = input.dataset.unit;
+      const tekst  = input.value.trim();
+      if (!tekst) return;
+      input.value = '';
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, tekst, vreme: serverTimestamp() });
+    });
+  } catch(err) {
+    container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+  }
+}
+
+// ── Units — lista (master admin) ─────────────────────────────────
 async function loadUnits() {
   const ul = document.getElementById('unitList');
   ul.innerHTML = '';
@@ -202,13 +371,17 @@ async function loadUnits() {
 
 document.getElementById('unitForm').onsubmit = async e => {
   e.preventDefault();
+  const user = auth.currentUser;
+  if (!user) return;
   await addDoc(collection(db, 'units'), {
     name:        document.getElementById('unitName').value.trim(),
-    tenantEmail: document.getElementById('tenantEmail').value.trim().toLowerCase()
+    tenantEmail: document.getElementById('tenantEmail').value.trim().toLowerCase(),
+    ownerId:     user.uid
   });
   e.target.reset();
-  await loadUnits();
-  setupAdminMessages();
+  const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  if (isMasterAdmin) { await loadUnits(); setupAdminMessages(); }
+  else               { await loadUnitsLandlord(user); setupLandlordMessages(user); }
 };
 
 // ── Unit — detalji ──────────────────────────────────────────────
@@ -398,9 +571,9 @@ function renderMessage(container, data, isAdmin, currentUserEmail) {
 }
 
 // ── Dashboard totali ─────────────────────────────────────────────
-async function loadDashboard() {
+async function loadDashboard(ownerId = null) {
   try {
-    const { income, expense, profit, currency } = await getDashboardTotals();
+    const { income, expense, profit, currency } = await getDashboardTotals(ownerId);
     const cur = currency || 'RSD';
     document.getElementById('income').textContent  = income.toLocaleString('sr-Latn',  { maximumFractionDigits: 2 }) + ' ' + cur;
     document.getElementById('expense').textContent = expense.toLocaleString('sr-Latn', { maximumFractionDigits: 2 }) + ' ' + cur;
@@ -409,7 +582,8 @@ async function loadDashboard() {
 }
 
 // ── Osvježi dashboard kad se promeni valuta u Finansijama ──────
-window.addEventListener('finance:currencyChanged', () => loadDashboard());
+let currentOwnerUid = null;
+window.addEventListener('finance:currencyChanged', () => loadDashboard(currentOwnerUid));
 
 // ── MSG SUB-TABOVI ──────────────────────────────────────────────
 document.querySelectorAll('.msg-subtab').forEach(btn => {
@@ -427,9 +601,15 @@ document.querySelectorAll('.msg-subtab').forEach(btn => {
     if (btn.dataset.subtab === 'kvar') {
       const user = auth.currentUser;
       if (!user) return;
-      const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-      if (isAdmin) loadKvarAdmin();
-      else loadKvarTenantHistory(user);
+      const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      if (isMasterAdmin) { loadKvarAdmin(); return; }
+      // Proveri da li je landlord
+      getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)))
+        .then(snap => {
+          if (!snap.empty) loadKvarAdmin();
+          else loadKvarTenantHistory(user);
+        })
+        .catch(() => loadKvarTenantHistory(user));
     }
   };
 });
@@ -630,16 +810,16 @@ function renderKvarItem(id, data, isAdmin) {
 }
 
 // ── Prikaži kvar view za zakupca ili admina ──────────────────────
-function setupKvarView(user) {
-  const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  document.getElementById('kvarAdminView').hidden  = !isAdmin;
-  document.getElementById('kvarTenantView').hidden = isAdmin;
+function setupKvarView(user, role) {
+  // 'masterAdmin' i 'landlord' vide admin view, 'tenant' vidi tenant view
+  const showAdmin = (role === 'masterAdmin' || role === 'landlord');
+  document.getElementById('kvarAdminView').hidden  = !showAdmin;
+  document.getElementById('kvarTenantView').hidden = showAdmin;
 
-  if (!isAdmin) {
+  if (!showAdmin) {
     // Učitaj naziv stana za zakupca
     const stanEl = document.getElementById('kvarStanNaziv');
     if (stanEl) {
-      query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase()));
       getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())))
         .then(snap => {
           if (snap.empty) {

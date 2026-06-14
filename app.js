@@ -5,6 +5,7 @@ import {
   query, where, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 import { setupFinance, getDashboardTotals, showFinanceList } from './finance.js';
+import { setupReportUI } from './report.js';
 
 document.getElementById('loginBtn').onclick  = login;
 document.getElementById('logoutBtn').onclick = logout;
@@ -210,6 +211,7 @@ function updateProfileTab(user, isMasterAdmin, isLandlord, isTenant) {
     guest.style.display   = 'none';
     userDiv.style.display = 'block';
     document.getElementById('profileName').textContent  = user.displayName || '—';
+    setupReportUI(user);
     document.getElementById('profileEmail').textContent = user.email || '—';
     const photo = user.photoURL;
     const photoEl = document.getElementById('profilePhoto');

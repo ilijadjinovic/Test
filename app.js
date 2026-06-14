@@ -889,11 +889,32 @@ async function setupTenantMessages(user) {
 
 // ── Render poruke ───────────────────────────────────────────────
 function renderMessage(container, data, isAdmin, currentUserEmail) {
-  const div = document.createElement('div');
-  const isMe = isAdmin ? data.od === ADMIN_EMAIL : data.od === currentUserEmail;
-  div.className = 'chat-bubble ' + (isMe ? 'bubble-me' : 'bubble-them');
-  div.textContent = data.tekst;
-  container.appendChild(div);
+  const isMe = currentUserEmail
+    ? data.od === currentUserEmail
+    : (isAdmin ? data.od === ADMIN_EMAIL : false);
+
+  // Prefiks: ime (displayName) ili deo maila ispred @
+  const sender = data.displayName
+    ? data.displayName.split(' ')[0]
+    : (data.od ? data.od.split('@')[0] : '');
+
+  const vreme = data.vreme?.toDate
+    ? data.vreme.toDate().toLocaleTimeString('sr-Latn', { hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chat-msg-row ' + (isMe ? 'row-me' : 'row-them');
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble ' + (isMe ? 'bubble-me' : 'bubble-them');
+  bubble.innerHTML = `
+    <span class="msg-sender">${sender}</span>
+    <span class="msg-text">${data.tekst}</span>
+    ${vreme ? `<span class="msg-time">${vreme}</span>` : ''}
+  `;
+
+  wrapper.appendChild(bubble);
+  container.appendChild(wrapper);
 }
 
 // ── Dashboard totali ─────────────────────────────────────────────

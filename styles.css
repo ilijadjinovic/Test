@@ -402,26 +402,51 @@ body{
   gap: 6px;
 }
 
+.chat-msg-row {
+  display: flex;
+  flex-direction: column;
+}
+.chat-msg-row.row-me    { align-items: flex-end; }
+.chat-msg-row.row-them  { align-items: flex-start; }
+
 .chat-bubble {
   max-width: 80%;
-  padding: 8px 12px;
+  padding: 7px 12px 6px;
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.4;
   word-break: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .bubble-me {
-  align-self: flex-end;
   background: var(--accent);
   color: #fff;
   border-bottom-right-radius: 3px;
 }
 .bubble-them {
-  align-self: flex-start;
   background: var(--surface2);
   color: var(--text);
   border: 1px solid var(--border);
   border-bottom-left-radius: 3px;
+}
+
+.msg-sender {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+  letter-spacing: 0.02em;
+}
+.msg-text {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.msg-time {
+  font-size: 10px;
+  opacity: 0.55;
+  align-self: flex-end;
+  margin-top: 1px;
 }
 
 .chat-input-row {

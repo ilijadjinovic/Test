@@ -356,7 +356,7 @@ async function generateReport(user, period) {
       id: cb.value,
       name: cb.dataset.name,
       ownerUid: cb.dataset.owner || user.uid,
-      ownerName: cb.dataset.ownerName || ''
+      ownerName: cb.dataset.ownerName || reporterName
     }));
     if (!unitIds.length) { alert('Izaberi bar jedan stan.'); btn.disabled = false; status.textContent = ''; return; }
 
@@ -372,6 +372,7 @@ async function generateReport(user, period) {
     // Učitaj profil korisnika koji generiše izveštaj
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     const reporterName = userDoc.exists() ? (userDoc.data().displayName || user.email) : user.email;
+    const isMasterAdminReport = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
     // Učitaj podatke za svaki stan
     const unitDataArr = [];
@@ -706,23 +707,31 @@ const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     pageNum++;
     y = MT;
 
-    // Stan header
+    // Stan header — visina 26 (landlord + stan + adresa)
     pdf.setFillColor(...COL_DARK);
-    pdf.roundedRect(ML, y, CW, 20, 2, 2, 'F');
-    try { pdf.addImage(LOGO_B64, 'PNG', ML + 3, y + 2, 16, 16); } catch(e) {}
-    pdf.setFont(FONT, 'bold');
-    pdf.setFontSize(14);
-    pdf.setTextColor(...COL_WHITE);
-    pdf.text(u.name, ML + 23, y + 9);
+    pdf.roundedRect(ML, y, CW, 26, 2, 2, 'F');
+    try { pdf.addImage(LOGO_B64, 'PNG', ML + 3, y + 5, 16, 16); } catch(e) {}
+    // Landlord naziv (mali, iznad)
     pdf.setFont(FONT, 'normal');
-    pdf.setFontSize(8.5);
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...COL_ACCENT);
+    pdf.text(u.ownerName || '—', ML + 23, y + 7);
+    // Stan naziv (veliki, ispod)
+    pdf.setFont(FONT, 'bold');
+    pdf.setFontSize(13);
+    pdf.setTextColor(...COL_WHITE);
+    pdf.text(u.name, ML + 23, y + 14);
+    // Adresa i kvadratura
+    pdf.setFont(FONT, 'normal');
+    pdf.setFontSize(8);
     pdf.setTextColor(200, 200, 210);
-    pdf.text([u.unit.adresa, u.unit.kvadratura ? u.unit.kvadratura + ' m²' : null].filter(Boolean).join('   ·   '), ML + 23, y + 16);
+    pdf.text([u.unit.adresa, u.unit.kvadratura ? u.unit.kvadratura + ' m²' : null].filter(Boolean).join('   ·   '), ML + 23, y + 21);
+    // Period desno
     pdf.setFont(FONT, 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(180, 180, 195);
-    pdf.text(periodLabel(period), W - MR - 3, y + 9, { align: 'right' });
-    y += 26;
+    pdf.text(periodLabel(period), W - MR - 3, y + 14, { align: 'right' });
+    y += 32;
 
     // ── ZAKUPAC ──
     if (secs.zakupac) {

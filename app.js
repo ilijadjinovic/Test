@@ -27,6 +27,13 @@ document.querySelectorAll('.tab').forEach(b => {
     document.getElementById(tabId).classList.add('active');
     if (tabId === 'units') showUnitList();
     if (tabId === 'finance') showFinanceList();
+    if (tabId === 'messages' && currentUserObj) {
+      const role = currentUserRole;
+      const isLandlordCtx = role === 'masterAdmin' || role === 'landlord' || (role === 'both' && currentContext === 'landlord');
+      if (role === 'masterAdmin')   { setupAdminMessages(); setupKvarView(currentUserObj, 'masterAdmin'); }
+      else if (isLandlordCtx)       { setupLandlordMessages(currentUserObj); setupKvarView(currentUserObj, 'landlord'); }
+      else                          { setupTenantMessages(currentUserObj); setupKvarView(currentUserObj, role === 'new' ? 'new' : 'tenant'); }
+    }
   };
 });
 

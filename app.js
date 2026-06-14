@@ -1109,8 +1109,9 @@ document.getElementById('kvarSubmitBtn').onclick = async () => {
     const unitId   = snap.docs[0].id;
     const unitName = snap.docs[0].data().name;
 
+    const ownerId = snap.docs[0].data().ownerId || null;
     await addDoc(collection(db, 'kvarovi'), {
-      unitId, unitName,
+      unitId, unitName, ownerId,
       tenantEmail: user.email.toLowerCase(),
       tip: kvarTip, stavka, opis,
       hitnost: kvarHitnost,
@@ -1167,22 +1168,9 @@ async function loadKvarAdmin(ownerUid = null) {
   try {
     let kvarDocs = [];
     if (ownerUid) {
-      // Landlord: učitaj samo kvarove za njegove stanove
-      const unitsSnap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', ownerUid)));
-      if (unitsSnap.empty) { empty.textContent = 'Nema prijavljenih kvarova.'; return; }
-      const unitIds = unitsSnap.docs.map(d => d.id);
-      // Firestore ne podržava 'in' sa više od 30 elemenata, ali za realne scenarije je ok
-      const chunks = [];
-      for (let i = 0; i < unitIds.length; i += 30) chunks.push(unitIds.slice(i, i + 30));
-      for (const chunk of chunks) {
-        const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', 'in', chunk), orderBy('vreme', 'desc')));
-        snap.forEach(d => kvarDocs.push({ id: d.id, data: d.data() }));
-      }
-      kvarDocs.sort((a, b) => {
-        const ta = a.data.vreme?.toDate ? a.data.vreme.toDate() : new Date(0);
-        const tb = b.data.vreme?.toDate ? b.data.vreme.toDate() : new Date(0);
-        return tb - ta;
-      });
+      // Landlord: učitaj kvarove direktno po ownerId
+      const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', ownerUid), orderBy('vreme', 'desc')));
+      snap.forEach(d => kvarDocs.push({ id: d.id, data: d.data() }));
     } else {
       // Master admin: svi kvarovi
       const snap = await getDocs(query(collection(db, 'kvarovi'), orderBy('vreme', 'desc')));

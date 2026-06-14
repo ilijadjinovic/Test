@@ -1253,6 +1253,7 @@ function renderKvarItem(id, data, isAdmin, ownerUid = null) {
       ${data.status === 'reseno' ? `<button class="kvar-delete-btn" data-id="${id}" title="Obriši prijavu"><i class="ti ti-trash"></i></button>` : ''}
     </div>
     ${data.opis ? `<div class="kvar-item-opis">${data.opis}</div>` : ''}
+    ${isAdmin && data.tenantEmail ? `<div class="kvar-item-tenant"><i class="ti ti-user"></i> ${data.tenantEmail}</div>` : ''}
   `;
   if (isAdmin) {
     div.querySelector('.kvar-status-toggle').onclick = async (e) => {

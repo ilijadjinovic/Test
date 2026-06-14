@@ -1091,11 +1091,53 @@ document.querySelectorAll('.kvar-hitnost-btn').forEach(btn => {
 
 updateKvarStavke();
 
+// ── Inicijalizuj select za izbor stana u formi kvara ────────────
+async function initKvarStanSelect(user) {
+  const wrap = document.getElementById('kvarStanSelectWrap');
+  const sel  = document.getElementById('kvarStanSelect');
+  if (!wrap || !sel) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())));
+    sel.innerHTML = '';
+    if (snap.empty) { wrap.style.display = 'none'; return; }
+    if (snap.docs.length === 1) {
+      // Jedan stan — sakrij select, opcija ostaje u pozadini
+      wrap.style.display = 'none';
+      const d = snap.docs[0];
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.dataset.owner = d.data().ownerId || '';
+      opt.dataset.name  = d.data().name;
+      opt.textContent   = d.data().name;
+      sel.appendChild(opt);
+    } else {
+      wrap.style.display = '';
+      snap.docs.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.dataset.owner = d.data().ownerId || '';
+        opt.dataset.name  = d.data().name;
+        opt.textContent   = d.data().name;
+        sel.appendChild(opt);
+      });
+    }
+  } catch(e) {
+    console.error('initKvarStanSelect:', e);
+  }
+}
+
 // ── SUBMIT prijave kvara (zakupac) ──────────────────────────────
 document.getElementById('kvarSubmitBtn').onclick = async () => {
   const stavka = document.getElementById('kvarStavka').value;
   const opis   = document.getElementById('kvarOpis').value.trim();
   if (!stavka) { alert('Izaberi stavku!'); return; }
+
+  const sel = document.getElementById('kvarStanSelect');
+  const selectedOpt = sel && sel.options[sel.selectedIndex];
+  if (!selectedOpt || !selectedOpt.value) { alert('Izaberi stan!'); return; }
+  const unitId   = selectedOpt.value;
+  const unitName = selectedOpt.dataset.name || unitId;
+  const ownerId  = selectedOpt.dataset.owner || null;
 
   const btn = document.getElementById('kvarSubmitBtn');
   btn.disabled = true;
@@ -1103,13 +1145,6 @@ document.getElementById('kvarSubmitBtn').onclick = async () => {
 
   try {
     const user = auth.currentUser;
-    const q    = query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase()));
-    const snap = await getDocs(q);
-    if (snap.empty) { alert('Nemate dodeljen stan.'); btn.disabled = false; btn.innerHTML = '<i class="ti ti-send"></i> Pošalji prijavu'; return; }
-    const unitId   = snap.docs[0].id;
-    const unitName = snap.docs[0].data().name;
-
-    const ownerId = snap.docs[0].data().ownerId || null;
     await addDoc(collection(db, 'kvarovi'), {
       unitId, unitName, ownerId,
       tenantEmail: user.email.toLowerCase(),
@@ -1168,9 +1203,14 @@ async function loadKvarAdmin(ownerUid = null) {
   try {
     let kvarDocs = [];
     if (ownerUid) {
-      // Landlord: učitaj kvarove direktno po ownerId
-      const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', ownerUid), orderBy('vreme', 'desc')));
+      // Landlord: učitaj kvarove po ownerId, sortiraj u JS (nema potrebe za kompozitnim indeksom)
+      const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', ownerUid)));
       snap.forEach(d => kvarDocs.push({ id: d.id, data: d.data() }));
+      kvarDocs.sort((a, b) => {
+        const ta = a.data.vreme?.toDate ? a.data.vreme.toDate() : new Date(0);
+        const tb = b.data.vreme?.toDate ? b.data.vreme.toDate() : new Date(0);
+        return tb - ta;
+      });
     } else {
       // Master admin: svi kvarovi
       const snap = await getDocs(query(collection(db, 'kvarovi'), orderBy('vreme', 'desc')));
@@ -1251,20 +1291,7 @@ function setupKvarView(user, role) {
   if (showAdmin) {
     loadKvarAdmin(role === 'landlord' ? user.uid : null);
   } else {
-    const stanEl = document.getElementById('kvarStanNaziv');
-    if (stanEl) {
-      getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())))
-        .then(snap => {
-          if (snap.empty) {
-            stanEl.textContent = 'Nemate dodeljen stan';
-            stanEl.style.color = 'var(--muted)';
-          } else {
-            stanEl.textContent = snap.docs[0].data().name;
-            stanEl.style.color = '';
-          }
-        })
-        .catch(() => { stanEl.textContent = '—'; });
-    }
+    initKvarStanSelect(user);
     // Učitaj istoriju kvarova za tenant/new (new nema kvarova — prikazaće "Nema prijava")
     loadKvarTenantHistory(user);
   }

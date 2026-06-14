@@ -1248,26 +1248,54 @@ function renderKvarItem(id, data, isAdmin, ownerUid = null) {
       <span class="kvar-badge h-${data.hitnost}">${data.hitnost.charAt(0).toUpperCase()+data.hitnost.slice(1)} hitnost</span>
       <span class="kvar-badge">${KVAR_NAZIVI[data.tip] || data.tip}</span>
       ${isAdmin ? `<span class="kvar-item-unit">${data.unitName || data.unitId}</span>` : ''}
-      <span class="kvar-badge status ${data.status === 'reseno' ? 'reseno' : ''}">${data.status === 'reseno' ? '✓ Rešeno' : '⏳ Otvoreno'}</span>
-      ${isAdmin ? `<button class="kvar-status-toggle" data-id="${id}" data-status="${data.status}">${data.status === 'reseno' ? 'Ponovo otvori' : 'Označi rešeno'}</button>` : ''}
+      <span class="kvar-badge status ${data.status === 'reseno' ? 'reseno' : data.status === 'ceka_validaciju' ? 'ceka' : ''}">${
+        data.status === 'reseno' ? '✓ Rešeno' :
+        data.status === 'ceka_validaciju' ? '🕐 Čeka validaciju' :
+        '⏳ Otvoreno'
+      }</span>
+      ${isAdmin && data.status !== 'ceka_validaciju' ? `<button class="kvar-status-toggle" data-id="${id}" data-status="${data.status}">${data.status === 'reseno' ? 'Ponovo otvori' : 'Označi rešeno'}</button>` : ''}
+      ${isAdmin && data.status === 'ceka_validaciju' ? `<button class="kvar-status-toggle kvar-btn-cancel" data-id="${id}" data-status="${data.status}">Poništi</button>` : ''}
+      ${!isAdmin && data.status === 'ceka_validaciju' ? `<button class="kvar-status-toggle kvar-btn-potvrdi" data-id="${id}" data-action="potvrdi">Potvrdi rešeno</button><button class="kvar-status-toggle kvar-btn-vrati" data-id="${id}" data-action="vrati">Vrati otvoreno</button>` : ''}
       ${data.status === 'reseno' ? `<button class="kvar-delete-btn" data-id="${id}" title="Obriši prijavu"><i class="ti ti-trash"></i></button>` : ''}
     </div>
     ${data.opis ? `<div class="kvar-item-opis">${data.opis}</div>` : ''}
     ${isAdmin && data.tenantEmail ? `<div class="kvar-item-tenant"><i class="ti ti-user"></i> ${data.tenantEmail}</div>` : ''}
   `;
   if (isAdmin) {
-    div.querySelector('.kvar-status-toggle').onclick = async (e) => {
-      const btn2 = e.currentTarget;
-      const noviStatus = btn2.dataset.status === 'reseno' ? 'otvoreno' : 'reseno';
-      btn2.disabled = true;
-      try {
-        await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
-        loadKvarAdmin(ownerUid);
-      } catch(err) {
-        alert('Greška: ' + err.message);
-        btn2.disabled = false;
-      }
-    };
+    div.querySelectorAll('.kvar-status-toggle').forEach(btn2 => {
+      btn2.onclick = async (e) => {
+        btn2.disabled = true;
+        let noviStatus;
+        if (btn2.classList.contains('kvar-btn-cancel')) {
+          noviStatus = 'otvoreno'; // poništi ceka_validaciju
+        } else {
+          noviStatus = btn2.dataset.status === 'reseno' ? 'otvoreno' : 'ceka_validaciju';
+        }
+        try {
+          await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
+          loadKvarAdmin(ownerUid);
+        } catch(err) {
+          alert('Greška: ' + err.message);
+          btn2.disabled = false;
+        }
+      };
+    });
+  } else {
+    // Zakupac — potvrdi ili vrati
+    div.querySelectorAll('.kvar-status-toggle').forEach(btn2 => {
+      btn2.onclick = async () => {
+        btn2.disabled = true;
+        const noviStatus = btn2.dataset.action === 'potvrdi' ? 'reseno' : 'otvoreno';
+        try {
+          await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
+          const user = auth.currentUser;
+          if (user) loadKvarTenantHistory(user);
+        } catch(err) {
+          alert('Greška: ' + err.message);
+          btn2.disabled = false;
+        }
+      };
+    });
   }
   const deleteBtn = div.querySelector('.kvar-delete-btn');
   if (deleteBtn) {

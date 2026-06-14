@@ -1017,6 +1017,13 @@ body{
 .kvar-badge.h-visoka  { background: rgba(224,90,90,.1);   color: var(--red);    border: 1px solid rgba(224,90,90,.25);  }
 .kvar-badge.status    { background: var(--surface2);      color: var(--muted);  border: 1px solid var(--border); }
 .kvar-badge.status.reseno { background: rgba(46,204,138,.1); color: var(--green); border: 1px solid rgba(46,204,138,.25); }
+.kvar-badge.status.ceka  { background: rgba(224,165,90,.1); color: #e0a55a; border: 1px solid rgba(224,165,90,.25); }
+
+.kvar-btn-potvrdi { background: rgba(46,204,138,.15) !important; color: var(--green) !important; border: 1px solid rgba(46,204,138,.3) !important; }
+.kvar-btn-potvrdi:hover { background: rgba(46,204,138,.25) !important; }
+.kvar-btn-vrati   { background: rgba(224,90,90,.12) !important;  color: var(--red) !important;   border: 1px solid rgba(224,90,90,.25) !important; }
+.kvar-btn-vrati:hover   { background: rgba(224,90,90,.22) !important; }
+.kvar-btn-cancel  { background: rgba(150,150,150,.12) !important; color: var(--muted) !important; border: 1px solid var(--border) !important; }
 
 .kvar-item-opis {
   font-size: 13px;

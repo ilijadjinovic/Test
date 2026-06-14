@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isMasterAdmin() {
+      return isAuth() && request.auth.token.email == 'ilija.djinovic@gmail.com';
+    }
+    function isUnitOwner(unitId) {
+      return isAuth() && get(/databases/$(database)/documents/units/$(unitId)).data.ownerId == request.auth.uid;
+    }
+
+    // ── Users ────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isMasterAdmin() || (isAuth() && request.auth.uid == userId);
+      allow create: if isAuth() && request.auth.uid == userId;
+      allow update: if isAuth() && request.auth.uid == userId;
+      allow delete: if isMasterAdmin();
+    }
+
+    // ── Settings ─────────────────────────────────────────────────
+    match /settings/{docId} {
+      allow read:  if isAuth();
+      allow write: if isMasterAdmin();
+    }
+
+    // ── Units ────────────────────────────────────────────────────
+    match /units/{unitId} {
+      allow read: if isMasterAdmin()
+                  || (isAuth() && resource.data.ownerId == request.auth.uid)
+                  || (isAuth() && resource.data.tenantEmail == request.auth.token.email);
+      allow create: if isAuth()
+                    && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isMasterAdmin()
+                    || (isAuth() && resource.data.ownerId == request.auth.uid)
+                    || (isAuth() && isUnitOwner(resource.data.unitId))
+                    // Zakupac može da potvrdi ili odbije validaciju (samo iz ceka_validaciju)
+                    || (isAuth()
+                        && resource.data.tenantEmail == request.auth.token.email
+                        && resource.data.status == 'ceka_validaciju'
+                        && (request.resource.data.status == 'reseno' || request.resource.data.status == 'otvoreno'));
+      allow delete: if isMasterAdmin()
+                    || (isAuth() && resource.data.ownerId == request.auth.uid);
+
+      // ── Poruke ────────────────────────────────────────────────
+      match /messages/{msgId} {
+        allow read: if isMasterAdmin()
+                    || isUnitOwner(unitId)
+                    || (isAuth() && get(/databases/$(database)/documents/units/$(unitId)).data.tenantEmail == request.auth.token.email);
+        allow create: if isAuth()
+                      && (isUnitOwner(unitId)
+                          || get(/databases/$(database)/documents/units/$(unitId)).data.tenantEmail == request.auth.token.email);
+        allow update: if isMasterAdmin() || isUnitOwner(unitId);
+        allow delete: if isMasterAdmin() || isUnitOwner(unitId);
+      }
+
+      // ── Finansije — prihodi ───────────────────────────────────
+      match /income/{incId} {
+        allow read, write: if isMasterAdmin() || isUnitOwner(unitId);
+      }
+
+      // ── Finansije — troškovi ──────────────────────────────────
+      match /expenses/{expId} {
+        allow read, write: if isMasterAdmin() || isUnitOwner(unitId);
+      }
+    }
+
+    // ── Kvarovi ──────────────────────────────────────────────────
+    match /kvarovi/{kvarId} {
+      // read: isUnitOwner() nije dozvoljeno na list queriju — koristimo samo polja dokumenta
+      allow read: if isMasterAdmin()
+                  || (isAuth() && resource.data.tenantEmail == request.auth.token.email)
+                  || (isAuth() && resource.data.ownerId == request.auth.uid);
+      allow create: if isAuth()
+                    && request.resource.data.tenantEmail == request.auth.token.email;
+      // update/delete: isUnitOwner je OK jer se evaluira na pojedinačnom dokumentu
+      allow update: if isMasterAdmin()
+                    || (isAuth() && resource.data.ownerId == request.auth.uid)
+                    || (isAuth() && isUnitOwner(resource.data.unitId))
+                    // Zakupac može da potvrdi ili odbije validaciju (samo iz ceka_validaciju)
+                    || (isAuth()
+                        && resource.data.tenantEmail == request.auth.token.email
+                        && resource.data.status == 'ceka_validaciju'
+                        && (request.resource.data.status == 'reseno' || request.resource.data.status == 'otvoreno'));
+      allow delete: if isMasterAdmin()
+                    || (isAuth() && resource.data.ownerId == request.auth.uid)
+                    || (isAuth() && resource.data.tenantEmail == request.auth.token.email
+                        && resource.data.status == 'reseno')
+                    || (isAuth() && isUnitOwner(resource.data.unitId));
+    }
+
+  }
+}

@@ -407,7 +407,7 @@ async function setupLandlordMessages(user) {
       const tekst  = input.value.trim();
       if (!tekst) return;
       input.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, displayName: user.displayName || null, tekst, vreme: serverTimestamp() });
     });
     container.addEventListener('keydown', async e => {
       if (e.key !== 'Enter') return;
@@ -417,7 +417,7 @@ async function setupLandlordMessages(user) {
       const tekst  = input.value.trim();
       if (!tekst) return;
       input.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, displayName: user.displayName || null, tekst, vreme: serverTimestamp() });
     });
   } catch(err) {
     container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
@@ -764,7 +764,7 @@ async function setupAdminMessages() {
       const tekst  = input.value.trim();
       if (!tekst) return;
       input.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: auth.currentUser.email, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: auth.currentUser.email, displayName: auth.currentUser.displayName || null, tekst, vreme: serverTimestamp() });
     });
     container.addEventListener('keydown', async e => {
       if (e.key !== 'Enter') return;
@@ -774,7 +774,7 @@ async function setupAdminMessages() {
       const tekst  = input.value.trim();
       if (!tekst) return;
       input.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: auth.currentUser.email, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: auth.currentUser.email, displayName: auth.currentUser.displayName || null, tekst, vreme: serverTimestamp() });
     });
   } catch(err) {
     container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
@@ -864,7 +864,7 @@ async function setupTenantMessages(user) {
       const tekst = inputEl.value.trim();
       if (!tekst) return;
       inputEl.value = '';
-      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, tekst, vreme: serverTimestamp() });
+      await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, displayName: user.displayName || null, tekst, vreme: serverTimestamp() });
     };
 
     container.addEventListener('click', async e => {

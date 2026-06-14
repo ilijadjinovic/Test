@@ -1017,18 +1017,10 @@ document.querySelectorAll('.msg-subtab').forEach(btn => {
     target.classList.add('active');
     target.hidden = false;
     // Učitaj podatke kad se otvori kvar tab
-    if (btn.dataset.subtab === 'kvar') {
-      const user = auth.currentUser;
-      if (!user) return;
-      const isMasterAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-      if (isMasterAdmin) { loadKvarAdmin(); return; }
-      // Proveri da li je landlord
-      getDocs(query(collection(db, 'units'), where('ownerId', '==', user.uid)))
-        .then(snap => {
-          if (!snap.empty) loadKvarAdmin();
-          else loadKvarTenantHistory(user);
-        })
-        .catch(() => loadKvarTenantHistory(user));
+    if (btn.dataset.subtab === 'kvar' && currentUserObj) {
+      const role = currentUserRole;
+      const isLandlordCtx = role === 'masterAdmin' || role === 'landlord' || (role === 'both' && currentContext === 'landlord');
+      setupKvarView(currentUserObj, isLandlordCtx ? (role === 'masterAdmin' ? 'masterAdmin' : 'landlord') : (role === 'new' ? 'new' : 'tenant'));
     }
   };
 });

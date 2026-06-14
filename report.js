@@ -260,10 +260,14 @@ async function generateReport(user, period) {
       if (secs.kvarovi) {
         try {
           const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', user.uid)));
+          console.log(`KVAROVI za stan ${u.id}: query vratio ${snap.size} dokumenata`);
           snap.forEach(d => {
-            if (d.data().unitId !== u.id) return;
-            const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
-            if (dt && dt >= od && dt <= do_) kvarovi.push(d.data());
+            const kd = d.data();
+            console.log('  kvar:', kd.stavka, 'unitId:', kd.unitId, 'status:', kd.status, 'vreme:', kd.vreme?.toDate?.());
+            if (kd.unitId !== u.id) { console.log('  -> preskočen (drugi stan)'); return; }
+            const dt = kd.vreme?.toDate ? kd.vreme.toDate() : null;
+            console.log('  -> dt:', dt, 'od:', od, 'do_:', do_, 'u periodu:', dt && dt >= od && dt <= do_);
+            if (dt && dt >= od && dt <= do_) kvarovi.push(kd);
           });
           kvarovi.sort((a, b) => {
             const ta = a.vreme?.toDate ? a.vreme.toDate() : new Date(0);

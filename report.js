@@ -352,14 +352,6 @@ async function generateReport(user, period) {
   status.textContent = 'Učitavam podatke...';
 
   try {
-    const unitIds = [...document.querySelectorAll('.rp-unit-cb:checked')].map(cb => ({
-      id: cb.value,
-      name: cb.dataset.name,
-      ownerUid: cb.dataset.owner || user.uid,
-      ownerName: cb.dataset.ownerName || reporterName
-    }));
-    if (!unitIds.length) { alert('Izaberi bar jedan stan.'); btn.disabled = false; status.textContent = ''; return; }
-
     const { od, do_ } = getPeriodRange(period);
     const secs = {
       zakupac:  document.getElementById('rpSecZakupac').checked,
@@ -373,6 +365,14 @@ async function generateReport(user, period) {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     const reporterName = userDoc.exists() ? (userDoc.data().displayName || user.email) : user.email;
     const isMasterAdminReport = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+    const unitIds = [...document.querySelectorAll('.rp-unit-cb:checked')].map(cb => ({
+      id: cb.value,
+      name: cb.dataset.name,
+      ownerUid: cb.dataset.owner || user.uid,
+      ownerName: cb.dataset.ownerName || reporterName
+    }));
+    if (!unitIds.length) { alert('Izaberi bar jedan stan.'); btn.disabled = false; status.textContent = ''; return; }
 
     // Učitaj podatke za svaki stan
     const unitDataArr = [];

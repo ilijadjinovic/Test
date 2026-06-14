@@ -238,40 +238,48 @@ async function generateReport(user, period) {
       let prihodi = [], troskovi = [], kvarovi = [], poruke = [];
 
       if (secs.prihodi) {
-        const snap = await getDocs(collection(db, 'units', u.id, 'income'));
-        snap.forEach(d => {
-          const dt = d.data().datum?.toDate ? d.data().datum.toDate() : null;
-          if (dt && dt >= od && dt <= do_) prihodi.push(d.data());
-        });
-        prihodi.sort((a,b) => (a.datum?.toDate?.() || 0) - (b.datum?.toDate?.() || 0));
+        try {
+          const snap = await getDocs(collection(db, 'units', u.id, 'income'));
+          snap.forEach(d => {
+            const dt = d.data().datum?.toDate ? d.data().datum.toDate() : null;
+            if (dt && dt >= od && dt <= do_) prihodi.push(d.data());
+          });
+          prihodi.sort((a,b) => (a.datum?.toDate?.() || 0) - (b.datum?.toDate?.() || 0));
+        } catch(e) { console.error('PRIHODI failed:', e.message); }
       }
       if (secs.troskovi) {
-        const snap = await getDocs(collection(db, 'units', u.id, 'expenses'));
-        snap.forEach(d => {
-          const dt = d.data().datum?.toDate ? d.data().datum.toDate() : null;
-          if (dt && dt >= od && dt <= do_) troskovi.push(d.data());
-        });
-        troskovi.sort((a,b) => (a.datum?.toDate?.() || 0) - (b.datum?.toDate?.() || 0));
+        try {
+          const snap = await getDocs(collection(db, 'units', u.id, 'expenses'));
+          snap.forEach(d => {
+            const dt = d.data().datum?.toDate ? d.data().datum.toDate() : null;
+            if (dt && dt >= od && dt <= do_) troskovi.push(d.data());
+          });
+          troskovi.sort((a,b) => (a.datum?.toDate?.() || 0) - (b.datum?.toDate?.() || 0));
+        } catch(e) { console.error('TROSKOVI failed:', e.message); }
       }
       if (secs.kvarovi) {
-        const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', u.id)));
-        snap.forEach(d => {
-          const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
-          if (dt && dt >= od && dt <= do_) kvarovi.push(d.data());
-        });
-        kvarovi.sort((a, b) => {
-          const ta = a.vreme?.toDate ? a.vreme.toDate() : new Date(0);
-          const tb = b.vreme?.toDate ? b.vreme.toDate() : new Date(0);
-          return ta - tb;
-        });
+        try {
+          const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', u.id)));
+          snap.forEach(d => {
+            const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
+            if (dt && dt >= od && dt <= do_) kvarovi.push(d.data());
+          });
+          kvarovi.sort((a, b) => {
+            const ta = a.vreme?.toDate ? a.vreme.toDate() : new Date(0);
+            const tb = b.vreme?.toDate ? b.vreme.toDate() : new Date(0);
+            return ta - tb;
+          });
+        } catch(e) { console.error('KVAROVI failed:', e.message); }
       }
       if (secs.poruke) {
-        const snap = await getDocs(collection(db, 'units', u.id, 'messages'));
-        snap.forEach(d => {
-          const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
-          if (dt && dt >= od && dt <= do_) poruke.push(d.data());
-        });
-        poruke.sort((a,b) => (a.vreme?.toDate?.() || 0) - (b.vreme?.toDate?.() || 0));
+        try {
+          const snap = await getDocs(collection(db, 'units', u.id, 'messages'));
+          snap.forEach(d => {
+            const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
+            if (dt && dt >= od && dt <= do_) poruke.push(d.data());
+          });
+          poruke.sort((a,b) => (a.vreme?.toDate?.() || 0) - (b.vreme?.toDate?.() || 0));
+        } catch(e) { console.error('PORUKE failed:', e.message); }
       }
 
       unitDataArr.push({ id: u.id, name: u.name, unit, prihodi, troskovi, kvarovi, poruke });

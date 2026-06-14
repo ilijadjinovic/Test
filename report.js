@@ -238,18 +238,20 @@ async function generateReport(user, period) {
       let prihodi = [], troskovi = [], kvarovi = [], poruke = [];
 
       if (secs.prihodi) {
-        const snap = await getDocs(query(collection(db, 'units', u.id, 'income'), orderBy('datum', 'asc')));
+        const snap = await getDocs(collection(db, 'units', u.id, 'income'));
         snap.forEach(d => {
           const dt = d.data().datum?.toDate ? d.data().datum.toDate() : null;
           if (dt && dt >= od && dt <= do_) prihodi.push(d.data());
         });
+        prihodi.sort((a,b) => (a.datum?.toDate?.() || 0) - (b.datum?.toDate?.() || 0));
       }
       if (secs.troskovi) {
-        const snap = await getDocs(query(collection(db, 'units', u.id, 'expenses'), orderBy('datum', 'asc')));
+        const snap = await getDocs(collection(db, 'units', u.id, 'expenses'));
         snap.forEach(d => {
           const dt = d.data().datum?.toDate ? d.data().datum.toDate() : null;
           if (dt && dt >= od && dt <= do_) troskovi.push(d.data());
         });
+        troskovi.sort((a,b) => (a.datum?.toDate?.() || 0) - (b.datum?.toDate?.() || 0));
       }
       if (secs.kvarovi) {
         const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', u.id)));
@@ -264,11 +266,12 @@ async function generateReport(user, period) {
         });
       }
       if (secs.poruke) {
-        const snap = await getDocs(query(collection(db, 'units', u.id, 'messages'), orderBy('vreme', 'asc')));
+        const snap = await getDocs(collection(db, 'units', u.id, 'messages'));
         snap.forEach(d => {
           const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
           if (dt && dt >= od && dt <= do_) poruke.push(d.data());
         });
+        poruke.sort((a,b) => (a.vreme?.toDate?.() || 0) - (b.vreme?.toDate?.() || 0));
       }
 
       unitDataArr.push({ id: u.id, name: u.name, unit, prihodi, troskovi, kvarovi, poruke });

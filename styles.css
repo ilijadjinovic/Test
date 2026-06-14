@@ -1361,14 +1361,6 @@ body{
 }
 .rp-select-all:hover { background: rgba(124,106,247,.1); }
 .rp-landlord-group { margin-bottom: 10px; }
-.rp-landlord-group-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent);
-  margin-bottom: 5px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-}
 
 .report-label-row {
   display: flex;

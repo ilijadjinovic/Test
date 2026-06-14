@@ -1118,25 +1118,47 @@ async function loadKvarTenantHistory(user) {
   }
 }
 
-// ── Lista kvarova — admin ────────────────────────────────────────
-async function loadKvarAdmin() {
+// ── Lista kvarova — admin / landlord ────────────────────────────
+async function loadKvarAdmin(ownerUid = null) {
   const list  = document.getElementById('kvarAdminList');
   const empty = document.getElementById('kvarAdminEmpty');
   list.innerHTML = '';
   empty.textContent = 'Učitavam prijave...';
   try {
-    const q    = query(collection(db, 'kvarovi'), orderBy('vreme', 'desc'));
-    const snap = await getDocs(q);
-    if (snap.empty) { empty.textContent = 'Nema prijavljenih kvarova.'; return; }
+    let kvarDocs = [];
+    if (ownerUid) {
+      // Landlord: učitaj samo kvarove za njegove stanove
+      const unitsSnap = await getDocs(query(collection(db, 'units'), where('ownerId', '==', ownerUid)));
+      if (unitsSnap.empty) { empty.textContent = 'Nema prijavljenih kvarova.'; return; }
+      const unitIds = unitsSnap.docs.map(d => d.id);
+      // Firestore ne podržava 'in' sa više od 30 elemenata, ali za realne scenarije je ok
+      const chunks = [];
+      for (let i = 0; i < unitIds.length; i += 30) chunks.push(unitIds.slice(i, i + 30));
+      for (const chunk of chunks) {
+        const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', 'in', chunk), orderBy('vreme', 'desc')));
+        snap.forEach(d => kvarDocs.push({ id: d.id, data: d.data() }));
+      }
+      kvarDocs.sort((a, b) => {
+        const ta = a.data.vreme?.toDate ? a.data.vreme.toDate() : new Date(0);
+        const tb = b.data.vreme?.toDate ? b.data.vreme.toDate() : new Date(0);
+        return tb - ta;
+      });
+    } else {
+      // Master admin: svi kvarovi
+      const snap = await getDocs(query(collection(db, 'kvarovi'), orderBy('vreme', 'desc')));
+      snap.forEach(d => kvarDocs.push({ id: d.id, data: d.data() }));
+    }
+    if (!kvarDocs.length) { empty.textContent = 'Nema prijavljenih kvarova.'; return; }
     empty.textContent = '';
-    snap.forEach(d => list.appendChild(renderKvarItem(d.id, d.data(), true)));
+    kvarDocs.forEach(d => list.appendChild(renderKvarItem(d.id, d.data, true, ownerUid)));
   } catch(e) {
     empty.textContent = 'Greška pri učitavanju.';
+    console.error('loadKvarAdmin:', e);
   }
 }
 
 // ── Render jedne prijave ─────────────────────────────────────────
-function renderKvarItem(id, data, isAdmin) {
+function renderKvarItem(id, data, isAdmin, ownerUid = null) {
   const div = document.createElement('div');
   div.className = 'kvar-item';
   const vreme = data.vreme?.toDate
@@ -1166,7 +1188,7 @@ function renderKvarItem(id, data, isAdmin) {
       btn2.disabled = true;
       try {
         await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
-        loadKvarAdmin();
+        loadKvarAdmin(ownerUid);
       } catch(err) {
         alert('Greška: ' + err.message);
         btn2.disabled = false;
@@ -1179,7 +1201,7 @@ function renderKvarItem(id, data, isAdmin) {
       if (!confirm('Obriši ovu prijavu kvara? Akcija je nepovratna.')) return;
       try {
         await deleteDoc(doc(db, 'kvarovi', id));
-        if (isAdmin) loadKvarAdmin();
+        if (isAdmin) loadKvarAdmin(ownerUid);
         else {
           const user = auth.currentUser;
           if (user) loadKvarTenantHistory(user);
@@ -1198,7 +1220,9 @@ function setupKvarView(user, role) {
   document.getElementById('kvarAdminView').hidden  = !showAdmin;
   document.getElementById('kvarTenantView').hidden = showAdmin;
 
-  if (!showAdmin) {
+  if (showAdmin) {
+    loadKvarAdmin(role === 'landlord' ? user.uid : null);
+  } else {
     const stanEl = document.getElementById('kvarStanNaziv');
     if (stanEl) {
       getDocs(query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase())))

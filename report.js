@@ -248,7 +248,10 @@ function refreshAdminUnitList(unitsByOwner) {
     const landlordName = document.querySelector(`.rp-landlord-cb[value="${oid}"]`)?.dataset.name || oid;
     return `
       <div class="rp-landlord-group">
-        <div class="rp-landlord-group-label">${landlordName}</div>
+        <div class="rp-landlord-group-header">
+          <div class="rp-landlord-group-label">${landlordName}</div>
+          <button class="rp-select-all rp-select-owner" data-owner="${oid}">Izaberi sve</button>
+        </div>
         ${units.map(u => `
           <label class="report-check" style="padding-left:12px">
             <input type="checkbox" class="rp-unit-cb" value="${u.id}"
@@ -259,6 +262,16 @@ function refreshAdminUnitList(unitsByOwner) {
       </div>
     `;
   }).join('');
+
+  // Dodaj "Izaberi sve" onclick po landlordу
+  unitList.querySelectorAll('.rp-select-owner').forEach(btn => {
+    btn.onclick = () => {
+      const oid = btn.dataset.owner;
+      const cbs = unitList.querySelectorAll(`.rp-unit-cb[data-owner="${oid}"]`);
+      const allChecked = [...cbs].every(c => c.checked);
+      cbs.forEach(c => c.checked = !allChecked);
+    };
+  });
 }
 
 // ── Učitaj stanove za checkbox listu (landlord) ─────────────────
@@ -637,20 +650,39 @@ const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   pdf.text(periodRange, W - MR - 5, y + 15, { align: 'right' });
   y += 28;
 
-  // Stanovi u izveštaju
+  // Stanovi u izveštaju — grupisani po landlordovima
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(...COL_MUTED);
   pdf.text(`STANOVI U IZVEŠTAJU (${units.length})`, ML, y);
-  y += 5;
+  y += 6;
+
+  // Grupiši po ownerUid
+  const ownerGroups = {};
   units.forEach(u => {
-    pdf.setFont(FONT, 'normal');
-    pdf.setFontSize(9);
-    pdf.setTextColor(...COL_DARK);
-    pdf.text(`• ${u.name}${u.unit.adresa ? '  –  ' + u.unit.adresa : ''}`, ML + 3, y);
-    y += 5;
+    const key = u.ownerUid || 'unknown';
+    if (!ownerGroups[key]) ownerGroups[key] = { name: u.ownerName || u.ownerUid || '—', units: [] };
+    ownerGroups[key].units.push(u);
   });
-  y += 5;
+
+  Object.values(ownerGroups).forEach(group => {
+    checkPageBreak(8);
+    pdf.setFont(FONT, 'bold');
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...COL_ACCENT);
+    pdf.text(group.name, ML + 2, y);
+    y += 5;
+    group.units.forEach(u => {
+      checkPageBreak(5);
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(...COL_DARK);
+      pdf.text(`    • ${u.name}${u.unit.adresa ? '  –  ' + u.unit.adresa : ''}`, ML + 2, y);
+      y += 4.5;
+    });
+    y += 2;
+  });
+  y += 3;
 
   // Sekcije
   pdf.setFont(FONT, 'bold');

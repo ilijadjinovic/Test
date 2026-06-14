@@ -259,8 +259,9 @@ async function generateReport(user, period) {
       }
       if (secs.kvarovi) {
         try {
-          const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', u.id)));
+          const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', user.uid)));
           snap.forEach(d => {
+            if (d.data().unitId !== u.id) return;
             const dt = d.data().vreme?.toDate ? d.data().vreme.toDate() : null;
             if (dt && dt >= od && dt <= do_) kvarovi.push(d.data());
           });
@@ -309,6 +310,32 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
   }
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  // Učitaj DejaVu Sans fontove sa GitHub Pages
+  let FONT = 'helvetica';
+  try {
+    const toB64 = async (url) => {
+      const resp  = await fetch(url);
+      const buf   = await resp.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let b64 = '';
+      const chunk = 8192;
+      for (let i = 0; i < bytes.length; i += chunk)
+        b64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      return btoa(b64);
+    };
+    const [b64Regular, b64Bold] = await Promise.all([
+      toB64('./fonts/DejaVuSans.ttf'),
+      toB64('./fonts/DejaVuSans-Bold.ttf')
+    ]);
+    pdf.addFileToVFS('DejaVuSans.ttf', b64Regular);
+    pdf.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+    pdf.addFileToVFS('DejaVuSans-Bold.ttf', b64Bold);
+    pdf.addFont('DejaVuSans-Bold.ttf', 'DejaVuSans', 'bold');
+    FONT = 'DejaVuSans';
+  } catch(e) {
+    console.warn('Font load failed, koristim Helvetica:', e.message);
+  }
   
   const W = 210, H = 297;
   const ML = 15, MR = 15, MT = 15;
@@ -328,7 +355,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
   let pageNum = 1;
 
   function addPageNum() {
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(FONT, 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(...COL_MUTED);
     pdf.text(`${pageNum}`, W / 2, H - 8, { align: 'center' });
@@ -351,7 +378,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     checkPageBreak(14);
     pdf.setFillColor(...COL_ACCENT);
     pdf.roundedRect(ML, y, CW, 8, 1.5, 1.5, 'F');
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(FONT, 'bold');
     pdf.setFontSize(9);
     pdf.setTextColor(...COL_WHITE);
     pdf.text(title.toUpperCase(), ML + 4, y + 5.5);
@@ -362,7 +389,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     checkPageBreak(10);
     pdf.setFillColor(...COL_BG_SEC);
     pdf.rect(ML, y, CW, 7, 'F');
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(FONT, 'bold');
     pdf.setFontSize(8.5);
     pdf.setTextColor(...COL_DARK);
     pdf.text(title, ML + 3, y + 5);
@@ -404,11 +431,11 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
 
   function drawInfoRow(label, value) {
     checkPageBreak(7);
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(FONT, 'bold');
     pdf.setFontSize(8);
     pdf.setTextColor(...COL_MUTED);
     pdf.text(label + ':', ML + 2, y + 4.5);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(FONT, 'normal');
     pdf.setTextColor(...COL_DARK);
     pdf.text(String(value || '—'), ML + 42, y + 4.5);
     y += 6.5;
@@ -426,11 +453,11 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
   } catch(e) {}
 
   // Naziv aplikacije
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(FONT, 'bold');
   pdf.setFontSize(20);
   pdf.setTextColor(...COL_ACCENT);
   pdf.text('Rental Manager', ML + 22, y + 8);
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(FONT, 'normal');
   pdf.setFontSize(10);
   pdf.setTextColor(...COL_MUTED);
   pdf.text('Izveštaj o poslovanju', ML + 22, y + 15);
@@ -443,12 +470,12 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
   y += 8;
 
   // Landlord info
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(FONT, 'bold');
   pdf.setFontSize(13);
   pdf.setTextColor(...COL_DARK);
   pdf.text(landlordName, ML, y);
   y += 6;
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(FONT, 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(...COL_MUTED);
   pdf.text(landlordEmail, ML, y);
@@ -457,29 +484,29 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
   // Period info box
   pdf.setFillColor(...COL_BG_SEC);
   pdf.roundedRect(ML, y, CW, 22, 2, 2, 'F');
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(...COL_MUTED);
   pdf.text('PERIOD IZVEŠTAJA', ML + 5, y + 7);
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(FONT, 'bold');
   pdf.setFontSize(13);
   pdf.setTextColor(...COL_DARK);
   pdf.text(periodLabel(period), ML + 5, y + 15);
   const periodRange = `${od.toLocaleDateString('sr-Latn')} – ${do_.toLocaleDateString('sr-Latn')}`;
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(FONT, 'normal');
   pdf.setFontSize(8);
   pdf.setTextColor(...COL_MUTED);
   pdf.text(periodRange, W - MR - 5, y + 15, { align: 'right' });
   y += 28;
 
   // Stanovi u izveštaju
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(...COL_MUTED);
   pdf.text(`STANOVI U IZVEŠTAJU (${units.length})`, ML, y);
   y += 5;
   units.forEach(u => {
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(FONT, 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(...COL_DARK);
     pdf.text(`• ${u.name}${u.unit.adresa ? '  –  ' + u.unit.adresa : ''}`, ML + 3, y);
@@ -488,7 +515,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
   y += 5;
 
   // Sekcije
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(FONT, 'bold');
   pdf.setFontSize(8);
   pdf.setTextColor(...COL_MUTED);
   const secLabels = [];
@@ -513,15 +540,15 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     pdf.setFillColor(...COL_DARK);
     pdf.roundedRect(ML, y, CW, 20, 2, 2, 'F');
     try { pdf.addImage(LOGO_B64, 'PNG', ML + 3, y + 2, 16, 16); } catch(e) {}
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(FONT, 'bold');
     pdf.setFontSize(14);
     pdf.setTextColor(...COL_WHITE);
     pdf.text(u.name, ML + 23, y + 9);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(FONT, 'normal');
     pdf.setFontSize(8.5);
     pdf.setTextColor(200, 200, 210);
     pdf.text([u.unit.adresa, u.unit.kvadratura ? u.unit.kvadratura + ' m²' : null].filter(Boolean).join('   ·   '), ML + 23, y + 16);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(FONT, 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(180, 180, 195);
     pdf.text(periodLabel(period), W - MR - 3, y + 9, { align: 'right' });
@@ -543,7 +570,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     if (secs.prihodi) {
       drawSectionHeader('Prihodi');
       if (!u.prihodi.length) {
-        pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
+        pdf.setFont(FONT, 'normal'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
         pdf.text('Nema prihoda u izabranom periodu.', ML + 3, y + 4); y += 9;
       } else {
         drawRow(['Datum', 'Napomena', 'Iznos'], [30, 105, 45], { bold: true, bg: COL_BG_SEC, color: COL_MUTED });
@@ -569,7 +596,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
       const varij  = u.troskovi.filter(t => t.kategorija !== 'fiksni');
 
       if (!u.troskovi.length) {
-        pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
+        pdf.setFont(FONT, 'normal'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
         pdf.text('Nema troškova u izabranom periodu.', ML + 3, y + 4); y += 9;
       } else {
         if (fiksni.length) {
@@ -613,7 +640,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     if (secs.kvarovi) {
       drawSectionHeader('Prijave kvarova');
       if (!u.kvarovi.length) {
-        pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
+        pdf.setFont(FONT, 'normal'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
         pdf.text('Nema prijava kvarova u izabranom periodu.', ML + 3, y + 4); y += 9;
       } else {
         drawRow(['Datum', 'Opis', 'Hitnost', 'Status'], [28, 90, 27, 35],
@@ -634,7 +661,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     if (secs.poruke) {
       drawSectionHeader('Komunikacija');
       if (!u.poruke.length) {
-        pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
+        pdf.setFont(FONT, 'normal'); pdf.setFontSize(8); pdf.setTextColor(...COL_MUTED);
         pdf.text('Nema poruka u izabranom periodu.', ML + 3, y + 4); y += 9;
       } else {
         u.poruke.forEach((m, i) => {
@@ -643,15 +670,15 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
           const time = m.vreme?.toDate ? m.vreme.toDate().toLocaleString('sr-Latn', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
           pdf.setFillColor(...(i % 2 === 0 ? COL_WHITE : COL_BG_ALT));
           pdf.rect(ML, y, CW, 10, 'F');
-          pdf.setFont('helvetica', 'bold');
+          pdf.setFont(FONT, 'bold');
           pdf.setFontSize(7.5);
           pdf.setTextColor(...COL_ACCENT);
           pdf.text(sender, ML + 2, y + 4.5);
-          pdf.setFont('helvetica', 'normal');
+          pdf.setFont(FONT, 'normal');
           pdf.setFontSize(7.5);
           pdf.setTextColor(...COL_MUTED);
           pdf.text(time, W - MR - 2, y + 4.5, { align: 'right' });
-          pdf.setFont('helvetica', 'normal');
+          pdf.setFont(FONT, 'normal');
           pdf.setFontSize(8);
           pdf.setTextColor(...COL_DARK);
           let txt = m.tekst || '';

@@ -355,7 +355,9 @@ async function loadUnitsLandlord(user) {
 
 // ── Landlord messages ────────────────────────────────────────────
 async function setupLandlordMessages(user) {
-  const container = document.getElementById('adminChats');
+  const old = document.getElementById('adminChats');
+  const container = old.cloneNode(false);
+  old.parentNode.replaceChild(container, old);
   document.getElementById('tenantChat').hidden = true;
   container.innerHTML = '<p class="info-text">Učitavam stanove...</p>';
   try {
@@ -682,7 +684,9 @@ document.getElementById('saveUnitDetail').onclick = async () => {
 
 // ── Admin messages ──────────────────────────────────────────────
 async function setupAdminMessages() {
-  const container = document.getElementById('adminChats');
+  const oldEl = document.getElementById('adminChats');
+  const container = oldEl.cloneNode(false);
+  oldEl.parentNode.replaceChild(container, oldEl);
   document.getElementById('tenantChat').hidden = true;
   container.innerHTML = '<p class="info-text">Učitavam...</p>';
   try {
@@ -790,7 +794,9 @@ async function setupTenantMessages(user) {
 
   // Sakrij originalni single-chat UI — koristimo adminChats kontejner za više stanova
   tenantChat.hidden = true;
-  const container = document.getElementById('adminChats');
+  const oldC = document.getElementById('adminChats');
+  const container = oldC.cloneNode(false);
+  oldC.parentNode.replaceChild(container, oldC);
   container.innerHTML = '<p class="info-text">Učitavam stanove...</p>';
 
   try {

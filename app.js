@@ -430,14 +430,12 @@ async function deleteUnitCascade(unitId) {
     }
   }
 
-  // Kvarove briše samo master admin (landlord nema dozvolu po Rules)
-  if (isMasterAdmin) {
-    try {
-      const kvarSnap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', unitId)));
-      await Promise.all(kvarSnap.docs.map(d => deleteDoc(d.ref)));
-    } catch(e) {
-      console.warn('Ne mogu obrisati kvarove:', e.message);
-    }
+  // Briši kvarove za ovaj stan (dozvoljeno i landlord-u i master adminu)
+  try {
+    const kvarSnap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', unitId)));
+    await Promise.all(kvarSnap.docs.map(d => deleteDoc(d.ref)));
+  } catch(e) {
+    console.warn('Ne mogu obrisati kvarove:', e.message);
   }
 
   // Briši sam stan

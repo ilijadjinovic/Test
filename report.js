@@ -26,96 +26,135 @@ export function setupReportUI(user) {
     else document.getElementById('profileUser').appendChild(el);
   }
   
-  if (!isLandlord) { el.hidden = true; return; }
   el.hidden = false;
 
-  el.innerHTML = `
-    <div class="report-card">
-      <div class="report-card-header">
-        <i class="ti ti-file-text"></i>
-        <span>Generiši izveštaj</span>
+  const periodFields = () => `
+    <!-- Period -->
+    <div class="report-field">
+      <label class="report-label">Period</label>
+      <div class="report-period-btns">
+        <button class="rp-btn active" data-rp="month">Mesec</button>
+        <button class="rp-btn" data-rp="quarter">Kvartal</button>
+        <button class="rp-btn" data-rp="year">Godina</button>
+        <button class="rp-btn" data-rp="custom">Custom</button>
       </div>
-      <div class="report-body">
+    </div>
+    <div class="report-field" id="rpCustomDates" style="display:none">
+      <label class="report-label">Raspon datuma</label>
+      <div class="report-date-row">
+        <input type="date" id="rpDateOd" class="report-date-input">
+        <span style="color:var(--muted)">—</span>
+        <input type="date" id="rpDateDo" class="report-date-input">
+      </div>
+    </div>
+    <div class="report-field" id="rpMonthField">
+      <label class="report-label">Mesec i godina</label>
+      <div class="report-date-row">
+        <input type="month" id="rpMonth" class="report-date-input" value="${new Date().toISOString().slice(0,7)}">
+      </div>
+    </div>
+    <div class="report-field" id="rpQuarterField" style="display:none">
+      <label class="report-label">Kvartal i godina</label>
+      <div class="report-date-row">
+        <select id="rpQuarter" class="report-date-input">
+          <option value="1">Q1 (Jan–Mar)</option>
+          <option value="2">Q2 (Apr–Jun)</option>
+          <option value="3">Q3 (Jul–Sep)</option>
+          <option value="4">Q4 (Okt–Dec)</option>
+        </select>
+        <input type="number" id="rpQuarterYear" class="report-date-input" value="${new Date().getFullYear()}" min="2020" max="2099" style="width:80px">
+      </div>
+    </div>
+    <div class="report-field" id="rpYearField" style="display:none">
+      <label class="report-label">Godina</label>
+      <input type="number" id="rpYear" class="report-date-input" value="${new Date().getFullYear()}" min="2020" max="2099" style="width:100px">
+    </div>
+  `;
 
-        <!-- Period -->
-        <div class="report-field">
-          <label class="report-label">Period</label>
-          <div class="report-period-btns">
-            <button class="rp-btn active" data-rp="month">Mesec</button>
-            <button class="rp-btn" data-rp="quarter">Kvartal</button>
-            <button class="rp-btn" data-rp="year">Godina</button>
-            <button class="rp-btn" data-rp="custom">Custom</button>
-          </div>
-        </div>
-
-        <!-- Custom datumi -->
-        <div class="report-field" id="rpCustomDates" style="display:none">
-          <label class="report-label">Raspon datuma</label>
-          <div class="report-date-row">
-            <input type="date" id="rpDateOd" class="report-date-input">
-            <span style="color:var(--muted)">—</span>
-            <input type="date" id="rpDateDo" class="report-date-input">
-          </div>
-        </div>
-
-        <!-- Mesec/godina selector -->
-        <div class="report-field" id="rpMonthField">
-          <label class="report-label">Mesec i godina</label>
-          <div class="report-date-row">
-            <input type="month" id="rpMonth" class="report-date-input" value="${new Date().toISOString().slice(0,7)}">
-          </div>
-        </div>
-
-        <!-- Kvartal selector -->
-        <div class="report-field" id="rpQuarterField" style="display:none">
-          <label class="report-label">Kvartal i godina</label>
-          <div class="report-date-row">
-            <select id="rpQuarter" class="report-date-input">
-              <option value="1">Q1 (Jan–Mar)</option>
-              <option value="2">Q2 (Apr–Jun)</option>
-              <option value="3">Q3 (Jul–Sep)</option>
-              <option value="4">Q4 (Okt–Dec)</option>
-            </select>
-            <input type="number" id="rpQuarterYear" class="report-date-input" value="${new Date().getFullYear()}" min="2020" max="2099" style="width:80px">
-          </div>
-        </div>
-
-        <!-- Godina selector -->
-        <div class="report-field" id="rpYearField" style="display:none">
-          <label class="report-label">Godina</label>
-          <input type="number" id="rpYear" class="report-date-input" value="${new Date().getFullYear()}" min="2020" max="2099" style="width:100px">
-        </div>
-
-        <!-- Stanovi -->
-        <div class="report-field">
-          <label class="report-label">Stanovi</label>
-          <div id="rpUnitList" class="report-unit-list">
-            <p class="info-text" style="font-size:13px">Učitavam stanove...</p>
-          </div>
-        </div>
-
-        <!-- Sekcije -->
-        <div class="report-field">
-          <label class="report-label">Uključi u izveštaj</label>
-          <div class="report-sections-grid">
-            <label class="report-check"><input type="checkbox" id="rpSecZakupac" checked> Zakupac</label>
-            <label class="report-check"><input type="checkbox" id="rpSecPrihodi" checked> Prihodi</label>
-            <label class="report-check"><input type="checkbox" id="rpSecTroskovi" checked> Troškovi</label>
-            <label class="report-check"><input type="checkbox" id="rpSecKvarovi" checked> Kvarovi</label>
-            <label class="report-check"><input type="checkbox" id="rpSecPoruke"> Poruke</label>
-          </div>
-        </div>
-
-        <button id="rpGenerateBtn" class="btn-primary" style="width:100%;margin-top:4px">
-          <i class="ti ti-download"></i> Generiši PDF
-        </button>
-        <div id="rpStatus" style="font-size:13px;color:var(--muted);text-align:center;margin-top:8px;min-height:18px"></div>
+  const sekcijePicker = () => `
+    <div class="report-field">
+      <label class="report-label">Uključi u izveštaj</label>
+      <div class="report-sections-grid">
+        <label class="report-check"><input type="checkbox" id="rpSecZakupac" checked> Zakupac</label>
+        <label class="report-check"><input type="checkbox" id="rpSecPrihodi" checked> Prihodi</label>
+        <label class="report-check"><input type="checkbox" id="rpSecTroskovi" checked> Troškovi</label>
+        <label class="report-check"><input type="checkbox" id="rpSecKvarovi" checked> Kvarovi</label>
+        <label class="report-check"><input type="checkbox" id="rpSecPoruke"> Poruke</label>
       </div>
     </div>
   `;
 
-  // Učitaj stanove
-  loadReportUnits(user);
+  if (isMasterAdmin) {
+    el.innerHTML = `
+      <div class="report-card">
+        <div class="report-card-header">
+          <i class="ti ti-file-text"></i>
+          <span>Generiši izveštaj — Master Admin</span>
+        </div>
+        <div class="report-body">
+          ${periodFields()}
+          <!-- Landlordovi -->
+          <div class="report-field">
+            <div class="report-label-row">
+              <label class="report-label">Landlordovi</label>
+              <button class="rp-select-all" id="rpSelectAllLandlords">Izaberi sve</button>
+            </div>
+            <div id="rpLandlordList" class="report-unit-list">
+              <p class="info-text" style="font-size:13px">Učitavam landlordove...</p>
+            </div>
+          </div>
+          <!-- Stanovi po landlordovima -->
+          <div class="report-field" id="rpAdminUnitSection" style="display:none">
+            <div class="report-label-row">
+              <label class="report-label">Stanovi</label>
+              <button class="rp-select-all" id="rpSelectAllUnits">Izaberi sve</button>
+            </div>
+            <div id="rpAdminUnitList" class="report-unit-list"></div>
+          </div>
+          ${sekcijePicker()}
+          <button id="rpGenerateBtn" class="btn-primary" style="width:100%;margin-top:4px">
+            <i class="ti ti-download"></i> Generiši PDF
+          </button>
+          <div id="rpStatus" style="font-size:13px;color:var(--muted);text-align:center;margin-top:8px;min-height:18px"></div>
+        </div>
+      </div>
+    `;
+    loadAdminLandlords(el);
+  } else {
+    el.innerHTML = `
+      <div class="report-card">
+        <div class="report-card-header">
+          <i class="ti ti-file-text"></i>
+          <span>Generiši izveštaj</span>
+        </div>
+        <div class="report-body">
+          ${periodFields()}
+          <div class="report-field">
+            <div class="report-label-row">
+              <label class="report-label">Stanovi</label>
+              <button class="rp-select-all" id="rpSelectAllUnits">Izaberi sve</button>
+            </div>
+            <div id="rpUnitList" class="report-unit-list">
+              <p class="info-text" style="font-size:13px">Učitavam stanove...</p>
+            </div>
+          </div>
+          ${sekcijePicker()}
+          <button id="rpGenerateBtn" class="btn-primary" style="width:100%;margin-top:4px">
+            <i class="ti ti-download"></i> Generiši PDF
+          </button>
+          <div id="rpStatus" style="font-size:13px;color:var(--muted);text-align:center;margin-top:8px;min-height:18px"></div>
+        </div>
+      </div>
+    `;
+    loadReportUnits(user);
+
+    // Izaberi sve stanove
+    document.getElementById('rpSelectAllUnits').onclick = () => {
+      const cbs = document.querySelectorAll('.rp-unit-cb');
+      const allChecked = [...cbs].every(c => c.checked);
+      cbs.forEach(c => c.checked = !allChecked);
+    };
+  }
 
   // Period prebacivanje
   let activePeriod = 'month';
@@ -135,7 +174,94 @@ export function setupReportUI(user) {
   document.getElementById('rpGenerateBtn').onclick = () => generateReport(user, activePeriod);
 }
 
-// ── Učitaj stanove za checkbox listu ────────────────────────────
+// ── Admin: učitaj landlordove i njihove stanove ──────────────────
+async function loadAdminLandlords(el) {
+  const landlordList = document.getElementById('rpLandlordList');
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const unitsSnap = await getDocs(collection(db, 'units'));
+
+    // Grupiši stanove po ownerId
+    const unitsByOwner = {};
+    unitsSnap.docs.forEach(d => {
+      const oid = d.data().ownerId;
+      if (!oid) return;
+      if (!unitsByOwner[oid]) unitsByOwner[oid] = [];
+      unitsByOwner[oid].push({ id: d.id, ...d.data() });
+    });
+
+    // Filtriraj samo korisnike koji imaju stanove
+    const landlords = usersSnap.docs
+      .filter(d => unitsByOwner[d.id])
+      .map(d => ({ id: d.id, ...d.data() }));
+
+    if (!landlords.length) {
+      landlordList.innerHTML = '<p class="info-text" style="font-size:13px">Nema landlordova.</p>';
+      return;
+    }
+
+    landlordList.innerHTML = landlords.map(l => `
+      <label class="report-check">
+        <input type="checkbox" class="rp-landlord-cb" value="${l.id}"
+          data-name="${l.displayName || l.email || l.id}">
+        ${l.displayName || l.email || l.id}
+        <span style="color:var(--muted);font-size:11px">(${unitsByOwner[l.id].length} stan${unitsByOwner[l.id].length > 1 ? 'ova' : ''})</span>
+      </label>
+    `).join('');
+
+    // Izaberi sve landlordove
+    document.getElementById('rpSelectAllLandlords').onclick = () => {
+      const cbs = document.querySelectorAll('.rp-landlord-cb');
+      const allChecked = [...cbs].every(c => c.checked);
+      cbs.forEach(c => c.checked = !allChecked);
+      refreshAdminUnitList(unitsByOwner);
+    };
+
+    // Kada se klikne na landlorda, osveži listu stanova
+    landlordList.addEventListener('change', () => refreshAdminUnitList(unitsByOwner));
+
+    // Izaberi sve stanove
+    document.getElementById('rpSelectAllUnits').onclick = () => {
+      const cbs = document.querySelectorAll('.rp-unit-cb');
+      const allChecked = [...cbs].every(c => c.checked);
+      cbs.forEach(c => c.checked = !allChecked);
+    };
+
+  } catch(e) {
+    landlordList.innerHTML = '<p class="info-text" style="font-size:13px;color:var(--red)">Greška pri učitavanju.</p>';
+    console.error(e);
+  }
+}
+
+function refreshAdminUnitList(unitsByOwner) {
+  const selectedLandlords = [...document.querySelectorAll('.rp-landlord-cb:checked')].map(c => c.value);
+  const section = document.getElementById('rpAdminUnitSection');
+  const unitList = document.getElementById('rpAdminUnitList');
+
+  if (!selectedLandlords.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  unitList.innerHTML = selectedLandlords.map(oid => {
+    const units = unitsByOwner[oid] || [];
+    const landlordName = document.querySelector(`.rp-landlord-cb[value="${oid}"]`)?.dataset.name || oid;
+    return `
+      <div class="rp-landlord-group">
+        <div class="rp-landlord-group-label">${landlordName}</div>
+        ${units.map(u => `
+          <label class="report-check" style="padding-left:12px">
+            <input type="checkbox" class="rp-unit-cb" value="${u.id}"
+              data-name="${u.name}" data-owner="${oid}" data-owner-name="${landlordName}" checked>
+            ${u.name}${u.adresa ? ' — ' + u.adresa : ''}
+          </label>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Učitaj stanove za checkbox listu (landlord) ─────────────────
 async function loadReportUnits(user) {
   const container = document.getElementById('rpUnitList');
   if (!container) return;
@@ -144,7 +270,8 @@ async function loadReportUnits(user) {
     if (snap.empty) { container.innerHTML = '<p class="info-text" style="font-size:13px">Nemate stanove.</p>'; return; }
     container.innerHTML = snap.docs.map(d => `
       <label class="report-check">
-        <input type="checkbox" class="rp-unit-cb" value="${d.id}" data-name="${d.data().name}" checked>
+        <input type="checkbox" class="rp-unit-cb" value="${d.id}"
+          data-name="${d.data().name}" data-owner="${user.uid}" data-owner-name="" checked>
         ${d.data().name}${d.data().adresa ? ' — ' + d.data().adresa : ''}
       </label>
     `).join('');
@@ -212,7 +339,12 @@ async function generateReport(user, period) {
   status.textContent = 'Učitavam podatke...';
 
   try {
-    const unitIds = [...document.querySelectorAll('.rp-unit-cb:checked')].map(cb => ({ id: cb.value, name: cb.dataset.name }));
+    const unitIds = [...document.querySelectorAll('.rp-unit-cb:checked')].map(cb => ({
+      id: cb.value,
+      name: cb.dataset.name,
+      ownerUid: cb.dataset.owner || user.uid,
+      ownerName: cb.dataset.ownerName || ''
+    }));
     if (!unitIds.length) { alert('Izaberi bar jedan stan.'); btn.disabled = false; status.textContent = ''; return; }
 
     const { od, do_ } = getPeriodRange(period);
@@ -224,9 +356,9 @@ async function generateReport(user, period) {
       poruke:   document.getElementById('rpSecPoruke').checked,
     };
 
-    // Učitaj profil landlorda
+    // Učitaj profil korisnika koji generiše izveštaj
     const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const landlordName = userDoc.exists() ? (userDoc.data().displayName || user.email) : user.email;
+    const reporterName = userDoc.exists() ? (userDoc.data().displayName || user.email) : user.email;
 
     // Učitaj podatke za svaki stan
     const unitDataArr = [];
@@ -291,7 +423,7 @@ async function generateReport(user, period) {
     }
 
     status.textContent = 'Generišem PDF...';
-    await buildPDF(landlordName, user.email, period, od, do_, secs, unitDataArr);
+    await buildPDF(reporterName, user.email, period, od, do_, secs, unitDataArr);
     status.textContent = 'PDF je preuzet.';
     setTimeout(() => { status.textContent = ''; }, 3000);
   } catch(e) {
@@ -302,7 +434,7 @@ async function generateReport(user, period) {
 }
 
 // ── PDF Builder (jsPDF) ──────────────────────────────────────────
-async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, units) {
+async function buildPDF(reporterName, reporterEmail, period, od, do_, secs, units) {
   // Dinamički učitaj jsPDF
   if (!window.jspdf) {
     await new Promise((res, rej) => {
@@ -313,7 +445,9 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     });
   }
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const landlordName = reporterName;
+const landlordEmail = reporterEmail;
+const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   // Učitaj DejaVu Sans fontove sa GitHub Pages
   let FONT = 'helvetica';

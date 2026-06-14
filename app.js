@@ -780,57 +780,97 @@ async function setupTenantMessages(user) {
   const msgsBox = document.getElementById('tenantMessages');
   const input   = document.getElementById('tenantMsgInput');
   const sendBtn = document.getElementById('tenantMsgSend');
+
+  // Sakrij originalni single-chat UI — koristimo adminChats kontejner za više stanova
+  tenantChat.hidden = true;
+  const container = document.getElementById('adminChats');
+  container.innerHTML = '<p class="info-text">Učitavam stanove...</p>';
+
   try {
     const q    = query(collection(db, 'units'), where('tenantEmail', '==', user.email.toLowerCase()));
     const snap = await getDocs(q);
+    container.innerHTML = '';
     if (snap.empty) {
-      header.textContent = '';
-      msgsBox.innerHTML  = '<p class="info-text">Nemate dodeljen stan.</p>';
-      input.disabled = true; sendBtn.disabled = true;
+      container.innerHTML = '<p class="info-text">Nemate dodeljen stan.</p>';
       return;
     }
-    const unitDoc = snap.docs[0];
-    const unitId  = unitDoc.id;
-    const unitData = unitDoc.data();
 
-    // Učitaj profil vlasnika
-    let ownerLabel = '—';
-    if (unitData.ownerId) {
-      try {
-        const ownerSnap = await getDoc(doc(db, 'users', unitData.ownerId));
-        if (ownerSnap.exists()) {
-          const op = ownerSnap.data();
-          ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || unitData.ownerEmail || '—');
-        } else {
+    for (const unitDoc of snap.docs) {
+      const unitId   = unitDoc.id;
+      const unitData = unitDoc.data();
+
+      // Učitaj profil vlasnika
+      let ownerLabel = '—';
+      if (unitData.ownerId) {
+        try {
+          const ownerSnap = await getDoc(doc(db, 'users', unitData.ownerId));
+          if (ownerSnap.exists()) {
+            const op = ownerSnap.data();
+            ownerLabel = op.displayName ? `${op.displayName} (${op.email})` : (op.email || unitData.ownerEmail || '—');
+          } else {
+            ownerLabel = unitData.ownerEmail || '—';
+          }
+        } catch(e) {
           ownerLabel = unitData.ownerEmail || '—';
         }
-      } catch(e) {
-        ownerLabel = unitData.ownerEmail || '—';
+      } else if (unitData.ownerEmail) {
+        ownerLabel = unitData.ownerEmail;
       }
-    } else if (unitData.ownerEmail) {
-      ownerLabel = unitData.ownerEmail;
+
+      const card = document.createElement('div');
+      card.className = 'chat-card';
+      card.innerHTML = `
+        <div class="chat-card-header">
+          <i class="ti ti-home"></i>
+          <span>${unitData.name}</span>
+          <div class="chat-header-meta">
+            <small><span class="unit-label">Vlasnik:</span> ${ownerLabel}</small>
+          </div>
+        </div>
+        <div class="chat-messages" id="msgs-${unitId}"></div>
+        <div class="chat-input-row">
+          <input class="tenant-msg-input" data-unit="${unitId}" placeholder="Napiši poruku..." autocomplete="off">
+          <button class="btn-send tenant-msg-send" data-unit="${unitId}">
+            <i class="ti ti-send"></i>
+          </button>
+        </div>
+      `;
+      container.appendChild(card);
+
+      const mq = query(collection(db, 'units', unitId, 'messages'), orderBy('vreme', 'asc'));
+      onSnapshot(mq, snapshot => {
+        const box = document.getElementById(`msgs-${unitId}`);
+        if (!box) return;
+        box.innerHTML = '';
+        snapshot.forEach(m => renderMessage(box, m.data(), false, user.email));
+        box.scrollTop = box.scrollHeight;
+      });
     }
 
-    header.innerHTML = `
-      <span class="tenant-chat-unit">${unitData.name}</span>
-      <span class="tenant-chat-owner"><span class="unit-label">Vlasnik:</span> ${ownerLabel}</span>
-    `;
-    const mq = query(collection(db, 'units', unitId, 'messages'), orderBy('vreme', 'asc'));
-    unsubscribeMessages = onSnapshot(mq, snapshot => {
-      msgsBox.innerHTML = '';
-      snapshot.forEach(m => renderMessage(msgsBox, m.data(), false, user.email));
-      msgsBox.scrollTop = msgsBox.scrollHeight;
-    });
-    const send = async () => {
-      const tekst = input.value.trim();
+    const send = async (unitId, inputEl) => {
+      const tekst = inputEl.value.trim();
       if (!tekst) return;
-      input.value = '';
+      inputEl.value = '';
       await addDoc(collection(db, 'units', unitId, 'messages'), { od: user.email, tekst, vreme: serverTimestamp() });
     };
-    sendBtn.onclick = send;
-    input.onkeydown = e => { if (e.key === 'Enter') send(); };
+
+    container.addEventListener('click', async e => {
+      const btn = e.target.closest('.tenant-msg-send');
+      if (!btn) return;
+      const unitId = btn.dataset.unit;
+      const inputEl = container.querySelector(`.tenant-msg-input[data-unit="${unitId}"]`);
+      if (inputEl) await send(unitId, inputEl);
+    });
+    container.addEventListener('keydown', async e => {
+      if (e.key !== 'Enter') return;
+      const inputEl = e.target.closest('.tenant-msg-input');
+      if (!inputEl) return;
+      await send(inputEl.dataset.unit, inputEl);
+    });
+
   } catch(err) {
-    msgsBox.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+    container.innerHTML = '<p class="info-text">Greška pri učitavanju.</p>';
+    console.error('setupTenantMessages:', err);
   }
 }
 

@@ -260,13 +260,13 @@ async function generateReport(user, period) {
       if (secs.kvarovi) {
         try {
           const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', user.uid)));
-          console.log(`KVAROVI za stan ${u.id}: query vratio ${snap.size} dokumenata`);
+
           snap.forEach(d => {
             const kd = d.data();
-            console.log('  kvar:', kd.stavka, 'unitId:', kd.unitId, 'status:', kd.status, 'vreme:', kd.vreme?.toDate?.());
-            if (kd.unitId !== u.id) { console.log('  -> preskočen (drugi stan)'); return; }
+
+            if (kd.unitId !== u.id) return;
             const dt = kd.vreme?.toDate ? kd.vreme.toDate() : null;
-            console.log('  -> dt:', dt, 'od:', od, 'do_:', do_, 'u periodu:', dt && dt >= od && dt <= do_);
+
             if (dt && dt >= od && dt <= do_) kvarovi.push(kd);
           });
           kvarovi.sort((a, b) => {
@@ -415,7 +415,7 @@ async function buildPDF(landlordName, landlordEmail, period, od, do_, secs, unit
     let x = ML + 2;
     cols.forEach((col, i) => {
       const w = widths[i];
-      pdf.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+      pdf.setFont(FONT, opts.bold ? 'bold' : 'normal');
       pdf.setFontSize(8);
       pdf.setTextColor(...(opts.color || COL_DARK));
       const align = opts.aligns?.[i] || 'left';

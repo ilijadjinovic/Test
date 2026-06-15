@@ -74,14 +74,11 @@ function showUnitDetail() {
 document.getElementById('backToUnits').onclick = showUnitList;
 
 // ── Auth state ──────────────────────────────────────────────────
-let unsubscribeMessages = null;
 let currentUserRole = null; // 'masterAdmin' | 'landlord' | 'tenant' | 'both' | 'new'
 let currentUserObj  = null;
 let currentContext  = 'landlord'; // 'landlord' | 'tenant' (za 'both' ulogu)
 
 onAuthStateChanged(auth, async user => {
-  if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
-
   const activeTabBtn = document.querySelector('.tab.active');
   const currentTab   = activeTabBtn ? activeTabBtn.dataset.tab : null;
 
@@ -585,12 +582,12 @@ async function openUnitDetail(unitId, baseData) {
   const user      = auth.currentUser;
   const isOwner   = user && (baseData.ownerId === user.uid || user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
   const saveBtn   = document.getElementById('saveUnitDetail');
-  const detailForm = document.getElementById('unitDetailForm');
+  const detailView = document.getElementById('unitDetailView');
 
   // Prikaži/sakrij dugme za čuvanje i read-only state
-  if (saveBtn)    saveBtn.style.display    = isOwner ? '' : 'none';
-  if (detailForm) {
-    detailForm.querySelectorAll('input, select, textarea').forEach(el => {
+  if (saveBtn) saveBtn.style.display = isOwner ? '' : 'none';
+  if (detailView) {
+    detailView.querySelectorAll('input, select, textarea').forEach(el => {
       el.disabled = !isOwner;
     });
   }
@@ -604,7 +601,7 @@ async function openUnitDetail(unitId, baseData) {
       roNote.className = 'info-text';
       roNote.style.cssText = 'margin-bottom:8px;font-size:13px';
       roNote.textContent = 'Detalje stana može menjati samo vlasnik.';
-      detailForm?.prepend(roNote);
+      detailView?.prepend(roNote);
     }
   } else {
     roNote?.remove();
@@ -786,16 +783,7 @@ async function setupAdminMessages() {
 
 // ── Tenant messages ─────────────────────────────────────────────
 async function setupTenantMessages(user) {
-  document.getElementById('adminChats').innerHTML = '';
-  const tenantChat = document.getElementById('tenantChat');
-  tenantChat.hidden = false;
-  const header  = document.getElementById('tenantChatHeader');
-  const msgsBox = document.getElementById('tenantMessages');
-  const input   = document.getElementById('tenantMsgInput');
-  const sendBtn = document.getElementById('tenantMsgSend');
-
-  // Sakrij originalni single-chat UI — koristimo adminChats kontejner za više stanova
-  tenantChat.hidden = true;
+  document.getElementById('tenantChat').hidden = true;
   const oldC = document.getElementById('adminChats');
   const container = oldC.cloneNode(false);
   oldC.parentNode.replaceChild(container, oldC);
@@ -981,12 +969,6 @@ async function loadDashboard(ownerId = null) {
 
     // Render po grupama
     const renderDashGroup = async (units, name, email) => {
-      let inc = 0, exp = 0;
-      for (const u of units) {
-        const t = await getDashboardTotals(u.data.ownerId);
-        // Zapravo trebamo per-unit sums — koristimo getDashboardTotals po unitId
-      }
-      // Koristimo ownerId filter
       const oid = units[0]?.data?.ownerId;
       const t   = oid ? await getDashboardTotals(oid) : { income:0, expense:0, profit:0, currency: cur };
       const section = document.createElement('div');

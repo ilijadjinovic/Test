@@ -277,16 +277,8 @@ async function loadSettings() {
     const snap = await getDoc(doc(db, 'settings', 'finance'));
     if (snap.exists()) {
       const d = snap.data();
-      if (d.exchangeRate) {
-        financeExchangeRate = d.exchangeRate;
-        document.getElementById('finExchangeRate').value = financeExchangeRate;
-      }
-      if (d.displayCurrency) {
-        financeDisplayCurrency = d.displayCurrency;
-        document.querySelectorAll('.fin-cur-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.cur === financeDisplayCurrency);
-        });
-      }
+      if (d.exchangeRate)    financeExchangeRate    = d.exchangeRate;
+      if (d.displayCurrency) financeDisplayCurrency = d.displayCurrency;
     }
   } catch(e) { /* tišina */ }
 }

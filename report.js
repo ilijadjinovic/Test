@@ -405,7 +405,7 @@ async function generateReport(user, period) {
       }
       if (secs.kvarovi) {
         try {
-          const snap = await getDocs(query(collection(db, 'kvarovi'), where('ownerId', '==', user.uid)));
+          const snap = await getDocs(query(collection(db, 'kvarovi'), where('unitId', '==', u.id)));
 
           snap.forEach(d => {
             const kd = d.data();

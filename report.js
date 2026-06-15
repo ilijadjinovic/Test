@@ -709,29 +709,29 @@ const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     // Stan header — visina 26 (landlord + stan + adresa)
     pdf.setFillColor(...COL_DARK);
-    pdf.roundedRect(ML, y, CW, 26, 2, 2, 'F');
-    try { pdf.addImage(LOGO_B64, 'PNG', ML + 3, y + 5, 16, 16); } catch(e) {}
-    // Landlord naziv (mali, iznad)
-    pdf.setFont(FONT, 'normal');
-    pdf.setFontSize(7.5);
+    pdf.roundedRect(ML, y, CW, 30, 2, 2, 'F');
+    try { pdf.addImage(LOGO_B64, 'PNG', ML + 3, y + 7, 16, 16); } catch(e) {}
+    // Landlord naziv (isti font kao stan)
+    pdf.setFont(FONT, 'bold');
+    pdf.setFontSize(13);
     pdf.setTextColor(...COL_ACCENT);
-    pdf.text(u.ownerName || '—', ML + 23, y + 7);
-    // Stan naziv (veliki, ispod)
+    pdf.text(u.ownerName || '—', ML + 23, y + 8);
+    // Stan naziv (ispod landlorda)
     pdf.setFont(FONT, 'bold');
     pdf.setFontSize(13);
     pdf.setTextColor(...COL_WHITE);
-    pdf.text(u.name, ML + 23, y + 14);
+    pdf.text(u.name, ML + 23, y + 17);
     // Adresa i kvadratura
     pdf.setFont(FONT, 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(200, 200, 210);
-    pdf.text([u.unit.adresa, u.unit.kvadratura ? u.unit.kvadratura + ' m²' : null].filter(Boolean).join('   ·   '), ML + 23, y + 21);
+    pdf.text([u.unit.adresa, u.unit.kvadratura ? u.unit.kvadratura + ' m²' : null].filter(Boolean).join('   ·   '), ML + 23, y + 24);
     // Period desno
     pdf.setFont(FONT, 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(180, 180, 195);
-    pdf.text(periodLabel(period), W - MR - 3, y + 14, { align: 'right' });
-    y += 32;
+    pdf.text(periodLabel(period), W - MR - 3, y + 17, { align: 'right' });
+    y += 34;
 
     // ── ZAKUPAC ──
     if (secs.zakupac) {

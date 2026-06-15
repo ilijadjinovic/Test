@@ -30,11 +30,15 @@ let currentFinanceUnit = null; // { id, data }
 let financeExchangeRate = 117;  // default EUR→RSD
 let financeDisplayCurrency = 'RSD';
 let financePeriod = 'month';
+let financeSettingsLoaded = false; // učitaj settings samo jednom
 
 // ── Entry point ──────────────────────────────────────────────────
 export async function setupFinance() {
-  // Učitaj postavke PRIJE generisanja HTML-a da bi se active klase pravilno renderovale
-  await loadSettings();
+  // Učitaj postavke samo pri prvom pozivu
+  if (!financeSettingsLoaded) {
+    await loadSettings();
+    financeSettingsLoaded = true;
+  }
 
   const section = document.getElementById('finance');
   section.innerHTML = `
@@ -624,15 +628,18 @@ export function showFinanceList() {
 
 // ── Export za dashboard ──────────────────────────────────────────
 export async function getDashboardTotals(ownerId = null) {
-  // Učitaj settings ako finance modul još nije inicijalizovan
-  try {
-    const settSnap = await getDoc(doc(db, 'settings', 'finance'));
-    if (settSnap.exists()) {
-      const sd = settSnap.data();
-      if (sd.exchangeRate)    financeExchangeRate    = sd.exchangeRate;
-      if (sd.displayCurrency) financeDisplayCurrency = sd.displayCurrency;
-    }
-  } catch(e) { /* tišina */ }
+  // Učitaj settings samo ako još nisu učitani (ne gazimo korisničke izmene)
+  if (!financeSettingsLoaded) {
+    try {
+      const settSnap = await getDoc(doc(db, 'settings', 'finance'));
+      if (settSnap.exists()) {
+        const sd = settSnap.data();
+        if (sd.exchangeRate)    financeExchangeRate    = sd.exchangeRate;
+        if (sd.displayCurrency) financeDisplayCurrency = sd.displayCurrency;
+      }
+    } catch(e) { /* tišina */ }
+    financeSettingsLoaded = true;
+  }
 
   const saved = financePeriod;
   financePeriod = 'month';

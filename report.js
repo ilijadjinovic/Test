@@ -433,7 +433,7 @@ async function generateReport(user, period) {
         } catch(e) { console.error('PORUKE failed:', e.message); }
       }
 
-      unitDataArr.push({ id: u.id, name: u.name, unit, prihodi, troskovi, kvarovi, poruke });
+      unitDataArr.push({ id: u.id, name: u.name, ownerUid: u.ownerUid, ownerName: u.ownerName, unit, prihodi, troskovi, kvarovi, poruke });
     }
 
     status.textContent = 'Generišem PDF...';

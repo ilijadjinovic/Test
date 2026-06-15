@@ -370,7 +370,7 @@ async function generateReport(user, period) {
       id: cb.value,
       name: cb.dataset.name,
       ownerUid: cb.dataset.owner || user.uid,
-      ownerName: cb.dataset.ownerName || reporterName
+      ownerName: (cb.dataset.ownerName && cb.dataset.ownerName.trim()) || reporterName
     }));
     if (!unitIds.length) { alert('Izaberi bar jedan stan.'); btn.disabled = false; status.textContent = ''; return; }
 

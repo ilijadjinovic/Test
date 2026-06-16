@@ -7,8 +7,71 @@
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+<style>
+/* ── Toast notifikacije ─────────────────────────────── */
+#toastContainer {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  width: 90%;
+  max-width: 360px;
+}
+.toast {
+  background: var(--surface, #1e1e2e);
+  color: var(--text, #e2e8f0);
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: auto;
+  border-left: 4px solid #7c6af7;
+}
+.toast-msg  { border-left-color: #7c6af7; }
+.toast-kvar { border-left-color: #f59e0b; }
+.toast-show { opacity: 1; transform: translateY(0); }
+.toast i    { font-size: 18px; flex-shrink: 0; }
+.toast-msg  i { color: #7c6af7; }
+.toast-kvar i { color: #f59e0b; }
+
+/* ── Tab badge (broj nepročitanih) ──────────────────── */
+.tab { position: relative; }
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  pointer-events: none;
+}
+</style>
 </head>
 <body>
+
+<div id="toastContainer"></div>
 
 <header class="topbar">
   <div class="topbar-title">

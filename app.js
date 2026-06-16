@@ -7,6 +7,86 @@ import {
 import { setupFinance, getDashboardTotals, showFinanceList } from './finance.js';
 import { setupReportUI } from './report.js';
 
+// ── Notifikacije ─────────────────────────────────────────────────
+let notifPermission = Notification.permission; // 'default' | 'granted' | 'denied'
+let msgBadgeCount  = 0;
+let kvarBadgeCount = 0;
+
+async function requestNotifPermission() {
+  if (notifPermission === 'granted') return true;
+  if (notifPermission === 'denied')  return false;
+  const result = await Notification.requestPermission();
+  notifPermission = result;
+  return result === 'granted';
+}
+
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="ti ${type === 'msg' ? 'ti-message-2' : 'ti-tool'}"></i><span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.classList.add('toast-show'), 10);
+  setTimeout(() => {
+    toast.classList.remove('toast-show');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+function showBrowserNotif(title, body, tag) {
+  if (notifPermission !== 'granted') return;
+  if (document.visibilityState === 'visible') return; // app je u fokusu — koristimo toast
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'SHOW_NOTIF', title, body, tag });
+  } else {
+    new Notification(title, { body, icon: './icon-192.png', tag });
+  }
+}
+
+function updateMsgBadge(count) {
+  msgBadgeCount = count;
+  const btn = document.querySelector('.tab[data-tab="messages"]');
+  if (!btn) return;
+  let badge = btn.querySelector('.tab-badge');
+  if (count > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      btn.appendChild(badge);
+    }
+    badge.textContent = count > 99 ? '99+' : count;
+  } else {
+    badge?.remove();
+  }
+  // App badge (home screen ikona)
+  if ('setAppBadge' in navigator) {
+    const total = msgBadgeCount + kvarBadgeCount;
+    total > 0 ? navigator.setAppBadge(total) : navigator.clearAppBadge();
+  }
+}
+
+function updateKvarBadge(count) {
+  kvarBadgeCount = count;
+  // App badge
+  if ('setAppBadge' in navigator) {
+    const total = msgBadgeCount + kvarBadgeCount;
+    total > 0 ? navigator.setAppBadge(total) : navigator.clearAppBadge();
+  }
+}
+
+function clearMsgBadge()  { updateMsgBadge(0); }
+function clearKvarBadge() { updateKvarBadge(0); }
+
+// Tražimo dozvolu čim se korisnik prijavi
+async function initNotifications() {
+  if ('Notification' in window) {
+    await requestNotifPermission();
+  }
+}
+
+
+
 document.getElementById('loginBtn').onclick  = login;
 document.getElementById('logoutBtn').onclick = logout;
 
@@ -28,6 +108,7 @@ document.querySelectorAll('.tab').forEach(b => {
     document.getElementById(tabId).classList.add('active');
     if (tabId === 'units') showUnitList();
     if (tabId === 'finance') showFinanceList();
+    if (tabId === 'messages') clearMsgBadge();
     if (tabId === 'messages' && currentUserObj) {
       const role = currentUserRole;
       const isLandlordCtx = role === 'masterAdmin' || role === 'landlord' || (role === 'both' && currentContext === 'landlord');
@@ -96,6 +177,9 @@ onAuthStateChanged(auth, async user => {
 
   // Sačuvaj profil u Firestore da ga drugi mogu videti
   saveUserProfile(user).catch(() => {});
+
+  // Traži dozvolu za notifikacije
+  initNotifications();
 
   let isLandlord = false;
   let isTenant   = false;
@@ -390,12 +474,28 @@ async function setupLandlordMessages(user) {
       container.appendChild(card);
       const msgsRef = collection(db, 'units', unitId, 'messages');
       const q = query(msgsRef, orderBy('vreme', 'asc'));
+      let landlordMsgInit_${unitId} = true;
       onSnapshot(q, snapshot => {
         const box = document.getElementById(`msgs-${unitId}`);
         if (!box) return;
         box.innerHTML = '';
         snapshot.forEach(m => renderMessage(box, m.data(), true, user.email));
         box.scrollTop = box.scrollHeight;
+        // Notifikacija za novu poruku (ne pri prvom učitavanju)
+        if (!landlordMsgInit_${unitId}) {
+          const last = snapshot.docs[snapshot.docs.length - 1]?.data();
+          if (last && last.od !== user.email) {
+            const sender = last.displayName ? last.displayName.split(' ')[0] : last.od.split('@')[0];
+            const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+            const isViewingMsgs = activeTab === 'messages' && document.visibilityState === 'visible';
+            if (!isViewingMsgs) {
+              updateMsgBadge(msgBadgeCount + 1);
+            }
+            showToast(`Nova poruka od ${sender}: ${unit.name}`, 'msg');
+            showBrowserNotif('Nova poruka — ' + unit.name, `${sender}: ${last.tekst}`, 'msg-' + unitId);
+          }
+        }
+        landlordMsgInit_${unitId} = false;
       });
     });
     container.addEventListener('click', async e => {
@@ -841,12 +941,27 @@ async function setupTenantMessages(user) {
       container.appendChild(card);
 
       const mq = query(collection(db, 'units', unitId, 'messages'), orderBy('vreme', 'asc'));
+      let tenantMsgInit = true;
       onSnapshot(mq, snapshot => {
         const box = document.getElementById(`msgs-${unitId}`);
         if (!box) return;
         box.innerHTML = '';
         snapshot.forEach(m => renderMessage(box, m.data(), false, user.email));
         box.scrollTop = box.scrollHeight;
+        if (!tenantMsgInit) {
+          const last = snapshot.docs[snapshot.docs.length - 1]?.data();
+          if (last && last.od !== user.email) {
+            const sender = last.displayName ? last.displayName.split(' ')[0] : last.od.split('@')[0];
+            const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+            const isViewingMsgs = activeTab === 'messages' && document.visibilityState === 'visible';
+            if (!isViewingMsgs) {
+              updateMsgBadge(msgBadgeCount + 1);
+            }
+            showToast(`Nova poruka od ${sender}: ${unitData.name}`, 'msg');
+            showBrowserNotif('Nova poruka — ' + unitData.name, `${sender}: ${last.tekst}`, 'msg-' + unitId);
+          }
+        }
+        tenantMsgInit = false;
       });
     }
 
@@ -1168,6 +1283,8 @@ document.getElementById('kvarSubmitBtn').onclick = async () => {
     document.getElementById('kvarStavka').value = '';
     document.getElementById('kvarOpis').value   = '';
     loadKvarTenantHistory(user);
+    // Toast zakupcu kao potvrda
+    showToast('Prijava kvara je poslata.', 'kvar');
     setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = '<i class="ti ti-send"></i> Pošalji prijavu';
@@ -1279,6 +1396,12 @@ function renderKvarItem(id, data, isAdmin, ownerUid = null) {
         try {
           await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
           loadKvarAdmin(ownerUid);
+          // Notifikacija za landlorda/admina o promeni
+          if (noviStatus === 'ceka_validaciju') {
+            showToast('Prijava označena — zakupac treba da potvrdi.', 'kvar');
+          } else if (noviStatus === 'otvoreno') {
+            showToast('Prijava ponovo otvorena.', 'kvar');
+          }
         } catch(err) {
           alert('Greška: ' + err.message);
           btn2.disabled = false;
@@ -1295,6 +1418,11 @@ function renderKvarItem(id, data, isAdmin, ownerUid = null) {
           await setDoc(doc(db, 'kvarovi', id), { status: noviStatus }, { merge: true });
           const user = auth.currentUser;
           if (user) loadKvarTenantHistory(user);
+          if (noviStatus === 'reseno') {
+            showToast('Kvar potvrđen kao rešen.', 'kvar');
+          } else {
+            showToast('Kvar vraćen na otvoreno.', 'kvar');
+          }
         } catch(err) {
           alert('Greška: ' + err.message);
           btn2.disabled = false;

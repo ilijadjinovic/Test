@@ -474,7 +474,7 @@ async function setupLandlordMessages(user) {
       container.appendChild(card);
       const msgsRef = collection(db, 'units', unitId, 'messages');
       const q = query(msgsRef, orderBy('vreme', 'asc'));
-      let landlordMsgInit_${unitId} = true;
+      let isFirstLoad = true;
       onSnapshot(q, snapshot => {
         const box = document.getElementById(`msgs-${unitId}`);
         if (!box) return;
@@ -482,7 +482,7 @@ async function setupLandlordMessages(user) {
         snapshot.forEach(m => renderMessage(box, m.data(), true, user.email));
         box.scrollTop = box.scrollHeight;
         // Notifikacija za novu poruku (ne pri prvom učitavanju)
-        if (!landlordMsgInit_${unitId}) {
+        if (!isFirstLoad) {
           const last = snapshot.docs[snapshot.docs.length - 1]?.data();
           if (last && last.od !== user.email) {
             const sender = last.displayName ? last.displayName.split(' ')[0] : last.od.split('@')[0];
@@ -495,7 +495,7 @@ async function setupLandlordMessages(user) {
             showBrowserNotif('Nova poruka — ' + unit.name, `${sender}: ${last.tekst}`, 'msg-' + unitId);
           }
         }
-        landlordMsgInit_${unitId} = false;
+        isFirstLoad = false;
       });
     });
     container.addEventListener('click', async e => {

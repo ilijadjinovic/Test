@@ -27,7 +27,8 @@
 
 **Pretraga cele istorije**
 - Polje traži po delu reči (bez obzira na č/ć/š/ž/đ): broj narudžbine, naziv i šifra artikla, dobavljač, lokacija isporuke, naručilac, isporučilac, „ko je tražio“. Više reči = sve moraju da se poklope.
-- Dodatno: filter statusa, prioriteta i datuma kreiranja (od–do).
+- Ispod polja su **dugmići-filteri**: statusi u dva reda, prioriteti u trećem. Klik uključuje/isključuje filter (može više njih odjednom, npr. „Zatvorena“ + „Odbijena“) i primena je automatska.
+- Datum kreiranja „Od“ / „Do“ koristi isti datepicker kao ostatak aplikacije (format dd.mm.gggg., kalendar se otvara na klik ili se datum ukuca). Primena je automatska čim se datum izabere/ukuca; pored polja je i dugme **Primeni**. Ikona kalendara je sada veća i svetlija (važi za sva polja sa kalendarom u aplikaciji). **Poništi** briše tekst, dugmiće i datume.
 - Pretraga čita celu istoriju tog korisnika (do 5000 narudžbina, jednom, pa se pamti 5 minuta), pa pronalazi i narudžbine starije od 30 dana.
 
 **Isporučilac — tabela**
@@ -55,7 +56,7 @@
 | `js/firebase-init.js` | izvezen `startAfter` |
 | `firestore.indexes.json` | dva nova indeksa (`createdByUid+closedAt`, `assignedToUid+closedAt`) |
 | `css/style.css` | stilovi kartica sa podsetnikom, pretrage, akcija |
-| `i18n/sr.json`, `i18n/en.json` | 43 nova ključa |
+| `i18n/sr.json`, `i18n/en.json` | 42 nova ključa |
 | `backfill-orders.html`, `js/page-backfill.js` | **novo** — jednokratna dopuna starih narudžbina |
 | `tests/dash-logic.test.mjs` | **novo** — automatski testovi logike |
 
@@ -89,7 +90,7 @@ Pripremi bar jednog naručioca, jednog isporučioca i admina. Za vremenska pravi
 | 13 | Naručilac | Imaj >25 narudžbina. | Prikazano prvih 25, „Prikazano 25 od N“, *Učitaj još* dodaje po 25; kad se iscrpi, učitava starije zatvorene po datumu; kad nema više, dugme nestaje. |
 | 14 | Naručilac | Zatvorena narudžbina starija od 30 dana. | Nije na podrazumevanoj listi; pojavi se pri *Učitaj još* (naručilac) odnosno *Prikaži sve → Učitaj još* (isporučilac), i u pretrazi. Otvorena narudžbina starija od 30 dana **ostaje** na listi. |
 | 15 | Oba | Pretraga: „cem“ (deo naziva artikla), pa naziv dobavljača, naziv lokacije, ime isporučioca/naručioca, „ko je tražio“, deo broja narudžbine. | Pronalazi odgovarajuće narudžbine, uključujući starije od 30 dana; unos „ćelik“ nalazi i „celik“. Statusna linija: „Pronađeno narudžbina: N“. |
-| 16 | Oba | Pretraga + filter statusa/prioriteta/datuma; zatim *Poništi*. | Filteri se kombinuju (AND); *Poništi* vraća običan prikaz. Klik na karticu tokom pretrage gasi pretragu. |
+| 16 | Oba | Klikni dugmiće statusa (npr. „Zatvorena“ + „Odbijena“) i prioriteta, izaberi datume „Od/Do“ iz kalendara (ikona desno u polju) ili ih ukucaj; zatim *Poništi*. | Lista se filtrira odmah, bez dodatnog klika (dugme *Primeni* radi isto na zahtev). Statusi se unutar grupe „ili“, grupe se međusobno kombinuju („i“). *Poništi* vraća običan prikaz. Klik na karticu tokom pretrage gasi pretragu. |
 | 17 | Naručilac | Napravi novu narudžbinu, dodaj artikal u dozvoljenom statusu, pa ga pretraži. | Novi artikal se odmah može pronaći (polje za pretragu se osvežava pri izmeni stavki, lokacija i „ko je tražio“). |
 | 18 | Admin | Admin tabla, kartica „Kasne“. | Isti broj kao zbir kasnih na tablama isporučilaca (isto pravilo). |
 | 19 | Admin | Izveštaji za period stariji od ~500 narudžbina unazad. | Sve narudžbine iz izabranog perioda su uključene (ranije nepotpuno). |

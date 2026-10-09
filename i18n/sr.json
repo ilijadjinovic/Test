@@ -554,14 +554,11 @@
   "dash_no_older": "Nema starijih narudžbina.",
   "dash_load_error": "Podaci nisu učitani. Pokušajte ponovo.",
   "dash_action_error": "Akcija nije uspela. Pokušajte ponovo.",
-  "dash_search_placeholder": "Pretraga: broj, artikal, naručilac, isporučilac, ko je tražio, dobavljač, lokacija...",
-  "dash_all_statuses": "Svi statusi",
-  "dash_all_priorities": "Svi prioriteti",
+  "dash_search_placeholder": "Pretraga: broj, artikal, osoba, dobavljač...",
   "dash_date_from": "Od",
   "dash_date_to": "Do",
   "dash_search_reset": "Poništi",
   "dash_search_loading": "Pretraga cele istorije...",
-  "dash_search_results": "Pronađeno narudžbina: {count}",
   "dash_search_capped": "(pretražene su najnovijih 5000 narudžbina — suzite pretragu datumom)",
   "dash_no_search_results": "Nema narudžbina koje odgovaraju pretrazi.",
   "dash_actions": "Akcije",
@@ -581,5 +578,7 @@
   "backfill_progress": "Pregledano: {done} · za izmenu: {changed}",
   "backfill_done": "Gotovo. Pregledano: {total}, izmenjeno: {changed}.",
   "backfill_done_dry": "Provera gotova. Pregledano: {total}, potrebna izmena: {changed}.",
-  "backfill_error": "Greška: {message}"
+  "backfill_error": "Greška: {message}",
+  "dash_search_apply": "Primeni",
+  "dash_search_results": "Pronađeno narudžbina: {count}"
 }

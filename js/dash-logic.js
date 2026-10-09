@@ -92,19 +92,20 @@ function haystack(order) {
     || [order.orderNumber, order.createdByName, order.assignedToName, order.requestedByName].join(" "));
 }
 
-// criteria: { text, status, priority, from: "YYYY-MM-DD", to: "YYYY-MM-DD" }
+// criteria: { text, statuses: [...], priorities: [...], from: "YYYY-MM-DD", to: "YYYY-MM-DD" }
+// (status / priority kao pojedinačne vrednosti se i dalje prihvataju)
 export function parseCriteria(c = {}) {
   const tokens = normalizeText(c.text || "").split(/\s+/).filter(Boolean);
   const fromMs = c.from ? new Date(`${c.from}T00:00:00`).getTime() : null;
   const toMs = c.to ? new Date(`${c.to}T23:59:59.999`).getTime() : null;
-  const status = c.status || "";
-  const priority = c.priority || "";
-  return { tokens, fromMs, toMs, status, priority, active: !!(tokens.length || fromMs || toMs || status || priority) };
+  const statuses = [...(c.statuses || []), ...(c.status ? [c.status] : [])];
+  const priorities = [...(c.priorities || []), ...(c.priority ? [c.priority] : [])];
+  return { tokens, fromMs, toMs, statuses, priorities, active: !!(tokens.length || fromMs || toMs || statuses.length || priorities.length) };
 }
 
 export function matchesSearch(order, parsed) {
-  if (parsed.status && order.status !== parsed.status) return false;
-  if (parsed.priority && order.priority !== parsed.priority) return false;
+  if (parsed.statuses.length && !parsed.statuses.includes(order.status)) return false;
+  if (parsed.priorities.length && !parsed.priorities.includes(order.priority)) return false;
   if (parsed.fromMs || parsed.toMs) {
     const created = toMillis(order.createdAt);
     if (created == null) return false;

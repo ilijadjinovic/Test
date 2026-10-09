@@ -8,6 +8,7 @@
 // (uživo) + starije zatvorene po stranama na zahtev + cela istorija pri pretrazi.
 // ============================================================================
 import { t } from "./i18n.js";
+import { initDatepickers, getISO, setISO } from "./datepicker.js";
 import { escapeHtml, formatDate, badgeClassForStatus, statusLabel, toast, ORDER_STATUS_ALL } from "./utils.js";
 import { listenOpenOrdersBy, listenRecentClosedBy, getOlderClosedPageBy, getAllOrdersBy } from "./orders.js";
 import {
@@ -83,16 +84,15 @@ export function createDashboard(cfg) {
     open: [], recent: [], older: [], olderCursor: null, hasMoreOlder: true, loadingOlder: false,
     gotOpen: false, gotRecent: false,
     filter: "all", showAll: !cfg.activeOnlyDefault, visible: PAGE_SIZE,
-    searching: false, results: [], searchCache: null, searchCacheAt: 0, searchCapped: false, searchSeq: 0, searchLoading: false,
+    searching: false, results: [], searchCache: null, searchCacheAt: 0, searchCapped: false, searchSeq: 0, searchLoading: false, lastSig: "",
+    chips: { status: new Set(), priority: new Set() },
     list: [], now: Date.now(), cardSig: null,
     cutoff: new Date(Date.now() - RECENT_DAYS * 86400000),
   };
   const statHost = $("stat-cards"), chipHost = $("filter-chip"), head = $("orders-head"), body = $("orders-body");
   const pagerHost = $("pager"), toggleBtn = $("toggle-all-btn"), searchInfo = $("search-info");
-  const inputs = {
-    text: $("search-text"), status: $("search-status"), priority: $("search-priority"),
-    from: $("search-from"), to: $("search-to"),
-  };
+  const statusHost = $("status-chips"), priorityHost = $("priority-chips");
+  const inputs = { text: $("search-text"), from: $("search-from"), to: $("search-to") };
 
   const base = () => Array.from(byId(S.recent, S.open).values());
   const liveMap = () => byId(S.older, S.recent, S.open);
@@ -153,6 +153,10 @@ export function createDashboard(cfg) {
 
   function renderTable() {
     S.list = getPool();
+    if (S.searching && S.searchLoading) {
+      body.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">${t("dash_search_loading")}</td></tr>`;
+      return;
+    }
     if (!S.gotOpen || !S.gotRecent) {
       body.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">${t("loading_ellipsis")}</td></tr>`;
       return;
@@ -175,7 +179,7 @@ export function createDashboard(cfg) {
     const shown = Math.min(S.visible, total);
     const canMem = S.visible < total;
     const canOlder = !S.searching && S.filter === "all" && S.showAll && S.hasMoreOlder;
-    if (!S.gotOpen || !S.gotRecent || (!total && !canOlder)) { pagerHost.innerHTML = ""; return; }
+    if (!S.gotOpen || !S.gotRecent || (S.searching && S.searchLoading) || (!total && !canOlder)) { pagerHost.innerHTML = ""; return; }
     pagerHost.innerHTML = `
       <span class="muted pager-count">${t("dash_showing_count", { shown, total })}</span>
       ${(canMem || canOlder) ? `<button type="button" class="btn btn-sm btn-outline" id="load-more-btn" ${S.loadingOlder ? "disabled" : ""}>${S.loadingOlder ? t("loading_ellipsis") : t("dash_load_more")}</button>` : ""}`;
@@ -220,32 +224,36 @@ export function createDashboard(cfg) {
 
   // ---- Pretraga cele istorije -----------------------------------------------
   const readCriteria = () => parseCriteria({
-    text: inputs.text?.value, status: inputs.status?.value, priority: inputs.priority?.value,
-    from: inputs.from?.value, to: inputs.to?.value,
+    text: inputs.text?.value, statuses: [...S.chips.status], priorities: [...S.chips.priority],
+    from: getISO(inputs.from), to: getISO(inputs.to),
   });
 
   function renderSearchInfo() {
     if (!searchInfo) return;
-    if (S.searchLoading) { searchInfo.textContent = t("dash_search_loading"); return; }
+    if (S.searching && S.searchLoading) { searchInfo.textContent = t("dash_search_loading"); return; }
     if (!S.searching) { searchInfo.textContent = ""; return; }
     searchInfo.textContent = t("dash_search_results", { count: S.list.length }) + (S.searchCapped ? ` ${t("dash_search_capped")}` : "");
   }
 
-  async function runSearch() {
+  // force = true: pokreni i kad se kriterijumi nisu promenili (dugme "Primeni", posle akcije u redu)
+  async function runSearch(force = false) {
     const crit = readCriteria();
-    if (!crit.active) { S.searching = false; S.results = []; S.visible = PAGE_SIZE; renderAll(); return; }
+    const sig = JSON.stringify([crit.tokens, crit.statuses, crit.priorities, crit.fromMs, crit.toMs]);
+    if (!force && sig === S.lastSig) return; // npr. datepicker šalje "change" i pri običnom napuštanju polja
+    S.lastSig = sig;
+    if (!crit.active) { S.searching = false; S.results = []; S.searchSeq++; S.searchLoading = false; S.visible = PAGE_SIZE; renderAll(); return; }
     const seq = ++S.searchSeq;
     S.searching = true; S.filter = "all";
     try {
       if (!S.searchCache || Date.now() - S.searchCacheAt > SEARCH_CACHE_MS) {
-        S.searchLoading = true; renderSearchInfo();
+        S.searchLoading = true; renderCards(true); renderTable(); renderPager(); renderSearchInfo();
         const { orders, capped } = await getAllOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid);
         if (seq !== S.searchSeq) return; // u međuvremenu je pokrenuta novija pretraga
         S.searchCache = orders; S.searchCapped = capped; S.searchCacheAt = Date.now();
       }
     } catch (err) {
       console.error(err);
-      S.searchLoading = false; S.searching = false;
+      S.searchLoading = false; S.searching = false; S.lastSig = "";
       toast(t("dash_load_error"), "error");
       renderAll();
       return;
@@ -257,22 +265,40 @@ export function createDashboard(cfg) {
   }
 
   function clearSearch(rerun = true) {
-    Object.values(inputs).forEach((el) => { if (el) el.value = ""; });
-    S.searching = false; S.results = []; S.searchSeq++; S.searchLoading = false;
+    if (inputs.text) inputs.text.value = "";
+    setISO(inputs.from, ""); setISO(inputs.to, "");
+    S.chips.status.clear(); S.chips.priority.clear();
+    document.querySelectorAll(".fchip").forEach((b) => { b.classList.remove("active"); b.setAttribute("aria-pressed", "false"); });
+    S.searching = false; S.results = []; S.searchSeq++; S.searchLoading = false; S.lastSig = "";
     if (rerun) { S.visible = PAGE_SIZE; renderAll(); }
   }
 
   function afterAction() {
-    if (S.searching) { S.searchCache = null; runSearch(); }
+    if (S.searching) { S.searchCache = null; runSearch(true); }
   }
 
   // ---- Događaji ---------------------------------------------------------------
   const debounced = (fn, ms) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
 
   function bindEvents() {
-    inputs.text?.addEventListener("input", debounced(runSearch, 400));
-    [inputs.status, inputs.priority, inputs.from, inputs.to].forEach((el) => el?.addEventListener("change", runSearch));
+    inputs.text?.addEventListener("input", debounced(() => runSearch(false), 400));
+    // Datumi se primenjuju automatski čim se izabere/ukuca datum ("change" šalje datepicker.js);
+    // dugme "Primeni" radi isto na zahtev.
+    [inputs.from, inputs.to].forEach((el) => el?.addEventListener("change", () => runSearch(false)));
+    $("search-apply")?.addEventListener("click", () => runSearch(true));
     $("search-reset")?.addEventListener("click", () => clearSearch(true));
+    // Dugmići statusa i prioriteta: klik uključuje/isključuje filter (može više njih), primena je automatska.
+    [statusHost, priorityHost].forEach((host) => host?.addEventListener("click", (e) => {
+      const chip = e.target.closest(".fchip");
+      if (!chip) return;
+      const set = S.chips[chip.dataset.chipGroup];
+      const val = chip.dataset.chipValue;
+      const on = !set.has(val);
+      if (on) set.add(val); else set.delete(val);
+      chip.classList.toggle("active", on);
+      chip.setAttribute("aria-pressed", String(on));
+      runSearch(false);
+    }));
     toggleBtn?.addEventListener("click", () => { S.showAll = !S.showAll; S.visible = PAGE_SIZE; renderAll(); });
 
     const openDetails = (row) => { window.location.href = `./order-detail.html?order=${row.dataset.id}`; };
@@ -327,12 +353,19 @@ export function createDashboard(cfg) {
     });
   }
 
-  function populateSelects() {
-    if (inputs.status) {
-      inputs.status.innerHTML = `<option value="">${t("dash_all_statuses")}</option>${ORDER_STATUS_ALL.map((s) => `<option value="${s}">${statusLabel(s)}</option>`).join("")}`;
+  // Dugmići: statusi u dva reda, prioriteti u trećem
+  const chipHtml = (group, value, label) =>
+    `<button type="button" class="fchip" data-chip-group="${group}" data-chip-value="${value}" aria-pressed="false">${escapeHtml(label)}</button>`;
+  function buildChips() {
+    if (statusHost) {
+      const half = Math.ceil(ORDER_STATUS_ALL.length / 2);
+      statusHost.setAttribute("aria-label", t("status"));
+      statusHost.innerHTML = [ORDER_STATUS_ALL.slice(0, half), ORDER_STATUS_ALL.slice(half)]
+        .map((row) => `<div class="chip-row">${row.map((s) => chipHtml("status", s, statusLabel(s))).join("")}</div>`).join("");
     }
-    if (inputs.priority) {
-      inputs.priority.innerHTML = `<option value="">${t("dash_all_priorities")}</option><option value="hitno">${t("urgent")}</option><option value="standardno">${t("standard")}</option>`;
+    if (priorityHost) {
+      priorityHost.setAttribute("aria-label", t("priority"));
+      priorityHost.innerHTML = `<div class="chip-row">${chipHtml("priority", "hitno", t("urgent"))}${chipHtml("priority", "standardno", t("standard"))}</div>`;
     }
   }
 
@@ -350,7 +383,8 @@ export function createDashboard(cfg) {
   return {
     start() {
       renderHead();
-      populateSelects();
+      buildChips();
+      initDatepickers(document);
       bindEvents();
       renderAll();
       listenOpenOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid, (o) => onData("open", o), onError);

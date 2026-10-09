@@ -27,12 +27,15 @@
         <span id="filter-chip"></span>
       </div>
       <div class="dash-search">
-        <input type="search" id="search-text" data-i18n-placeholder="dash_search_placeholder" placeholder="Pretraga: broj, artikal, naručilac, isporučilac, ko je tražio, dobavljač, lokacija..." autocomplete="off" />
-        <select id="search-status" aria-label="Status"></select>
-        <select id="search-priority" aria-label="Prioritet"></select>
-        <label class="dash-date"><span data-i18n="dash_date_from">Od</span><input type="date" id="search-from" /></label>
-        <label class="dash-date"><span data-i18n="dash_date_to">Do</span><input type="date" id="search-to" /></label>
-        <button type="button" class="btn btn-sm btn-ghost" id="search-reset" data-i18n="dash_search_reset">Poništi</button>
+        <input type="search" id="search-text" data-i18n-placeholder="dash_search_placeholder" placeholder="Pretraga: broj, artikal, osoba, dobavljač..." autocomplete="off" />
+        <div class="chip-group" id="status-chips" role="group"></div>
+        <div class="chip-group" id="priority-chips" role="group"></div>
+        <div class="dash-dates">
+          <label class="dash-date"><span data-i18n="dash_date_from">Od</span><input type="text" class="js-datepicker" id="search-from" /></label>
+          <label class="dash-date"><span data-i18n="dash_date_to">Do</span><input type="text" class="js-datepicker" id="search-to" /></label>
+          <button type="button" class="btn btn-sm btn-primary" id="search-apply" data-i18n="dash_search_apply">Primeni</button>
+          <button type="button" class="btn btn-sm btn-ghost" id="search-reset" data-i18n="dash_search_reset">Poništi</button>
+        </div>
       </div>
       <div class="muted dash-search-info" id="search-info" aria-live="polite"></div>
       <div class="table-wrap">

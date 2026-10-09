@@ -56,9 +56,11 @@ ok("pretraga po delu reči i po svim rečima (AND)", () => {
 });
 ok("pretraga: status, prioritet i datumi", () => {
   const o = { orderNumber: "A", status: "zatvorena", priority: "hitno", createdAt: { toMillis: () => new Date("2026-03-10T10:00:00").getTime() } };
-  assert.ok(matchesSearch(o, parseCriteria({ status: "zatvorena", priority: "hitno", from: "2026-03-10", to: "2026-03-10" })));
+  assert.ok(matchesSearch(o, parseCriteria({ statuses: ["zatvorena", "odbijena"], priorities: ["hitno"], from: "2026-03-10", to: "2026-03-10" })));
   assert.ok(!matchesSearch(o, parseCriteria({ from: "2026-03-11" })));
-  assert.ok(!matchesSearch(o, parseCriteria({ status: "u_nabavci" })));
+  assert.ok(!matchesSearch(o, parseCriteria({ statuses: ["u_nabavci", "odbijena"] })));
+  assert.ok(matchesSearch(o, parseCriteria({ status: "zatvorena" })));
+  assert.ok(!matchesSearch(o, parseCriteria({ priorities: ["standardno"] })));
   assert.equal(parseCriteria({}).active, false);
 });
 ok("stare narudžbine bez searchText se i dalje nalaze po broju/imenima", () => {

@@ -554,14 +554,11 @@
   "dash_no_older": "No older orders.",
   "dash_load_error": "Data could not be loaded. Please try again.",
   "dash_action_error": "The action failed. Please try again.",
-  "dash_search_placeholder": "Search: number, item, orderer, deliverer, requested by, supplier, location...",
-  "dash_all_statuses": "All statuses",
-  "dash_all_priorities": "All priorities",
+  "dash_search_placeholder": "Search: number, item, person, supplier...",
   "dash_date_from": "From",
   "dash_date_to": "To",
   "dash_search_reset": "Clear",
   "dash_search_loading": "Searching the whole history...",
-  "dash_search_results": "Orders found: {count}",
   "dash_search_capped": "(the latest 5000 orders were searched — narrow the search by date)",
   "dash_no_search_results": "No orders match the search.",
   "dash_actions": "Actions",
@@ -581,5 +578,7 @@
   "backfill_progress": "Checked: {done} · to update: {changed}",
   "backfill_done": "Done. Checked: {total}, updated: {changed}.",
   "backfill_done_dry": "Check finished. Checked: {total}, need updating: {changed}.",
-  "backfill_error": "Error: {message}"
+  "backfill_error": "Error: {message}",
+  "dash_search_apply": "Apply",
+  "dash_search_results": "Orders found: {count}"
 }

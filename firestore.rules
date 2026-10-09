@@ -1,0 +1,188 @@
+rules_version = '2';
+
+// ============================================================================
+// FIRESTORE RULES — Sistem za naručivanje i nabavku
+//
+// Napomena za produkciju: ova pravila koriste "get()" pozive da bi proverila
+// ulogu prijavljenog korisnika (users/{uid}.role). Za veće sisteme je
+// preporučljivo dodatno uvesti Firebase Custom Claims (preko Cloud Function-a
+// pri kreiranju korisnika) radi bržih i jeftinijih provera prava pristupa.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function myProfile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function myCompanyId() { return myProfile().companyId; }
+    function myRole() { return myProfile().role; }
+    function isMasterAdmin() { return isSignedIn() && myRole() == 'master_admin'; }
+    function isCompanyMember(companyId) { return isSignedIn() && myCompanyId() == companyId && myProfile().active != false; }
+    function isAdminOf(companyId) { return isCompanyMember(companyId) && myRole() == 'admin'; }
+    function isNarucilacOf(companyId) { return isCompanyMember(companyId) && myRole() == 'narucilac'; }
+    function isIsporucilacOf(companyId) { return isCompanyMember(companyId) && myRole() == 'isporucilac'; }
+
+    // Brisanje CELE narudžbine (ne samo odbijanje): admin sme uvek i bilo koju;
+    // naručilac sme SAMO svoju, i SAMO dok nije prihvaćena od isporučioca
+    // (status 'kreirana' ili 'ceka_prihvatanje'). Koristi get() da pročita
+    // stanje narudžbine — zato podkolekcije MORAJU da se obrišu PRE glavnog
+    // dokumenta narudžbine (vidi orders.js — deleteOrder).
+    function canDeleteOrder(companyId, orderId) {
+      let o = get(/databases/$(database)/documents/companies/$(companyId)/orders/$(orderId)).data;
+      return isAdminOf(companyId)
+        || (isNarucilacOf(companyId) && o.createdByUid == request.auth.uid
+            && o.status in ['kreirana', 'ceka_prihvatanje']);
+    }
+
+    // --- Platformska podešavanja (Master Admin) ---
+    match /platform/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterAdmin();
+    }
+
+    // --- Firme ---
+    match /companies/{companyId} {
+      allow read: if isMasterAdmin() || isCompanyMember(companyId);
+      allow create: if isSignedIn(); // registracija nove firme (Poglavlje 2.2)
+      allow update: if isMasterAdmin() || isAdminOf(companyId);
+      allow delete: if isMasterAdmin();
+
+      // --- Korisnički indeks unutar firme (za listanje) ---
+      // Naručilac sme da kreira SAMO isporučilac naloge (bira se u formi); izmenu/brisanje/deaktivaciju radi admin.
+      match /usersIndex/{uid} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isAdminOf(companyId) || isMasterAdmin()
+                       || (isNarucilacOf(companyId) && request.resource.data.role == 'isporucilac');
+        // Admin/master admin mogu da menjaju sve; korisnik sme da menja SAMO svoje "name"
+        // (koristi se u Profil modalu — Poglavlje "Profil info").
+        allow update: if isAdminOf(companyId) || isMasterAdmin()
+                       || (isSignedIn() && request.auth.uid == uid
+                           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']));
+        allow delete: if isAdminOf(companyId) || isMasterAdmin();
+      }
+
+      // --- Lokacije firme (koriste se i kao adrese za isporuku pri kreiranju narudžbine) ---
+      match /locations/{locId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
+        allow update, delete: if isAdminOf(companyId);
+      }
+
+      // --- Kategorije (naručilac sme samo da dodaje, briše samo admin) ---
+      match /categories/{catId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
+        allow update, delete: if isAdminOf(companyId);
+      }
+
+      // --- Dobavljači + podkolekcije (lokacije, proizvodi) ---
+      match /suppliers/{supplierId} {
+        allow read: if isCompanyMember(companyId);
+        // Naručilac sme da doda novog dobavljača i da menja onaj koji je sam kreirao; briše samo admin.
+        allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
+        allow update: if isAdminOf(companyId) || (isNarucilacOf(companyId) && resource.data.createdBy == request.auth.uid);
+        allow delete: if isAdminOf(companyId);
+
+        // Lokacije preuzimanja robe za dobavljača — naručilac sme da doda, briše samo admin.
+        match /locations/{locId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
+          allow update, delete: if isAdminOf(companyId);
+        }
+        match /products/{productId} {
+          allow read: if isCompanyMember(companyId);
+          // Naručilac sme da KREIRA proizvod (auto-katalogizacija stavki iz slobodnog
+          // unosa pri kreiranju narudžbine — vidi page-new-order.js). Naručilac i admin
+          // smeju da IZMENE postojeći proizvod (npr. ispravka naziva/šifre/PDV-a); brisanje
+          // ostaje isključivo admin, da naručilac ne bi trajno uklonio tuđe stavke.
+          allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
+          allow update: if isAdminOf(companyId) || isNarucilacOf(companyId);
+          allow delete: if isAdminOf(companyId);
+        }
+      }
+
+      // --- Šabloni / omiljene liste / ponavljajuće narudžbine ---
+      match /templates/{templateId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isNarucilacOf(companyId) || isAdminOf(companyId);
+      }
+
+      // --- Brojač redosleda narudžbenica (po godini), koristi se za orderNumber ---
+      match /counters/{counterId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isNarucilacOf(companyId) || isAdminOf(companyId);
+      }
+
+      // --- Narudžbine + sve podkolekcije ---
+      match /orders/{orderId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isNarucilacOf(companyId);
+        allow update: if isAdminOf(companyId) || isNarucilacOf(companyId) || isIsporucilacOf(companyId);
+        allow delete: if canDeleteOrder(companyId, orderId);
+
+        match /items/{itemId} {
+          allow read: if isCompanyMember(companyId);
+          allow write: if isCompanyMember(companyId);
+        }
+        match /purchases/{purchaseId} {
+          allow read: if isCompanyMember(companyId);
+          allow write: if isCompanyMember(companyId);
+        }
+        match /deliveryLocations/{locId} {
+          allow read: if isCompanyMember(companyId);
+          allow write: if isCompanyMember(companyId);
+        }
+        match /claims/{claimId} {
+          allow read: if isCompanyMember(companyId);
+          allow write: if isCompanyMember(companyId);
+        }
+        match /messages/{msgId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if isCompanyMember(companyId);
+          // Delete samo kao deo brisanja cele narudžbine (vidi orders.js — deleteOrder)
+          allow delete: if canDeleteOrder(companyId, orderId);
+        }
+        match /attachments/{attId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if isCompanyMember(companyId);
+          // Delete samo kao deo brisanja cele narudžbine (vidi orders.js — deleteOrder)
+          allow delete: if canDeleteOrder(companyId, orderId);
+        }
+      }
+
+      // --- Notifikacije (svaki korisnik čita samo svoje) ---
+      match /notifications/{notifId} {
+        allow read: if isCompanyMember(companyId) && (resource.data.toUid == request.auth.uid || isAdminOf(companyId));
+        allow create: if isCompanyMember(companyId);
+        allow update: if isCompanyMember(companyId) && resource.data.toUid == request.auth.uid;
+      }
+
+      // --- Audit log — upis dozvoljen svima u firmi, brisanje nikom ---
+      match /auditLogs/{logId} {
+        allow read: if isAdminOf(companyId) || isMasterAdmin();
+        allow create: if isCompanyMember(companyId);
+      }
+    }
+
+    // --- Korisnici (top-level, keyed by Firebase Auth uid) ---
+    // Naručilac sme da kreira SAMO isporučilac naloge (role u novom dokumentu mora biti 'isporucilac').
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isMasterAdmin() || isAdminOf(resource.data.companyId));
+      allow create: if isSignedIn() && (
+        request.auth.uid == uid
+        || isAdminOf(request.resource.data.companyId)
+        || (isNarucilacOf(request.resource.data.companyId) && request.resource.data.role == 'isporucilac')
+      );
+      // Admin firme sme da menja bilo koje polje svojih zaposlenih; sam korisnik sme
+      // da menja SAMO svoje "name" (Profil modal). Ovo sprečava da korisnik sam sebi
+      // promeni ulogu/firmu/status preko klijentskog SDK-a. (Master admin ovde nema
+      // posebna prava — nema svoju firmu — isto kao i pre ove izmene.)
+      allow update: if isSignedIn() && (
+        isAdminOf(resource.data.companyId)
+        || (request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
+      );
+      allow delete: if isMasterAdmin();
+    }
+  }
+}

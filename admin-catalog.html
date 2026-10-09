@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_catalog">Katalog proizvoda — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="catalog">Katalog proizvoda</h1></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="products" data-i18n="tab_supplier_products">Proizvodi dobavljača</button>
+      <button class="tab-btn" data-tab="categories" data-i18n="categories">Kategorije</button>
+    </div>
+
+    <div id="tab-products">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 data-i18n="select_supplier">Izaberi dobavljača</h2>
+          <select id="supplier-select" style="max-width:280px;"></select>
+        </div>
+        <form id="product-form" class="form-row">
+          <div class="field"><label data-i18n="name">Naziv</label><input type="text" id="p-name" required /></div>
+          <div class="field"><label data-i18n="code">Šifra</label><input type="text" id="p-code" /></div>
+          <div class="field"><label data-i18n="barcode">Barkod</label><input type="text" id="p-barcode" /></div>
+          <div class="field"><label data-i18n="unit">Jedinica mere</label><input type="text" id="p-unit" value="kom" required /></div>
+          <div class="field"><label data-i18n="category">Kategorija</label><select id="p-category"></select></div>
+          <div class="field"><label data-i18n="vat_rate">PDV stopa (%)</label><input type="number" id="p-vat" value="20" /></div>
+          <div class="field"><label data-i18n="min_quantity">Minimalna količina</label><input type="number" id="p-min" value="1" /></div>
+          <div class="field" style="display:flex;align-items:end;"><button type="submit" class="btn btn-amber" style="height:42px;width:100%;" data-i18n="add_product_btn">+ Dodaj proizvod</button></div>
+        </form>
+      </div>
+
+      <div class="panel bulk-edit-bar hidden" id="bulk-edit-bar">
+        <span id="bulk-edit-count"></span>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-sm" id="bulk-edit-clear-btn" data-i18n="bulk_clear_selection_btn">Poništi izbor</button>
+          <button type="button" class="btn btn-sm btn-amber" id="bulk-edit-open-btn" data-i18n="bulk_edit_btn">✎ Izmeni izabrano</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="table-wrap">
+          <table class="data-table table-fixed">
+            <colgroup>
+              <col style="width:4%">
+              <col style="width:10%">
+              <col style="width:32%">
+              <col style="width:7%">
+              <col style="width:15%">
+              <col style="width:7%">
+              <col style="width:10%">
+              <col style="width:12%">
+            </colgroup>
+            <thead><tr><th><input type="checkbox" id="products-select-all" /></th><th data-i18n="code">Šifra</th><th data-i18n="name">Naziv</th><th data-i18n="unit_short">JM</th><th data-i18n="category">Kategorija</th><th data-i18n="vat_short">PDV</th><th data-i18n="min_qty_short">Min. kol.</th><th></th></tr></thead>
+            <tbody id="products-body"><tr class="empty-row"><td colspan="8" data-i18n="select_a_supplier">Izaberite dobavljača.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-categories" class="hidden">
+      <div class="panel">
+        <form id="category-form" class="form-row" style="align-items:end;">
+          <div class="field"><label data-i18n="category_name">Naziv kategorije</label><input type="text" id="c-name" required /></div>
+          <button type="submit" class="btn btn-amber" style="height:42px;" data-i18n="add_plus_btn">+ Dodaj</button>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table class="data-table"><thead><tr><th data-i18n="name">Naziv</th><th></th></tr></thead><tbody id="categories-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="modal-overlay hidden" id="product-detail-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="product-detail-title" data-i18n="details_label">Detalji</h2><button class="icon-btn" id="close-product-detail-modal">✕</button></div>
+    <form id="product-edit-form" class="form-row" style="margin-top:4px;">
+      <div class="field"><label data-i18n="name">Naziv</label><input type="text" id="pd-name" required /></div>
+      <div class="field"><label data-i18n="code">Šifra</label><input type="text" id="pd-code" /></div>
+      <div class="field"><label data-i18n="barcode">Barkod</label><input type="text" id="pd-barcode" /></div>
+      <div class="field"><label data-i18n="unit">Jedinica mere</label><input type="text" id="pd-unit" required /></div>
+      <div class="field"><label data-i18n="category">Kategorija</label><select id="pd-category"></select></div>
+      <div class="field"><label data-i18n="vat_rate">PDV stopa (%)</label><input type="number" id="pd-vat" /></div>
+      <div class="field"><label data-i18n="min_quantity">Minimalna količina</label><input type="number" id="pd-min" /></div>
+      <div class="field" style="display:flex;align-items:end;">
+        <button type="submit" class="btn btn-amber" style="height:42px;width:100%;" data-i18n="save_changes_btn">Sačuvaj izmene</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="bulk-edit-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 data-i18n="bulk_edit_title">Masovna izmena</h2><button class="icon-btn" id="close-bulk-edit-modal">✕</button></div>
+    <p class="hint" id="bulk-edit-modal-hint" style="margin-bottom:14px;"></p>
+    <p class="hint" data-i18n="bulk_edit_hint">Uključite polje koje želite da promenite kod svih izabranih proizvoda. Isključena polja ostaju nepromenjena.</p>
+    <form id="bulk-edit-form">
+      <div class="form-row" style="align-items:end;">
+        <div class="field" style="max-width:26px;flex:0 0 auto;padding-top:24px;"><input type="checkbox" id="be-unit-on" style="width:auto;height:20px;" /></div>
+        <div class="field"><label data-i18n="unit">Jedinica mere</label><input type="text" id="be-unit" disabled /></div>
+
+        <div class="field" style="max-width:26px;flex:0 0 auto;padding-top:24px;"><input type="checkbox" id="be-category-on" style="width:auto;height:20px;" /></div>
+        <div class="field"><label data-i18n="category">Kategorija</label><select id="be-category" disabled></select></div>
+      </div>
+      <div class="form-row" style="align-items:end;">
+        <div class="field" style="max-width:26px;flex:0 0 auto;padding-top:24px;"><input type="checkbox" id="be-vat-on" style="width:auto;height:20px;" /></div>
+        <div class="field"><label data-i18n="vat_rate">PDV stopa (%)</label><input type="number" id="be-vat" disabled /></div>
+
+        <div class="field" style="max-width:26px;flex:0 0 auto;padding-top:24px;"><input type="checkbox" id="be-min-on" style="width:auto;height:20px;" /></div>
+        <div class="field"><label data-i18n="min_quantity">Minimalna količina</label><input type="number" id="be-min" disabled /></div>
+      </div>
+      <div class="field" style="display:flex;align-items:end;margin-top:8px;">
+        <button type="submit" class="btn btn-amber" style="height:42px;width:100%;" data-i18n="bulk_apply_btn">Primeni na izabrane</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="./js/page-admin-catalog.js"></script>
+</body>
+</html>

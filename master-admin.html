@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_master_admin">Master Admin — Firme na platformi — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div>
+        <div class="eyebrow" data-i18n="role_master_admin">Master Admin</div>
+        <h1 data-i18n="companies_on_platform_title">Firme na platformi</h1>
+      </div>
+    </div>
+
+    <div class="stat-grid" id="global-stats"></div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="all_registered_companies_title">Sve registrovane firme</h2></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th data-i18n="name">Naziv</th><th data-i18n="pib_label">PIB</th><th>Email</th><th data-i18n="status">Status</th><th data-i18n="registered_label">Registrovana</th><th></th></tr></thead>
+          <tbody id="companies-body"><tr class="empty-row"><td colspan="6" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="audit_log">Istorija / audit log</h2><span class="muted" data-i18n="audit_log_hint">Prikazuje se audit log izabrane firme</span></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th data-i18n="time_label">Vreme</th><th data-i18n="action_label">Akcija</th><th data-i18n="who_label">Ko</th><th data-i18n="details_label">Detalji</th></tr></thead>
+          <tbody id="audit-body"><tr class="empty-row"><td colspan="4" data-i18n="select_company_hint">Izaberite firmu iz tabele iznad.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module" src="./js/page-master-admin.js"></script>
+</body>
+</html>

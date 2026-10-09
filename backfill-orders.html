@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_backfill">Dopuna starih narudžbina — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin</div><h1 data-i18n="backfill_title">Dopuna starih narudžbina</h1></div>
+    </div>
+    <div class="panel">
+      <p class="muted" data-i18n="backfill_intro"></p>
+      <label style="display:flex;gap:8px;align-items:center;margin:14px 0;">
+        <input type="checkbox" id="dry-run" checked /> <span data-i18n="backfill_dry_run">Samo prebroj (bez upisa)</span>
+      </label>
+      <button type="button" class="btn btn-primary" id="run-btn" data-i18n="backfill_start_btn">Pokreni</button>
+      <p id="progress" class="muted" style="margin-top:14px;" aria-live="polite"></p>
+    </div>
+  </main>
+</div>
+<script type="module" src="./js/page-backfill.js"></script>
+</body>
+</html>

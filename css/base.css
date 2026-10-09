@@ -1,0 +1,199 @@
+/* ============================================================================
+   BASE — design tokeni i osnovni layout
+   Koncept: "tovarni list" — sistem za nabavku posmatran kao digitalna verzija
+   otpremnice/tovarnog lista: monospace brojevi narudžbina kao kod za praćenje,
+   jasne "etikete" statusa kao nalepnice na paketu.
+   ============================================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap');
+
+:root {
+  --ink-900: #101826;
+  --ink-700: #2b3648;
+  --ink-500: #5b6b82;
+  --ink-300: #a7b3c4;
+  --ink-100: #e4e9f0;
+  --paper: #f6f7fb;
+  --surface: #ffffff;
+  --line: #dfe4ec;
+
+  --brand-700: #1c3f6e;
+  --brand-600: #24518a;
+  --brand-500: #3167ab;
+  --brand-100: #e5edf8;
+
+  --accent-amber: #d97a1f;
+  --accent-amber-100: #fbead4;
+  --accent-teal: #0f8a72;
+  --accent-teal-100: #dcf3ee;
+  --accent-red: #c14343;
+  --accent-red-100: #fbe4e4;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-1: 0 1px 2px rgba(16, 24, 38, 0.06), 0 1px 1px rgba(16, 24, 38, 0.04);
+  --shadow-2: 0 8px 24px rgba(16, 24, 38, 0.10);
+
+  --font-display: 'Manrope', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink-900);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); color: var(--ink-900); margin: 0 0 4px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 20px; font-weight: 800; }
+h3 { font-size: 16px; font-weight: 700; }
+p { color: var(--ink-500); margin: 0 0 8px; line-height: 1.55; }
+a { color: var(--brand-600); text-decoration: none; }
+.mono { font-family: var(--font-mono); letter-spacing: 0.02em; }
+
+button, input, select, textarea { font-family: inherit; font-size: 14px; }
+
+/* ---- App shell ---- */
+.app-shell {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  grid-template-rows: 64px 1fr;
+  grid-template-areas: "nav topbar" "nav main";
+  min-height: 100vh;
+}
+#app-nav { display: contents; }
+.sidebar {
+  grid-area: nav;
+  background: var(--ink-900);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 24px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent-amber), #f0a860);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; color: #101826;
+}
+.brand-name { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+.side-menu { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.side-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  color: #c4cede; font-weight: 600; font-size: 14px;
+}
+.side-link:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.side-link.active { background: var(--accent-amber); color: #23150a; }
+.side-icon { width: 18px; text-align: center; }
+.side-footer { padding: 8px; }
+.role-pill {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+  text-transform: uppercase; background: rgba(255,255,255,0.08); color: #dfe6f2;
+  padding: 5px 10px; border-radius: 999px;
+}
+
+.topbar {
+  grid-area: topbar;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.topbar-spacer { flex: 1; }
+.icon-btn {
+  border: none; background: transparent; font-size: 17px; cursor: pointer;
+  width: 36px; height: 36px; border-radius: var(--radius-sm); position: relative;
+}
+.icon-btn:hover { background: var(--ink-100); }
+#menu-toggle { display: none; }
+.lang-switch {
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 8px; background: var(--surface);
+}
+.user-chip { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--paper); }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--brand-600); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+}
+.user-name { font-weight: 600; font-size: 13px; color: var(--ink-700); }
+
+main.content { grid-area: main; padding: 28px 32px; overflow-y: auto; }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; color: var(--accent-amber); font-weight: 600; margin-bottom: 6px; }
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; border-radius: var(--radius-sm); padding: 10px 16px;
+  font-weight: 700; font-size: 14px; cursor: pointer; transition: transform .05s ease, background .15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--ink-900); color: #fff; }
+.btn-primary:hover { background: var(--brand-700); }
+.btn-amber { background: var(--accent-amber); color: #241505; }
+.btn-amber:hover { background: #c76c14; }
+.btn-outline { background: transparent; color: var(--ink-900); border: 1.5px solid var(--line); }
+.btn-outline:hover { border-color: var(--ink-500); }
+.btn-ghost { background: transparent; color: var(--ink-500); }
+.btn-ghost:hover { color: var(--ink-900); background: var(--ink-100); }
+.btn-danger { background: var(--accent-red-100); color: var(--accent-red); }
+.btn-danger:hover { background: #f5cccc; }
+.btn-sm { padding: 6px 12px; font-size: 12.5px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Forms ---- */
+label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-700); margin: 0 0 6px; }
+.field { margin-bottom: 16px; }
+input[type="text"], input[type="email"], input[type="password"], input[type="number"],
+input[type="date"], input[type="tel"], input[type="file"], select, textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink-900); outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px var(--brand-100); }
+.hint { font-size: 12px; color: var(--ink-300); margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; }
+.checkbox-row input { width: auto; }
+
+/* ---- Auth screens ---- */
+.auth-shell {
+  min-height: 100vh; display: grid; place-items: center;
+  background: radial-gradient(circle at 20% 20%, #1a2c4a 0%, var(--ink-900) 55%);
+  padding: 24px;
+}
+.auth-card {
+  width: 100%; max-width: 420px; background: var(--surface); border-radius: var(--radius-lg);
+  padding: 36px 32px; box-shadow: var(--shadow-2);
+}
+.auth-card.wide { max-width: 620px; }
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.auth-foot { text-align: center; margin-top: 18px; font-size: 13.5px; }
+
+.hidden { display: none !important; }
+
+/* ---- Toasts ---- */
+#toast-host { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 999; }
+.toast {
+  background: var(--ink-900); color: #fff; padding: 12px 16px; border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2); opacity: 0; transform: translateY(8px); transition: all .25s ease; font-size: 13.5px; max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast-error { background: var(--accent-red); }
+.toast-success { background: var(--accent-teal); }
+
+@media (max-width: 880px) {
+  .app-shell { grid-template-columns: 1fr; grid-template-areas: "topbar" "main"; }
+  .sidebar {
+    position: fixed; inset: 0 auto 0 0; width: 232px; transform: translateX(-100%);
+    transition: transform .2s ease; z-index: 50;
+  }
+  .sidebar.open { transform: translateX(0); }
+  #menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  main.content { padding: 18px; }
+  .form-row { grid-template-columns: 1fr; }
+}

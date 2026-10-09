@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_import_export">Uvoz / izvoz podataka — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="import_export">Uvoz / izvoz podataka</h1></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="import_title">Uvoz (CSV / Excel)</h2></div>
+      <p data-i18n="import_desc">Podržan uvoz za: katalog proizvoda (potreban izabran dobavljač), dobavljače, korisnike.</p>
+      <div class="form-row">
+        <div class="field">
+          <label data-i18n="data_type_label">Vrsta podataka</label>
+          <select id="import-type">
+            <option value="suppliers" data-i18n="suppliers">Dobavljači</option>
+            <option value="products" data-i18n="opt_products_catalog">Proizvodi (katalog izabranog dobavljača)</option>
+          </select>
+        </div>
+        <div class="field" id="import-supplier-field">
+          <label data-i18n="supplier_for_products_label">Dobavljač (za proizvode)</label>
+          <select id="import-supplier"></select>
+        </div>
+      </div>
+      <div class="field"><label data-i18n="file_label">Fajl (.csv ili .xlsx)</label><input type="file" id="import-file" accept=".csv,.xlsx,.xls" /></div>
+      <button class="btn btn-primary" id="import-btn" data-i18n="import_btn">Uvezi podatke</button>
+      <div id="import-preview" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="export_title">Izvoz</h2></div>
+      <p data-i18n="export_desc">Izvezite narudžbine u izabranom formatu.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-outline" id="export-csv">⬇ CSV</button>
+        <button class="btn btn-outline" id="export-excel">⬇ Excel</button>
+        <button class="btn btn-outline" id="export-pdf">⬇ PDF</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script type="module" src="./js/page-admin-import-export.js"></script>
+</body>
+</html>

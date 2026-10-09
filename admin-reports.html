@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_reports">Izveštaji — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="reports">Izveštaji</h1></div>
+    </div>
+
+    <!-- FILTERI -->
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="filters_title">Filteri</h2></div>
+      <div class="form-row">
+        <div class="field"><label data-i18n="period_from">Period od</label><input type="text" class="js-datepicker" id="f-date-from" /></div>
+        <div class="field"><label data-i18n="period_to">Period do</label><input type="text" class="js-datepicker" id="f-date-to" /></div>
+        <div class="field"><label data-i18n="role_narucilac">Naručilac</label><select id="f-narucilac"><option value="" data-i18n="all_requesters">Svi naručioci</option></select></div>
+        <div class="field"><label data-i18n="role_isporucilac">Isporučilac</label><select id="f-isporucilac"><option value="" data-i18n="all_fulfillers">Svi isporučioci</option></select></div>
+      </div>
+      <div class="form-row" style="align-items:end;">
+        <div class="field"><label data-i18n="supplier">Dobavljač</label><select id="f-supplier"><option value="" data-i18n="all_suppliers">Svi dobavljači</option></select></div>
+        <div class="field"><label data-i18n="order_status_label">Status narudžbine</label><select id="f-status"><option value="" data-i18n="all_statuses">Svi statusi</option></select></div>
+      </div>
+      <div class="form-row" style="align-items:end;">
+        <div class="field"><label data-i18n="requested_by_meta_label">Ko je tražio</label><input type="text" id="f-requested-by" data-i18n-placeholder="requested_by_filter_placeholder" placeholder="pretraga po imenu..." /></div>
+        <div class="field" style="display:flex;align-items:end;"><button class="btn btn-primary" id="run-report-btn" style="height:42px;width:100%;" data-i18n="apply_filters_btn">🔍 Primeni filtere</button></div>
+        <div class="field" style="display:flex;align-items:end;"><button class="btn btn-outline" id="reset-filters-btn" style="height:42px;width:100%;" data-i18n="reset_filters_btn">Poništi filtere</button></div>
+      </div>
+      <p class="muted" id="report-meta" style="margin-top:6px;"></p>
+    </div>
+
+    <!-- TABOVI -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="orders" data-i18n="tab_by_order">Po narudžbenicama</button>
+      <button class="tab-btn" data-tab="narucioci" data-i18n="tab_by_requester">Po naručiocima</button>
+      <button class="tab-btn" data-tab="isporucioci" data-i18n="tab_by_fulfiller">Po isporučiocima</button>
+      <button class="tab-btn" data-tab="suppliers" data-i18n="tab_by_supplier">Po dobavljačima</button>
+      <button class="tab-btn" data-tab="finance" data-i18n="finance_overview_title">Finansijski pregled</button>
+    </div>
+
+    <!-- PO NARUDŽBENICAMA -->
+    <div id="tab-orders">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="orders_detailed_title">Narudžbine — detaljno</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="muted" data-i18n="generate_report_arrow">Generiši izveštaj →</span>
+            <button class="btn btn-sm btn-outline" data-export="csv" data-view="orders">⇩ CSV</button>
+            <button class="btn btn-sm btn-outline" data-export="excel" data-view="orders">⇩ Excel</button>
+            <button class="btn btn-sm btn-outline" data-export="pdf" data-view="orders">⇩ PDF</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th data-i18n="export_col_number">Broj</th><th data-i18n="export_col_date">Datum</th><th data-i18n="role_narucilac">Naručilac</th><th data-i18n="requested_by_meta_label">Ko je tražio</th><th data-i18n="role_isporucilac">Isporučilac</th><th data-i18n="status">Status</th><th data-i18n="export_col_item_count">Broj artikala</th><th data-i18n="export_col_total_amount">Ukupan iznos</th></tr></thead>
+            <tbody id="orders-body"><tr class="empty-row"><td colspan="8" data-i18n="set_filters_hint">Podesite filtere i kliknite "Primeni filtere".</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PO NARUČIOCIMA -->
+    <div id="tab-narucioci" class="hidden">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="tab_by_requester">Po naručiocima</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="muted" data-i18n="generate_report_arrow">Generiši izveštaj →</span>
+            <button class="btn btn-sm btn-outline" data-export="csv" data-view="narucioci">⇩ CSV</button>
+            <button class="btn btn-sm btn-outline" data-export="excel" data-view="narucioci">⇩ Excel</button>
+            <button class="btn btn-sm btn-outline" data-export="pdf" data-view="narucioci">⇩ PDF</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th data-i18n="role_narucilac">Naručilac</th><th data-i18n="export_col_order_count">Broj narudžbina</th><th data-i18n="export_col_total_amount">Ukupan iznos</th></tr></thead>
+            <tbody id="narucioci-body"><tr class="empty-row"><td colspan="3" data-i18n="no_data">Nema podataka.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PO ISPORUČIOCIMA -->
+    <div id="tab-isporucioci" class="hidden">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="tab_by_fulfiller">Po isporučiocima</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="muted" data-i18n="generate_report_arrow">Generiši izveštaj →</span>
+            <button class="btn btn-sm btn-outline" data-export="csv" data-view="isporucioci">⇩ CSV</button>
+            <button class="btn btn-sm btn-outline" data-export="excel" data-view="isporucioci">⇩ Excel</button>
+            <button class="btn btn-sm btn-outline" data-export="pdf" data-view="isporucioci">⇩ PDF</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th data-i18n="role_isporucilac">Isporučilac</th><th data-i18n="export_col_order_count">Broj narudžbina</th><th data-i18n="export_col_total_amount">Ukupan iznos</th></tr></thead>
+            <tbody id="isporucioci-body"><tr class="empty-row"><td colspan="3" data-i18n="no_data">Nema podataka.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PO DOBAVLJAČIMA -->
+    <div id="tab-suppliers" class="hidden">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="tab_by_supplier">Po dobavljačima</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="muted" data-i18n="generate_report_arrow">Generiši izveštaj →</span>
+            <button class="btn btn-sm btn-outline" data-export="csv" data-view="suppliers">⇩ CSV</button>
+            <button class="btn btn-sm btn-outline" data-export="excel" data-view="suppliers">⇩ Excel</button>
+            <button class="btn btn-sm btn-outline" data-export="pdf" data-view="suppliers">⇩ PDF</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th data-i18n="supplier">Dobavljač</th><th data-i18n="export_col_order_count">Broj narudžbina</th><th data-i18n="export_col_total_paid">Ukupno plaćeno</th></tr></thead>
+            <tbody id="suppliers-body-report"><tr class="empty-row"><td colspan="3" data-i18n="no_data">Nema podataka.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANSIJSKI PREGLED -->
+    <div id="tab-finance" class="hidden">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="finance_overview_title">Finansijski pregled</h2></div>
+        <div class="stat-grid" id="finance-stats"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script type="module" src="./js/page-admin-reports.js"></script>
+</body>
+</html>

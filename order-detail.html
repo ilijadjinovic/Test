@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_order_detail">Narudžbina — detalji — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div>
+        <div class="eyebrow" data-i18n="order_eyebrow">Narudžbina</div>
+        <h1 id="order-number" class="mono">—</h1>
+        <p id="order-meta" class="muted"></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">
+        <button class="btn btn-outline" id="print-pdf-btn" data-i18n-title="export_order_pdf_title" title="Izvezi narudžbenicu u PDF za štampu" data-i18n="order_form_pdf_btn">🖨️ Narudžbenica (PDF)</button>
+        <div id="action-bar" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        <div id="delete-zone" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="status-track" class="status-track"></div>
+    </div>
+
+    <div class="form-row" style="align-items:start;">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h2 data-i18n="items_title">Artikli</h2></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th class="col-num">#</th><th data-i18n="code">Šifra</th><th data-i18n="item_label">Artikal</th><th data-i18n="supplier">Dobavljač</th><th data-i18n="location">Lokacija</th><th data-i18n="requested">Traženo</th><th data-i18n="delivery_label">Isporuka</th><th data-i18n="note">Napomena</th><th data-i18n="purchase_status_label">Status nabavke</th></tr></thead>
+              <tbody id="items-body"><tr class="empty-row"><td colspan="9" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+            </table>
+          </div>
+          <div id="add-item-panel"></div>
+        </div>
+
+        <div class="panel" id="purchases-panel"></div>
+        <div class="panel" id="finance-panel"></div>
+        <div class="panel" id="delivery-panel"></div>
+        <div class="panel" id="receipt-panel"></div>
+        <div class="panel" id="claims-panel"></div>
+      </div>
+
+      <div>
+        <div class="panel" id="qr-panel"></div>
+        <div class="panel">
+          <div class="panel-head"><h2 data-i18n="chat">Poruke</h2></div>
+          <div class="chat-box">
+            <div class="chat-messages" id="chat-messages"></div>
+            <form class="chat-input-row" id="chat-form">
+              <input type="text" id="chat-input" data-i18n-placeholder="write_message_placeholder" placeholder="Napišite poruku..." />
+              <button class="btn btn-primary btn-sm" type="submit" data-i18n="send_btn">Pošalji</button>
+            </form>
+          </div>
+        </div>
+        <div class="panel" id="attachments-panel">
+          <div class="panel-head"><h2 data-i18n="attachments">Prilozi</h2></div>
+          <input type="file" id="attachment-file" accept="image/*" />
+          <select id="attachment-type" style="margin-top:8px;">
+            <option value="foto_robe" data-i18n="attachment_type_goods_photo">Fotografija robe</option>
+            <option value="racun" data-i18n="attachment_type_receipt">Fiskalni račun</option>
+            <option value="foto_isporuke" data-i18n="attachment_type_delivery_photo">Fotografija isporuke</option>
+          </select>
+          <input type="text" id="receipt-number" data-i18n-placeholder="receipt_number_optional_placeholder" placeholder="Broj računa (opciono)" style="margin-top:8px;" />
+          <button class="btn btn-outline btn-sm" id="upload-btn" style="margin-top:8px;width:100%;" data-i18n="upload_btn">⬆ Otpremi</button>
+          <div id="attachments-list" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay hidden" id="claim-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 data-i18n="open_claim">Otvori reklamaciju</h2><button class="icon-btn" id="close-claim-modal">✕</button></div>
+    <form id="claim-form">
+      <div class="field"><label data-i18n="item_label">Artikal</label><select id="claim-item" required></select></div>
+      <div class="form-row">
+        <div class="field"><label data-i18n="requested">Traženo</label><input type="number" id="claim-requested" required /></div>
+        <div class="field"><label data-i18n="received">Primljeno</label><input type="number" id="claim-received" required /></div>
+      </div>
+      <div class="field"><label data-i18n="problem_description_label">Opis problema</label><textarea id="claim-desc" rows="3"></textarea></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" data-i18n="open_claim">Otvori reklamaciju</button>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="./js/page-order-detail.js"></script>
+</body>
+</html>

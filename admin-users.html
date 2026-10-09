@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_users">Korisnici — Admin firme — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="users">Korisnici</h1></div>
+      <div class="header-actions">
+        <div class="sort-inline">
+          <label data-i18n="sort_by_label">Sortiraj</label>
+          <select id="users-sort">
+            <option value="name_asc" data-i18n="sort_name_asc">Naziv (A-Š)</option>
+            <option value="name_desc" data-i18n="sort_name_desc">Naziv (Š–A)</option>
+            <option value="role" data-i18n="sort_by_role">Po ulozi</option>
+          </select>
+        </div>
+        <button class="btn btn-outline" id="users-pdf-btn" data-i18n="export_list_pdf_btn">⇩ PDF</button>
+        <button class="btn btn-amber" id="new-user-btn" data-i18n="new_user_btn">+ Novi korisnik</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th data-i18n="full_name_short">Ime</th><th>Email</th><th data-i18n="role_label">Uloga</th><th data-i18n="status">Status</th><th></th></tr></thead>
+          <tbody id="users-body"><tr class="empty-row"><td colspan="5" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay hidden" id="user-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 data-i18n="new_user_title">Novi korisnik</h2><button class="icon-btn" id="close-modal">✕</button></div>
+    <form id="user-form">
+      <div class="field"><label data-i18n="full_name_label">Ime i prezime</label><input type="text" id="u-name" required /></div>
+      <div class="field"><label>Email</label><input type="email" id="u-email" required /></div>
+      <div class="field"><label data-i18n="temp_password_label">Privremena lozinka</label><input type="password" id="u-password" required minlength="6" /></div>
+      <div class="field">
+        <label data-i18n="role_label">Uloga</label>
+        <select id="u-role">
+          <option value="admin" data-i18n="role_admin">Admin firme</option>
+          <option value="narucilac" selected data-i18n="role_narucilac">Naručilac</option>
+          <option value="isporucilac" data-i18n="role_isporucilac">Isporučilac</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" data-i18n="create_account_btn">Kreiraj nalog</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="user-details-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 data-i18n="details_label">Detalji</h2><button class="icon-btn" id="close-user-details-modal">✕</button></div>
+    <div class="field"><label data-i18n="full_name_label">Ime i prezime</label><input type="text" id="ud-name" disabled /></div>
+    <div class="field"><label>Email</label><input type="text" id="ud-email" disabled /></div>
+    <div class="field"><label data-i18n="role_label">Uloga</label><input type="text" id="ud-role" disabled /></div>
+    <div class="field"><label data-i18n="status">Status</label><input type="text" id="ud-status" disabled /></div>
+    <div class="field"><label data-i18n="created_date_label">Datum kreiranja</label><input type="text" id="ud-created" disabled /></div>
+  </div>
+</div>
+
+<script type="module" src="./js/page-admin-users.js"></script>
+</body>
+</html>

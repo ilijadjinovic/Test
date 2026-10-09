@@ -1,0 +1,587 @@
+/* ============================================================================
+   style.css — Sistem za naručivanje i nabavku
+   Dizajn: tamna tema (adaptirano iz Fleet Manager stila) — plavi primarni
+   akcent, kartice na tamnoj "surface" pozadini, meki (soft) bedževi statusa.
+   Jedinstven fajl — sve što se tiče izgleda aplikacije živi ovde.
+   ============================================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap');
+
+/* ── CSS VARIJABLE ─────────────────────────────────────────────────────── */
+:root {
+  --color-bg:           #0f1923;
+  --color-surface:      #1a2744;
+  --color-surface-2:    #243354;
+  --color-surface-3:    #2e3f66;
+  --color-border:       #2e4080;
+  --color-border-light: #3a4f8a;
+
+  --color-primary:      #3d7eff;
+  --color-primary-dark: #2960cc;
+  --color-primary-glow: rgba(61,126,255,0.15);
+
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger:  #ef4444;
+  --color-info:    #06b6d4;
+
+  --color-text:       #e8edf5;
+  --color-text-muted: #7a8fb5;
+  --color-text-faint: #4a5a80;
+
+  --color-nav-bg: #111d30;
+
+  --color-slate:        #94a3b8;
+  --color-slate-dark:   #64748b;
+  --color-orange:       #f97316;
+  --color-purple:       #8b5cf6;
+
+  --color-danger-hover:  #c93333;
+  --color-warning-hover: #d97706;
+
+  --color-success-soft: rgba(34,197,94,0.15);
+  --color-warning-soft: rgba(245,158,11,0.15);
+  --color-danger-soft:  rgba(239,68,68,0.15);
+  --color-info-soft:    rgba(6,182,212,0.15);
+  --color-slate-soft:   rgba(148,163,184,0.15);
+  --color-purple-soft:  rgba(139,92,246,0.15);
+  --color-danger-bg-faint: rgba(239,68,68,0.1);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+
+  --font-display: 'Manrope', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* ── RESET ─────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body { height: 100%; overflow-x: hidden; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); color: var(--color-text); margin: 0 0 4px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 20px; font-weight: 800; }
+h3 { font-size: 16px; font-weight: 700; }
+p { color: var(--color-text-muted); margin: 0 0 8px; }
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.mono { font-family: var(--font-mono); letter-spacing: 0.02em; }
+.hidden { display: none !important; }
+.muted { color: var(--color-text-muted); font-size: 13px; }
+.divider { height: 1px; background: var(--color-border); margin: 18px 0; }
+button, input, select, textarea { font-family: inherit; font-size: 14px; }
+
+/* ── APP SHELL ─────────────────────────────────────────────────────────── */
+.app-shell {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  grid-template-rows: 64px 1fr;
+  grid-template-areas: "nav topbar" "nav main";
+  height: 100vh;
+  overflow: hidden;
+}
+#app-nav { display: contents; }
+.sidebar {
+  grid-area: nav;
+  background: var(--color-nav-bg);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 24px;
+  border-right: 1px solid var(--color-border);
+  height: 100vh;
+  overflow-y: auto;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  object-fit: cover; display: block; box-shadow: var(--shadow-sm);
+}
+.brand-name { font-family: var(--font-display); font-weight: 800; font-size: 17px; color: var(--color-text); letter-spacing: 0.02em; }
+.side-menu { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.side-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-md);
+  color: var(--color-text-muted); font-weight: 600; font-size: 14px;
+  transition: all 0.15s;
+}
+.side-link:hover { background: var(--color-surface-2); color: var(--color-text); text-decoration: none; }
+.side-link.active { background: var(--color-primary-glow); color: var(--color-primary); }
+.side-icon { width: 18px; text-align: center; }
+.side-menu-bottom { border-top: 1px solid var(--color-border); padding-top: 8px; margin-top: 8px; }
+.side-menu-bottom .side-link { width: 100%; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.side-footer { padding: 8px; }
+.about-author { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.about-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: var(--color-primary); color: #fff; font-weight: 800; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.about-sep { border: none; border-top: 1px solid var(--color-border); margin: 0 0 16px; }
+.about-list { display: flex; flex-direction: column; gap: 14px; }
+.about-row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--color-text); }
+.about-icon { width: 22px; text-align: center; font-size: 16px; }
+.about-row a { color: var(--color-primary); }
+.role-pill {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+  text-transform: uppercase; background: var(--color-surface-2); color: var(--color-text-muted);
+  padding: 5px 10px; border-radius: 999px; border: 1px solid var(--color-border);
+}
+
+.topbar {
+  grid-area: topbar;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 24px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+  min-width: 0;
+}
+.topbar-spacer { flex: 1; }
+.icon-btn {
+  border: none; background: transparent; font-size: 17px; cursor: pointer; color: var(--color-text-muted);
+  width: 36px; height: 36px; border-radius: var(--radius-md); position: relative; transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+#menu-toggle { display: none; }
+.lang-toggle {
+  display: flex; align-items: center; gap: 2px;
+  background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 999px; padding: 2px;
+}
+.lang-option {
+  border: none; background: transparent; color: var(--color-text-muted);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+  padding: 5px 11px; border-radius: 999px; cursor: pointer; transition: all 0.15s;
+}
+.lang-option:hover:not(.active) { color: var(--color-text); }
+.lang-option.active { background: var(--color-primary); color: #fff; }
+.user-chip { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--color-surface-2); border: none; cursor: pointer; font: inherit; }
+.user-chip:hover { background: var(--color-border); }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+}
+.user-name { font-weight: 600; font-size: 13px; color: var(--color-text); }
+.logout-icon { display: none; font-size: 15px; }
+.logout-label { display: inline; }
+
+main.content { grid-area: main; padding: 28px 32px; overflow-y: auto; min-width: 0; }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; color: var(--color-primary); font-weight: 600; margin-bottom: 6px; }
+
+/* ── HEADER ACTIONS (sort + export dugmad pored naslova stranice) ───────── */
+.header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sort-inline { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
+.sort-inline label { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--color-text-muted); white-space: nowrap; }
+.sort-inline select { width: auto; height: 100%; border: none; background: transparent; padding: 0 22px 0 0; margin: 0; }
+.sort-inline select:focus { box-shadow: none; }
+.header-actions .btn { height: 42px; box-sizing: border-box; }
+@media (max-width: 640px) {
+  .header-actions { width: 100%; }
+  .header-actions .sort-inline { flex: 1 1 100%; }
+  .header-actions .btn { flex: 1 1 auto; }
+}
+
+/* ── BUTTONS ───────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; border-radius: var(--radius-md); padding: 10px 18px;
+  font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--color-primary-dark); }
+.btn-amber { background: var(--color-warning); color: #1a1305; }
+.btn-amber:hover:not(:disabled) { background: var(--color-warning-hover); color: #fff; }
+.btn-outline { background: transparent; color: var(--color-text); border: 1px solid var(--color-border); }
+.btn-outline:hover:not(:disabled) { background: var(--color-surface-2); border-color: var(--color-border-light); }
+.btn-ghost { background: none; color: var(--color-text-muted); }
+.btn-ghost:hover:not(:disabled) { color: var(--color-text); background: rgba(255,255,255,0.06); }
+.btn-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.btn-danger:hover:not(:disabled) { background: var(--color-danger); color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 12.5px; }
+
+/* ── FORMS ─────────────────────────────────────────────────────────────── */
+label { display: block; font-size: 12.5px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 6px; }
+.field { margin-bottom: 16px; }
+input[type="text"], input[type="email"], input[type="password"], input[type="number"],
+input[type="date"], input[type="tel"], input[type="file"], select, textarea {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg); color: var(--color-text); outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
+input::placeholder, textarea::placeholder { color: var(--color-text-faint); }
+select {
+  cursor: pointer; -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a8fb5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+select option { background: var(--color-surface-2); color: var(--color-text); }
+.hint { font-size: 12px; color: var(--color-text-faint); margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Red "Naziv / Količina / Jed. mere" kod slobodnog unosa artikla — naziv zauzima
+   preostali prostor, količina i jedinica mere ostaju uske (Poglavlje "slobodan unos"). */
+.form-row.manual-entry-row { grid-template-columns: 1fr 90px 90px; }
+@media (max-width: 880px) { .form-row.manual-entry-row { grid-template-columns: 1fr; } }
+
+/* ── DATE PICKER (kalendar na klik, prikaz dd.mm.gggg.) ───────────────────── */
+input.date-input {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a8fb5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 38px;
+}
+.dp-popover {
+  position: absolute;
+  z-index: 1000;
+  width: 260px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  font-size: 13px;
+}
+.dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.dp-title { font-family: var(--font-display); font-weight: 700; color: var(--color-text); }
+.dp-nav {
+  background: transparent; border: 1px solid var(--color-border); color: var(--color-text);
+  border-radius: var(--radius-sm); width: 26px; height: 26px; cursor: pointer; font-size: 15px; line-height: 1;
+}
+.dp-nav:hover { background: var(--color-surface-3); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-grid-dow { margin-bottom: 4px; }
+.dp-dow { text-align: center; font-size: 11px; color: var(--color-text-faint); font-weight: 600; }
+.dp-cell { height: 30px; }
+.dp-day {
+  width: 100%; height: 100%; background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--color-text); cursor: pointer; font-size: 13px;
+}
+.dp-day:hover { background: var(--color-surface-3); }
+.dp-day.dp-today { border: 1px solid var(--color-primary); }
+.dp-day.dp-selected { background: var(--color-primary); color: #fff; }
+.dp-foot { display: flex; justify-content: space-between; margin-top: 8px; border-top: 1px solid var(--color-border); padding-top: 8px; }
+.dp-foot-btn { background: transparent; border: none; color: var(--color-primary); cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 4px 6px; }
+.dp-foot-btn:hover { text-decoration: underline; }
+/* ── AUTOCOMPLETE (predlozi iz kataloga dobavljača pri slobodnom unosu naziva artikla) ── */
+.ac-popover {
+  position: absolute;
+  z-index: 1000;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+}
+.ac-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; background: transparent; border: none; border-radius: var(--radius-sm);
+  padding: 8px 10px; text-align: left; cursor: pointer; color: var(--color-text); font-size: 13px;
+}
+.ac-item:hover, .ac-item.active { background: var(--color-surface-3); }
+.ac-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-item-code { font-size: 11px; color: var(--color-text-faint); flex-shrink: 0; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; }
+.checkbox-row input { width: auto; accent-color: var(--color-primary); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--color-primary); }
+
+/* ── AUTH SCREENS ──────────────────────────────────────────────────────── */
+.auth-shell {
+  min-height: 100vh; display: grid; place-items: center; padding: 24px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(61,126,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(61,126,255,0.08) 0%, transparent 60%),
+    var(--color-bg);
+}
+.auth-card {
+  width: 100%; max-width: 420px; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl); padding: 40px 32px; box-shadow: var(--shadow-lg);
+}
+.auth-card.wide { max-width: 620px; }
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.auth-foot { text-align: center; margin-top: 18px; font-size: 13.5px; color: var(--color-text-muted); }
+
+/* ── TOASTS ────────────────────────────────────────────────────────────── */
+#toast-host { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 999; }
+.toast {
+  background: var(--color-surface-3); border: 1px solid var(--color-border); color: var(--color-text);
+  padding: 12px 16px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  opacity: 0; transform: translateY(8px); transition: all .25s ease; font-size: 13.5px; max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast-error { border-color: var(--color-danger); background: rgba(220,38,38,0.18); }
+.toast-success { border-color: var(--color-success); background: rgba(22,163,74,0.18); }
+
+/* ── STAT CARDS (dashboard) ───────────────────────────────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+.stat-card {
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+  padding: 18px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; transition: all 0.15s;
+  cursor: pointer; user-select: none;
+}
+.stat-card:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.stat-card.active { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary) inset; }
+.stat-card.active.red { border-color: var(--color-danger); box-shadow: 0 0 0 1px var(--color-danger) inset; }
+.stat-card.active.amber { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning) inset; }
+.stat-card.active.teal { border-color: var(--color-info); box-shadow: 0 0 0 1px var(--color-info) inset; }
+.stat-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--color-primary); }
+.stat-card:hover { border-color: var(--color-border-light); transform: translateY(-1px); }
+.stat-card .stat-label { font-size: 12px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.stat-card .stat-value { font-family: var(--font-display); font-size: 32px; font-weight: 800; margin-top: 6px; color: var(--color-text); }
+.stat-card.amber::before { background: var(--color-warning); }
+.stat-card.amber .stat-value { color: var(--color-warning); }
+.stat-card.red::before { background: var(--color-danger); }
+.stat-card.red .stat-value { color: var(--color-danger); }
+.stat-card.teal::before { background: var(--color-info); }
+.stat-card.teal .stat-value { color: var(--color-info); }
+@media (max-width: 880px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── PANELS / CARDS ────────────────────────────────────────────────────── */
+.panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+
+/* ── TABLES ────────────────────────────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--color-border);
+  -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+}
+/* table-layout: auto + width: max-content sprečava da kolone budu sabijene ispod
+   svoje prirodne širine (npr. "13 kom" da se prelomi u dva reda) — tabela umesto
+   toga postaje šira od omotača i .table-wrap je horizontalno skroluje. */
+table.data-table { width: 100%; min-width: max-content; border-collapse: collapse; font-size: 13.5px; }
+.data-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
+  color: var(--color-text-muted); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border);
+  padding: 10px 14px; white-space: nowrap;
+}
+.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); vertical-align: middle; color: var(--color-text); white-space: nowrap; }
+/* Kolone gde je prelamanje teksta zaista poželjno (npr. duže napomene) zadržavaju
+   staro ponašanje preko klase "wrap-col" na <th>/<td>. */
+.data-table .wrap-col { white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.03); }
+.data-table .row-link { cursor: pointer; }
+.empty-row td { text-align: center; color: var(--color-text-faint); padding: 34px 12px; }
+
+/* Modifikator: širina kolona fiksirana preko <colgroup> u HTML-u, sadržaj se prelama umesto da širi kolonu */
+table.data-table.table-fixed { table-layout: fixed; }
+table.data-table.table-fixed td { white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+table.data-table.table-fixed th { white-space: normal; }
+
+/* ── TABELE NA MOBILNOM (≤700px) ──────────────────────────────────────────
+   Problem koji se rešava: na uskom ekranu su kolone tabele sa fiksnim
+   procentualnim širinama (table-fixed + <col width="%">) postajale toliko
+   uske da se svaka reč, pa i svako slovo, prelamalo u novi red i tabela je
+   izgledala "zbrkano". Rešenje: na mobilnom se table-layout vraća na "auto"
+   i širine kolona iz <col> se zanemaruju — kolone se šire prema sadržaju,
+   sadržaj se više ne lomi (white-space: nowrap), a tabela dobija minimalnu
+   širinu veću od ekrana, pa se ceo red čita horizontalnim skrolovanjem.
+   Prva kolona (obično naziv) ostaje "zalepljena" za levu ivicu dok se
+   skroluje, da korisnik uvek zna koji red gleda; blagi senčeni gradijenti
+   na ivicama nagoveštavaju da ima još sadržaja za skrolovanje. ─────────── */
+@media (max-width: 700px) {
+  .table-wrap {
+    position: relative;
+    background:
+      linear-gradient(to right, var(--color-surface) 0%, rgba(26,39,68,0) 100%) 0 0 / 18px 100% local,
+      linear-gradient(to left,  var(--color-surface) 0%, rgba(26,39,68,0) 100%) 100% 0 / 18px 100% local,
+      linear-gradient(to right, rgba(0,0,0,.35), rgba(0,0,0,0)) 0 0 / 8px 100% scroll,
+      linear-gradient(to left,  rgba(0,0,0,.35), rgba(0,0,0,0)) 100% 0 / 8px 100% scroll;
+    background-repeat: no-repeat;
+    background-color: var(--color-surface);
+  }
+
+  table.data-table,
+  table.data-table.table-fixed {
+    table-layout: auto;
+    min-width: 100%;
+    width: max-content;
+  }
+  /* Širine iz <colgroup style="width:%"> se ignorišu na mobilnom — kolone se
+     šire prema sadržaju umesto da se sabijaju ispod čitljive širine. */
+  table.data-table.table-fixed col { width: auto !important; }
+
+  .data-table th, .data-table td,
+  table.data-table.table-fixed th, table.data-table.table-fixed td {
+    white-space: nowrap; word-break: normal; overflow-wrap: normal;
+    font-size: 12.5px; padding: 10px 12px;
+  }
+  /* Kolone gde je prelamanje teksta zaista poželjno (npr. napomene) mogu da
+     zadrže staro ponašanje dodavanjem klase "wrap-col" na <th>/<td>. */
+  .data-table .wrap-col { white-space: normal; word-break: break-word; overflow-wrap: break-word; max-width: 220px; }
+
+  /* Prva kolona ostaje vidljiva dok se ostatak reda skroluje ulevo-udesno. */
+  .data-table tr > *:first-child {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--color-surface);
+    box-shadow: 1px 0 0 var(--color-border);
+  }
+  .data-table th:first-child { background: var(--color-surface-2); }
+  .data-table tr:hover > *:first-child { background: var(--color-surface-2); }
+}
+
+/* Mala oznaka "prevucite za više" — prikazuje se samo na mobilnom, i samo
+   ako JS (nav.js) utvrdi da tabela zaista ima šta da se skroluje. */
+.table-scroll-hint {
+  display: none; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+  color: var(--color-text-muted); margin: -6px 0 8px; letter-spacing: .02em;
+}
+@media (max-width: 700px) {
+  .table-wrap.has-h-scroll + .table-scroll-hint,
+  .table-scroll-hint.show { display: inline-flex; }
+}
+
+/* ── BADGES (statusi) ──────────────────────────────────────────────────── */
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.badge-gray  { background: var(--color-slate-soft); color: var(--color-slate); }
+.badge-amber { background: var(--color-warning-soft); color: var(--color-warning); }
+.badge-blue  { background: var(--color-primary-glow); color: var(--color-primary); }
+.badge-teal, .badge-green { background: var(--color-success-soft); color: var(--color-success); }
+.badge-red   { background: var(--color-danger-soft); color: var(--color-danger); }
+.badge-urgent{ background: var(--color-danger); color: #fff; }
+
+/* ── STATUS TIMELINE ───────────────────────────────────────────────────── */
+.status-track { display: flex; align-items: center; overflow-x: auto; padding: 6px 0 16px; }
+.status-step { display: flex; flex-direction: column; align-items: center; min-width: 108px; position: relative; }
+.status-step .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--color-surface-2); border: 2px solid var(--color-border); z-index: 1; }
+.status-step.done .dot { background: var(--color-success); border-color: var(--color-success); }
+.status-step.current .dot { background: var(--color-primary); border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-glow); }
+.status-step .line { position: absolute; top: 6px; left: 50%; width: 100%; height: 2px; background: var(--color-border); z-index: 0; }
+.status-step.done .line { background: var(--color-success); }
+.status-step:first-child .line { display: none; }
+.status-step .step-label { margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-align: center; }
+.status-step.current .step-label { color: var(--color-text); }
+
+/* ── ITEM LIST / CART ──────────────────────────────────────────────────── */
+.supplier-block { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px; }
+.supplier-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.item-row { display: grid; grid-template-columns: 1.6fr 90px 110px 1fr 90px auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--color-border); }
+.item-row:last-child { border-bottom: none; }
+@media (max-width: 880px) { .item-row { grid-template-columns: 1fr; } }
+
+/* ── CHAT ──────────────────────────────────────────────────────────────── */
+.chat-box { display: flex; flex-direction: column; height: 340px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 8px 4px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { max-width: 78%; padding: 9px 12px; border-radius: var(--radius-md); background: var(--color-surface-2); font-size: 13.5px; color: var(--color-text); }
+.chat-msg.mine { align-self: flex-end; background: var(--color-primary); color: #fff; }
+.chat-msg .meta { display: block; font-size: 10.5px; opacity: 0.7; margin-top: 4px; }
+.chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input-row input { flex: 1; }
+
+/* ── NOTIFICATIONS PANEL ───────────────────────────────────────────────── */
+.notif-wrap { position: relative; }
+.notif-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); }
+.notif-panel {
+  position: absolute; top: 44px; right: 0; width: min(320px, calc(100vw - 24px)); max-height: 400px; overflow-y: auto;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); z-index: 40;
+}
+.notif-item { padding: 12px 14px; border-bottom: 1px solid var(--color-border); cursor: pointer; }
+.notif-item:last-child { border-bottom: none; }
+.notif-item.unread { background: var(--color-primary-glow); }
+.notif-item strong { font-size: 13px; color: var(--color-text); }
+.notif-item p { font-size: 12.5px; margin: 3px 0; }
+.notif-time { font-size: 11px; color: var(--color-text-faint); }
+.notif-empty { padding: 22px; text-align: center; color: var(--color-text-faint); font-size: 13px; }
+
+/* ── MODAL ─────────────────────────────────────────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; backdrop-filter: blur(2px); }
+.modal-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 26px; width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); max-height: 88vh; overflow-y: auto; }
+.modal-card.wide { max-width: 700px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+
+/* ── TABS ──────────────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--color-border); margin-bottom: 18px; }
+.tab-btn { background: none; border: none; padding: 10px 16px; font-weight: 700; color: var(--color-text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.tab-btn:hover { color: var(--color-text); }
+.tab-btn.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+/* ── MISC ──────────────────────────────────────────────────────────────── */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.click-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; cursor: pointer; transition: all 0.15s; }
+.click-card:hover { border-color: var(--color-border-light); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.qr-box { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; }
+.qr-box #qr-canvas { background: #fff; padding: 12px; border-radius: var(--radius-md); }
+.attachment-thumb { width: 100%; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.attachment-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-size: 13px; color: var(--color-text); }
+.attachment-item:last-child { border-bottom: none; }
+
+@media (max-width: 880px) {
+  .app-shell { grid-template-columns: 1fr; grid-template-areas: "topbar" "main"; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: 232px; transform: translateX(-100%); transition: transform .2s ease; z-index: 50; }
+  .sidebar.open { transform: translateX(0); }
+  #menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  main.content { padding: 18px; }
+  .form-row { grid-template-columns: 1fr; }
+
+  .topbar { padding: 0 12px; gap: 8px; }
+  .user-chip { padding: 4px; gap: 0; }
+  .user-name { display: none; }
+  .lang-option { padding: 4px 8px; font-size: 10px; }
+  .logout-icon { display: inline; }
+  .logout-label { display: none; }
+  #logout-btn { padding: 8px 10px; }
+}
+
+/* Masovna izmena kataloga (bulk-edit) — traka koja se pojavljuje kad su
+   izabrani proizvodi u tabeli kataloga (admin-catalog.html). */
+.bulk-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: var(--color-primary-soft, #fff4de); }
+.bulk-edit-bar #bulk-edit-count { font-weight: 600; }
+
+/* ── KONTROLNE TABLE: kartice sa podsetnikom, pretraga, akcije u redu, paginacija ── */
+/* Šest kartica se ravnomerno raspoređuju (2 u redu na telefonu, više na širem ekranu) */
+.stat-grid.stat-grid-auto { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* Vizuelni podsetnik: kartice koje traže reakciju (čeka prihvatanje / potvrdu, reklamacije)
+   dobijaju obojenu ivicu, znak "!" i blago pulsiranje dok je broj veći od nule. */
+.stat-card.attention { border-color: var(--color-warning); animation: attn-pulse 2s ease-in-out infinite; }
+.stat-card.attention.red { border-color: var(--color-danger); animation-name: attn-pulse-red; }
+.stat-card.attention::after {
+  content: "!"; position: absolute; top: 10px; right: 12px; width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+  background: var(--color-warning); color: #111;
+}
+.stat-card.attention.red::after { background: var(--color-danger); color: #fff; }
+@keyframes attn-pulse     { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 0 5px rgba(245,158,11,.28); } }
+@keyframes attn-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }  50% { box-shadow: 0 0 0 5px rgba(239,68,68,.30); } }
+@media (prefers-reduced-motion: reduce) { .stat-card.attention { animation: none; } }
+
+.late-tag {
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  background: var(--color-danger-soft); color: var(--color-danger); white-space: nowrap;
+}
+.reject-reason { display: block; margin-top: 4px; font-size: 11.5px; color: var(--color-danger); white-space: normal; max-width: 260px; }
+.data-table tr.row-rejected td { background: var(--color-danger-bg-faint); }
+.data-table tr.row-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.row-actions { display: flex; gap: 6px; align-items: center; }
+.repeated-link { font-size: 12px; color: var(--color-primary); text-decoration: underline; }
+
+.dash-search { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 8px; }
+.dash-search input[type="search"] { flex: 1 1 280px; min-width: 200px; }
+.dash-date { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.dash-search-info { font-size: 12.5px; min-height: 18px; margin-bottom: 8px; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding-top: 14px; }
+.pager-count { font-size: 12.5px; }
+
+/* Telefon: veća površina dodira za dugmad u redu (Prihvati / Odbij / Potvrdi), pretraga preko cele širine */
+@media (max-width: 700px) {
+  .row-actions .btn { min-height: 38px; padding: 8px 14px; }
+  .dash-search > * { flex: 1 1 100%; }
+  .dash-search .dash-date { flex: 1 1 calc(50% - 5px); }
+  .dash-search .dash-date input { width: 100%; }
+}

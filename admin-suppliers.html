@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_suppliers">Dobavljači — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="suppliers">Dobavljači</h1></div>
+      <div class="header-actions">
+        <div class="sort-inline">
+          <label data-i18n="sort_by_label">Sortiraj</label>
+          <select id="suppliers-sort">
+            <option value="name_asc" data-i18n="sort_name_asc">Naziv (A-Š)</option>
+            <option value="name_desc" data-i18n="sort_name_desc">Naziv (Š–A)</option>
+          </select>
+        </div>
+        <button class="btn btn-outline" id="suppliers-pdf-btn" data-i18n="export_list_pdf_btn">⇩ PDF</button>
+        <button class="btn btn-amber" id="new-supplier-btn" data-i18n="new_supplier_btn">+ Novi dobavljač</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="data-table table-fixed">
+          <colgroup>
+            <col style="width:22%">
+            <col style="width:12%">
+            <col style="width:16%">
+            <col style="width:12%">
+            <col style="width:18%">
+            <col style="width:20%">
+          </colgroup>
+          <thead><tr><th data-i18n="name">Naziv</th><th data-i18n="pib_label">PIB</th><th data-i18n="contact_person_label">Kontakt osoba</th><th data-i18n="phone_label">Telefon</th><th>Email</th><th></th></tr></thead>
+          <tbody id="suppliers-body"><tr class="empty-row"><td colspan="6" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay hidden" id="supplier-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="supplier-modal-title" data-i18n="new_supplier_title">Novi dobavljač</h2><button class="icon-btn" id="close-supplier-modal">✕</button></div>
+    <form id="supplier-form">
+      <div class="field"><label data-i18n="supplier_name_label">Naziv dobavljača</label><input type="text" id="s-name" required /></div>
+      <div class="form-row">
+        <div class="field"><label data-i18n="pib_label">PIB</label><input type="text" id="s-pib" /></div>
+        <div class="field"><label data-i18n="company_id_label">Matični broj</label><input type="text" id="s-maticni" /></div>
+      </div>
+      <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="s-address" /></div>
+      <div class="field"><label data-i18n="bank_account_label">Tekući račun</label><input type="text" id="s-bank" placeholder="npr. 160-0000000000000-00" /></div>
+      <div class="field"><label data-i18n="contact_person_label">Kontakt osoba</label><input type="text" id="s-contact" /></div>
+      <div class="form-row">
+        <div class="field"><label data-i18n="phone_label">Telefon</label><input type="tel" id="s-phone" /></div>
+        <div class="field"><label>Email</label><input type="email" id="s-email" /></div>
+      </div>
+      <div class="field"><label data-i18n="working_hours_label">Radno vreme</label><input type="text" id="s-hours" placeholder="npr. Pon–Pet 08–16h" /></div>
+      <div class="field"><label data-i18n="note_label">Napomena</label><textarea id="s-note" rows="3"></textarea></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" data-i18n="save">Sačuvaj</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="location-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 data-i18n="pickup_locations_title">Lokacije preuzimanja</h2><button class="icon-btn" id="close-location-modal">✕</button></div>
+    <div id="location-list" style="margin-bottom:14px;"></div>
+    <form id="location-form" class="form-row" style="align-items:end;">
+      <div class="field"><label data-i18n="location_name_label">Naziv lokacije</label><input type="text" id="l-name" required /></div>
+      <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="l-address" /></div>
+      <button type="submit" class="btn btn-amber" style="height:42px;" data-i18n="add_plus_btn">+ Dodaj</button>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="./js/page-admin-suppliers.js"></script>
+</body>
+</html>

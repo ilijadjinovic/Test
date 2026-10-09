@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_admin_dashboard">Dashboard — Admin firme — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div>
+        <div class="eyebrow" id="company-name-eyebrow">Firma</div>
+        <h1 data-i18n="dashboard">Kontrolna tabla</h1>
+      </div>
+      <a class="btn btn-amber" href="./admin-users.html" data-i18n="new_user_btn">+ Novi korisnik</a>
+    </div>
+
+    <div class="stat-grid" id="stat-cards"></div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="orders_over_time_title">Broj narudžbina kroz vreme (poslednjih 14 dana)</h2></div>
+      <div id="chart-orders" style="display:flex;align-items:flex-end;gap:6px;height:140px;"></div>
+    </div>
+
+    <div class="form-row">
+      <div class="panel">
+        <h3 data-i18n="avg_processing_time_title">Prosečno vreme obrade narudžbine</h3>
+        <div class="stat-value" id="avg-processing-time" style="font-family:var(--font-display);font-size:30px;font-weight:800;">—</div>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="success_rate_title">Procenat uspešne nabavke / broj reklamacija</h3>
+        <div id="success-rate" style="font-family:var(--font-display);font-size:30px;font-weight:800;">—</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2 data-i18n="orders">Narudžbine</h2>
+        <span id="filter-chip"></span>
+        <input type="text" id="order-search" data-i18n-placeholder="search_order_number_placeholder" placeholder="Pretraga po broju narudžbine..." style="max-width:260px;" />
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th data-i18n="export_col_number">Broj</th><th data-i18n="role_narucilac">Naručilac</th><th data-i18n="role_isporucilac">Isporučilac</th><th data-i18n="priority">Prioritet</th><th data-i18n="status">Status</th><th data-i18n="created_label">Kreirana</th><th data-i18n="closed_label">Zatvorena</th></tr></thead>
+          <tbody id="orders-body"><tr class="empty-row"><td colspan="7" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module" src="./js/page-dash-admin.js"></script>
+</body>
+</html>

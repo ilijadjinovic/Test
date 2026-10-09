@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_settings">Podešavanja firme — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="settings">Podešavanja</h1></div>
+    </div>
+
+    <form id="settings-form">
+      <div class="panel">
+        <h3 data-i18n="basic_info_title">Osnovni podaci</h3>
+        <div class="form-row">
+          <div class="field"><label data-i18n="company_name_label">Naziv firme</label><input type="text" id="s-name" /></div>
+          <div class="field"><label data-i18n="pib_label">PIB</label><input type="text" id="s-pib" /></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="s-address" /></div>
+          <div class="field"><label data-i18n="phone_label">Telefon</label><input type="tel" id="s-phone" /></div>
+        </div>
+        <div class="field"><label data-i18n="working_hours_label">Radno vreme</label><input type="text" id="s-hours" data-i18n-placeholder="working_hours_placeholder" placeholder="npr. 08-16h radnim danima" /></div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="localization_title">Lokalizacija</h3>
+        <div class="form-row">
+          <div class="field"><label data-i18n="currency_label">Valuta</label><select id="s-currency"><option value="RSD">RSD</option><option value="EUR">EUR</option><option value="USD">USD</option></select></div>
+          <div class="field"><label data-i18n="language_label">Jezik</label><select id="s-language"><option value="sr">Srpski</option><option value="en">English</option></select></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="fulfiller_assignment_title">Dodela isporučioca (Poglavlje 4.2)</h3>
+        <div class="field">
+          <select id="s-assignment">
+            <option value="automatski" data-i18n="assignment_opt_auto">Sistem automatski dodeljuje slobodnog isporučioca</option>
+            <option value="admin_bira" data-i18n="assignment_opt_admin">Admin firme ručno bira isporučioca</option>
+            <option value="narucilac_bira" data-i18n="assignment_opt_requester">Naručilac sam bira isporučioca</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="gps_tracking_title">GPS praćenje (Poglavlje 10.2)</h3>
+        <div class="checkbox-row"><input type="checkbox" id="s-gps" /><label style="margin:0;" data-i18n="gps_checkbox_label">Omogući naručiocima procenjeno vreme dolaska isporučioca</label></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" data-i18n="save_settings_btn">Sačuvaj podešavanja</button>
+    </form>
+  </main>
+</div>
+<script type="module" src="./js/page-admin-settings.js"></script>
+</body>
+</html>

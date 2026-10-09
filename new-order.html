@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_new_order">Nova narudžbina — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_narucilac">Naručilac</div><h1 data-i18n="new_order">Nova narudžbina</h1></div>
+      <div style="display:flex;gap:8px;">
+        <select id="template-select" style="max-width:240px;"><option value="" data-i18n="load_from_template_opt">Učitaj iz šablona / liste...</option></select>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="requested_by_title">Ko je tražio ovu robu?</h2></div>
+      <p class="hint" data-i18n="requested_by_hint">Opciono — upišite ime osobe (npr. inženjera) koja vam je tražila ovu robu, da biste kasnije lako videli ko je inicirao narudžbinu.</p>
+      <div class="field" style="max-width:320px;">
+        <label data-i18n="requested_by_label">Ime i prezime (opciono)</label>
+        <input type="text" id="requested-by" list="requested-by-list" maxlength="80" data-i18n-placeholder="requested_by_placeholder" placeholder="npr. Marko Marković" />
+        <datalist id="requested-by-list"></datalist>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="step1_title">1. Izaberi dobavljača i dodaj artikle</h2></div>
+      <div class="form-row">
+        <div class="field">
+          <label data-i18n="supplier">Dobavljač</label>
+          <select id="supplier-select"><option value="" data-i18n="choose_supplier_placeholder">— izaberi dobavljača —</option></select>
+        </div>
+        <div class="field">
+          <label data-i18n="pickup_location_label">Lokacija preuzimanja</label>
+          <select id="pickup-select"><option value="any" data-i18n="any_location">Bilo koja lokacija</option></select>
+        </div>
+      </div>
+      <div class="tabs" id="entry-mode-tabs">
+        <button type="button" class="tab-btn active" data-mode="catalog" data-i18n="tab_from_catalog">Iz kataloga</button>
+        <button type="button" class="tab-btn" data-mode="manual" data-i18n="tab_manual_entry">Slobodan unos</button>
+      </div>
+      <div id="catalog-entry">
+        <div class="form-row">
+          <div class="field" style="max-width:320px;">
+            <label data-i18n="search">Pretraga</label>
+            <input type="text" id="product-search" data-i18n-placeholder="type_product_name_placeholder" placeholder="Ukucajte naziv proizvoda..." />
+          </div>
+          <div class="field" style="max-width:240px;">
+            <label data-i18n="filter_by_category_label">Kategorija</label>
+            <select id="product-category-filter"><option value="" data-i18n="all_categories_opt">Sve kategorije</option></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th data-i18n="code">Šifra</th><th data-i18n="name">Naziv</th><th data-i18n="unit_short">JM</th><th style="width:100px;" data-i18n="quantity">Količina</th><th data-i18n="note">Napomena</th><th></th></tr></thead>
+            <tbody id="product-list"><tr class="empty-row"><td colspan="6" data-i18n="select_supplier_prompt">Izaberite dobavljača.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="manual-entry" class="hidden">
+        <p class="hint" style="margin-bottom:14px;" data-i18n="manual_entry_hint">Za artikle koji nisu u katalogu dobavljača — unesite naziv i količinu; šifru unesite samo ako je znate.</p>
+        <div class="form-row">
+          <div class="field" style="max-width:160px;"><label data-i18n="code">Šifra</label><input type="text" id="manual-code" data-i18n-placeholder="code_optional_placeholder" placeholder="opciono" /></div>
+        </div>
+        <div class="form-row manual-entry-row" style="align-items:end;">
+          <div class="field"><label data-i18n="item_name_label">Naziv artikla</label><input type="text" id="manual-name" placeholder="npr. Mleko 2,8% — 6 kom" /></div>
+          <div class="field"><label data-i18n="quantity">Količina</label><input type="number" id="manual-qty" min="1" step="1" max="99999" value="1" /></div>
+          <div class="field"><label data-i18n="unit">Jedinica mere</label><input type="text" id="manual-unit" maxlength="7" placeholder="kom" value="kom" /></div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label data-i18n="category">Kategorija</label>
+            <select id="manual-category"><option value="" data-i18n="no_category">Bez kategorije</option></select>
+          </div>
+          <div class="field"><label data-i18n="note">Napomena</label><input type="text" id="manual-note" placeholder="npr. Imlek ili Moja Kravica" /></div>
+        </div>
+        <p class="hint" style="margin-bottom:14px;" data-i18n="manual_category_hint">Kategorija se čuva zajedno sa artiklom kad se doda u katalog dobavljača. Izbor ostaje isti dok ga ručno ne promenite.</p>
+        <button type="button" class="btn btn-sm btn-amber" id="manual-add-btn" data-i18n="add_to_list_btn">+ Dodaj u listu</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="step2_title">2. Mesto isporuke</h2></div>
+      <p class="hint" data-i18n="delivery_locations_hint">Označite lokacije isporuke. Ako izaberete samo jednu, ona će se automatski primeniti na sve artikle. Ako dodate više lokacija, za svaki artikal izaberite gde ide (u listi artikala ispod).</p>
+      <div id="delivery-locations" class="form-row"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="step3_title">3. Lista artikala</h2></div>
+      <div id="cart-host"><p class="muted" data-i18n="no_items_added_yet">Još niste dodali artikle.</p></div>
+    </div>
+
+    <div class="panel hidden" id="isporucilac-panel">
+      <div class="panel-head"><h2 data-i18n="step4_choose_fulfiller_title">4. Izaberi isporučioca</h2></div>
+      <p class="hint" data-i18n="requester_picks_fulfiller_hint">Ova firma je podešena da naručilac sam bira ko će obraditi narudžbinu.</p>
+      <div class="field" style="max-width:320px;">
+        <label data-i18n="role_isporucilac">Isporučilac</label>
+        <select id="isporucilac-select"><option value="" data-i18n="choose_fulfiller_placeholder">— izaberi isporučioca —</option></select>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 id="priority-step-title">4. <span data-i18n="priority">Prioritet</span></h2></div>
+      <div style="display:flex;gap:18px;">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;"><input type="radio" name="priority" value="standardno" checked style="width:auto;" /> <span data-i18n="standard">Standardno</span></label>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;"><input type="radio" name="priority" value="hitno" style="width:auto;" /> <span data-i18n="urgent">Hitno</span></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 id="save-step-title">5. <span data-i18n="save_as_optional_title">Sačuvaj kao (opciono)</span></h2></div>
+      <div class="form-row">
+        <div class="field"><label data-i18n="save_this_list_as_label">Sačuvaj ovu listu kao</label>
+          <select id="save-as-type">
+            <option value="" data-i18n="dont_save_opt">Ne čuvaj</option>
+            <option value="sablon" data-i18n="template_opt">Šablon</option>
+            <option value="omiljena_lista" data-i18n="favorite_list_opt">Omiljena lista</option>
+            <option value="ponavljajuca" data-i18n="recurring_order_opt">Ponavljajuća narudžbina</option>
+          </select>
+        </div>
+        <div class="field"><label data-i18n="list_template_name_label">Naziv liste / šablona</label><input type="text" id="save-as-name" placeholder="npr. Kancelarija" /></div>
+      </div>
+      <div id="recurring-days" class="hidden">
+        <label data-i18n="recurring_days_label">Dani ponavljanja</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="pon" class="recur-day" style="width:auto;" /> <span data-i18n="day_mon">Pon</span></label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="uto" class="recur-day" style="width:auto;" /> <span data-i18n="day_tue">Uto</span></label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="sre" class="recur-day" style="width:auto;" /> <span data-i18n="day_wed">Sre</span></label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="cet" class="recur-day" style="width:auto;" /> <span data-i18n="day_thu">Čet</span></label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="pet" class="recur-day" style="width:auto;" /> <span data-i18n="day_fri">Pet</span></label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="sub" class="recur-day" style="width:auto;" /> <span data-i18n="day_sat">Sub</span></label>
+          <label style="display:flex;align-items:center;gap:5px;font-weight:500;"><input type="checkbox" value="ned" class="recur-day" style="width:auto;" /> <span data-i18n="day_sun">Ned</span></label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="submit-order" style="font-size:16px;padding:14px 26px;" data-i18n="submit_order_btn">Pošalji narudžbinu</button>
+  </main>
+</div>
+<div class="modal-overlay hidden" id="similar-item-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 data-i18n="similar_item_modal_title">Slična stavka postoji</h2><button class="icon-btn" id="close-similar-item-modal">✕</button></div>
+    <p data-i18n="similar_item_modal_text">Slična stavka postoji u katalogu — da li da ipak dodamo ovu u katalog?</p>
+    <div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <div class="muted" style="font-size:12px;" data-i18n="similar_item_existing_label">Postojeći naziv u katalogu</div>
+        <strong id="similar-item-existing-name"></strong>
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <div class="muted" style="font-size:12px;" data-i18n="similar_item_new_label">Uneti naziv</div>
+        <strong id="similar-item-new-name"></strong>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-sm" id="similar-item-discard-btn" data-i18n="similar_item_discard_btn">ODBACI STAVKU</button>
+      <button class="btn btn-sm btn-amber" id="similar-item-add-btn" data-i18n="similar_item_add_btn">DODAJ</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="./js/page-new-order.js"></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_login">Prijava — Sistem za naručivanje i nabavku — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img class="brand-mark" src="./assets/icon-192.png" alt="Order & Supply" />
+      <h2>Order &amp; Supply</h2>
+    </div>
+    <p class="muted" style="margin-bottom:20px;" data-i18n="login_subtitle">Sistem za naručivanje i nabavku robe</p>
+
+    <form id="login-form">
+      <div class="field">
+        <label data-i18n="email">Email</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label data-i18n="password">Lozinka</label>
+        <input type="password" id="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" data-i18n="login_btn">Prijavi se</button>
+    </form>
+
+    <div class="auth-foot">
+      <a href="#" id="forgot-link" data-i18n="forgot_password">Zaboravljena lozinka?</a>
+      <div class="divider"></div>
+      <span class="muted" data-i18n="no_company_registered">Nemate firmu registrovanu?</span>
+      <a href="./register-company.html" data-i18n="register_company">Registruj firmu</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { login, resetPassword, getUserProfile, redirectForRole } from "./js/auth.js";
+  import { toast, escapeHtml } from "./js/utils.js";
+  import { loadLang, t } from "./js/i18n.js";
+  import { onAuthStateChanged, auth } from "./js/firebase-init.js";
+
+  loadLang();
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const profile = await getUserProfile(user.uid);
+      if (profile) window.location.href = redirectForRole(profile.role);
+    }
+  });
+
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    try {
+      const cred = await login(email, password);
+      const profile = await getUserProfile(cred.user.uid);
+      if (!profile) { toast(t("toast_account_not_linked"), "error"); return; }
+      if (profile.active === false) { toast(t("toast_account_deactivated"), "error"); return; }
+      window.location.href = redirectForRole(profile.role);
+    } catch (err) {
+      toast(t("toast_login_failed"), "error");
+    }
+  });
+
+  document.getElementById("forgot-link").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    if (!email) { toast(t("toast_enter_email_first"), "error"); return; }
+    try {
+      await resetPassword(email);
+      toast(t("toast_reset_link_sent"), "success");
+    } catch {
+      toast(t("toast_email_send_error"), "error");
+    }
+  });
+</script>
+</body>
+</html>

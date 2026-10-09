@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page_title_isporucilac_dashboard">Dashboard — Isporučilac — Order &amp; Supply</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png" />
+<link rel="apple-touch-icon" href="./assets/icon-192.png" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-nav"></div>
+  <main class="content">
+    <div class="page-header">
+      <div><div class="eyebrow" data-i18n="role_isporucilac">Isporučilac</div><h1 data-i18n="dashboard">Kontrolna tabla</h1></div>
+    </div>
+
+    <div class="stat-grid stat-grid-auto" id="stat-cards"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2 data-i18n="my_deliveries">Moje isporuke</h2>
+        <span id="filter-chip"></span>
+        <button type="button" class="btn btn-sm btn-outline" id="toggle-all-btn" aria-pressed="false">Prikaži sve</button>
+      </div>
+      <div class="dash-search">
+        <input type="search" id="search-text" data-i18n-placeholder="dash_search_placeholder" placeholder="Pretraga: broj, artikal, naručilac, isporučilac, ko je tražio, dobavljač, lokacija..." autocomplete="off" />
+        <select id="search-status" aria-label="Status"></select>
+        <select id="search-priority" aria-label="Prioritet"></select>
+        <label class="dash-date"><span data-i18n="dash_date_from">Od</span><input type="date" id="search-from" /></label>
+        <label class="dash-date"><span data-i18n="dash_date_to">Do</span><input type="date" id="search-to" /></label>
+        <button type="button" class="btn btn-sm btn-ghost" id="search-reset" data-i18n="dash_search_reset">Poništi</button>
+      </div>
+      <div class="muted dash-search-info" id="search-info" aria-live="polite"></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead id="orders-head"></thead>
+          <tbody id="orders-body"><tr class="empty-row"><td data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </main>
+</div>
+<script type="module" src="./js/page-dash-isporucilac.js"></script>
+</body>
+</html>

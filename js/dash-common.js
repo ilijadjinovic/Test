@@ -4,17 +4,19 @@
 // tabela sa paginacijom ("Učitaj još"), pretraga cele istorije, akcije u redu,
 // minutni tajmer. Admin tabla koristi samo isLate() iz dash-logic.js.
 //
-// Podaci: otvorene narudžbine (uživo) + zatvorene/odbijene u poslednjih 30 dana
-// (uživo) + starije zatvorene po stranama na zahtev + cela istorija pri pretrazi.
+// Podaci: otvorene narudžbine (uživo) + zatvorene u poslednja 2 dana (uživo, za "Danas
+// završeno") + cela istorija po datumu kreiranja u turama po 30 ("Učitaj još") + ukupan
+// broj iz baze. "Prikazano X od Y": Y je uvek ukupno za trenutni kriterijum (nema filtera =
+// sve narudžbine korisnika; kartica/pretraga = broj koji odgovara tom filteru).
 // ============================================================================
 import { t } from "./i18n.js";
 import { initDatepickers, getISO, setISO } from "./datepicker.js";
 import { escapeHtml, formatDate, badgeClassForStatus, statusLabel, toast } from "./utils.js";
-import { listenOpenOrdersBy, listenRecentClosedBy, getOlderClosedPageBy, getAllOrdersBy, countOlderClosedBy } from "./orders.js";
+import { listenOpenOrdersBy, listenRecentClosedBy, getOrdersPageBy, getAllOrdersBy, countOrdersBy } from "./orders.js";
 import {
-  PAGE_SIZE, RECENT_DAYS, SEARCH_CACHE_MS, CLOSED_STATUSES,
+  PAGE_SIZE, CLOSED_LIVE_HOURS, SEARCH_CACHE_MS, CLOSED_STATUSES,
   isLate, lateInfo, dayKey, durationParts, parseCriteria, matchesSearch, compareByCreatedDesc,
-  OUTCOME_STATUSES, periodPresets,
+  OUTCOME_STATUSES, periodPresets, allViewList, toMillis,
 } from "./dash-logic.js";
 
 export { isLate, lateInfo } from "./dash-logic.js";
@@ -84,14 +86,14 @@ const $ = (id) => document.getElementById(id);
 // }
 export function createDashboard(cfg) {
   const S = {
-    open: [], recent: [], older: [], olderCursor: null, hasMoreOlder: true, loadingOlder: false,
-    olderTotal: null, // ukupan broj starijih zatvorenih (iz baze); null dok se ne učita
-    gotOpen: false, gotRecent: false,
+    open: [], today: [], pages: [], pageCursor: null, exhausted: false, loadingPage: false,
+    gotPage: false, total: null, totalLoading: false, openSig: null, // total = ukupan broj narudžbina korisnika (iz baze)
+    gotOpen: false, gotToday: false,
     filter: "all", showAll: !cfg.activeOnlyDefault, visible: PAGE_SIZE,
-    searching: false, results: [], searchCache: null, searchCacheAt: 0, searchCapped: false, searchSeq: 0, searchLoading: false, lastSig: "",
+    searching: false, results: [], searchCache: null, searchCacheKey: "", searchCacheAt: 0, searchCapped: false, searchSeq: 0, searchLoading: false, lastSig: "",
     chips: { outcome: new Set(), priority: new Set() },
     list: [], now: Date.now(), cardSig: null,
-    cutoff: new Date(Date.now() - RECENT_DAYS * 86400000),
+    cutoff: new Date(Date.now() - CLOSED_LIVE_HOURS * 3600000),
   };
   const statHost = $("stat-cards"), chipHost = $("filter-chip"), head = $("orders-head"), body = $("orders-body");
   const pagerHost = $("pager"), toggleBtn = $("toggle-all-btn"), searchInfo = $("search-info");
@@ -99,24 +101,34 @@ export function createDashboard(cfg) {
   const filtersToggle = $("filters-toggle"), filtersPanel = $("filters-panel"), filtersCount = $("filters-count");
   const inputs = { text: $("search-text"), from: $("search-from"), to: $("search-to") };
 
-  const base = () => Array.from(byId(S.recent, S.open).values());
-  const liveMap = () => byId(S.older, S.recent, S.open);
+  // Kartice i filteri rade nad otvorenim + danas zatvorenim (uživo, pa su brojevi tačni).
+  const base = () => Array.from(byId(S.today, S.open).values());
+  const liveMap = () => byId(S.pages, S.today, S.open); // novije verzije poslednje, pa pobeđuju
+  // Podrazumevani prikaz "sve narudžbine": lista se puni u turama iz baze (ne iz memorije).
+  const inAllMode = () => !S.searching && S.filter === "all" && S.showAll;
+  const floorMs = () => {
+    if (S.exhausted) return -Infinity;
+    const last = S.pageCursor?.data?.().createdAt;
+    return toMillis(last) ?? Infinity;
+  };
 
   function getPool() {
     if (S.searching) {
       const live = liveMap();
       return S.results.map((o) => live.get(o.id) || o).sort(compareByCreatedDesc);
     }
-    const b = base();
-    if (S.filter !== "all") return b.filter((o) => CARD_DEFS[S.filter].predicate(o, S.now)).sort(cfg.compare(S.now));
-    const pool = S.showAll ? Array.from(liveMap().values()) : b.filter((o) => !CLOSED_STATUSES.includes(o.status));
-    return pool.sort(cfg.compare(S.now));
+    if (S.filter !== "all") return base().filter((o) => CARD_DEFS[S.filter].predicate(o, S.now)).sort(cfg.compare(S.now));
+    if (S.showAll) {
+      return allViewList(Array.from(liveMap().values()), { floorMs: floorMs(), isAttention: cfg.isAttention, compare: cfg.compare, now: S.now });
+    }
+    return S.open.slice().sort(cfg.compare(S.now)); // samo aktivne (isporučilac, bez "Prikaži sve")
   }
 
   // ---- Kartice -------------------------------------------------------------
   function renderCards(force = false) {
     const b = base();
-    const counts = cfg.cardKeys.map((k) => b.filter((o) => CARD_DEFS[k].predicate(o, S.now)).length);
+    // "Moje narudžbine" = ukupan broj svih narudžbina korisnika (iz baze), ostale kartice broje iz uživo podataka
+    const counts = cfg.cardKeys.map((k) => (k === "all" ? (S.total ?? "…") : b.filter((o) => CARD_DEFS[k].predicate(o, S.now)).length));
     const sig = `${counts.join(",")}|${S.filter}|${S.searching}|${dayKey(S.now)}`;
     if (!force && sig === S.cardSig) return false;
     S.cardSig = sig;
@@ -124,7 +136,7 @@ export function createDashboard(cfg) {
     statHost.innerHTML = cfg.cardKeys.map((k, i) => {
       const def = CARD_DEFS[k];
       const active = !S.searching && S.filter === k;
-      const attn = def.attention && counts[i] > 0;
+      const attn = def.attention && Number(counts[i]) > 0;
       return `<div class="stat-card ${def.color}${active ? " active" : ""}${attn ? " attention" : ""}" data-filter="${k}" role="button" tabindex="0" aria-pressed="${active}">
         <div class="stat-label">${t(def.labelKey)}</div><div class="stat-value">${counts[i]}</div></div>`;
     }).join("");
@@ -162,11 +174,11 @@ export function createDashboard(cfg) {
       body.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">${t("dash_search_loading")}</td></tr>`;
       return;
     }
-    if (!S.gotOpen || !S.gotRecent) {
+    if (!S.gotOpen || !S.gotToday || (inAllMode() && !S.gotPage)) {
       body.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">${t("loading_ellipsis")}</td></tr>`;
       return;
     }
-    const shown = S.list.slice(0, S.visible);
+    const shown = inAllMode() ? S.list : S.list.slice(0, S.visible); // u prikazu "sve" ture dolaze iz baze
     if (!shown.length) {
       const key = S.searching ? "dash_no_search_results" : (S.filter !== "all" ? "no_orders_for_filter" : (cfg.emptyKey || "no_orders_yet"));
       body.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">${t(key)}</td></tr>`;
@@ -193,19 +205,19 @@ export function createDashboard(cfg) {
   }
 
   function renderPager() {
-    // Ukupno = ono što je već u memoriji + starije zatvorene koje još nisu učitane (broj iz baze),
-    // pa je prikaz isti na svakom uređaju bez obzira šta je korisnik već otvarao.
+    // Y = ukupno za trenutni kriterijum: bez filtera — svih narudžbina korisnika (iz baze);
+    // sa karticom/pretragom — broj narudžbina koje tom kriterijumu odgovaraju.
     const inList = S.list.length;
-    const olderMode = !S.searching && S.filter === "all" && S.showAll;
-    const olderLeft = S.olderTotal != null ? Math.max(0, S.olderTotal - S.older.length) : (S.hasMoreOlder ? 1 : 0);
-    const total = olderMode && S.olderTotal != null ? inList + olderLeft : inList;
-    const shown = Math.min(S.visible, inList);
-    const canMem = S.visible < inList;
-    const canOlder = olderMode && S.hasMoreOlder && olderLeft > 0;
-    if (!S.gotOpen || !S.gotRecent || (S.searching && S.searchLoading) || (!total && !canOlder)) { pagerHost.innerHTML = ""; return; }
+    const allMode = inAllMode();
+    const shown = allMode ? inList : Math.min(S.visible, inList);
+    const total = allMode ? Math.max(S.total ?? 0, inList) : inList;
+    const canMore = allMode ? !S.exhausted : S.visible < inList;
+    const loading = !S.gotOpen || !S.gotToday || (S.searching && S.searchLoading) || (allMode && !S.gotPage);
+    if (loading || (!total && !canMore)) { pagerHost.innerHTML = ""; return; }
+    const totalText = allMode && S.total == null ? "…" : total;
     pagerHost.innerHTML = `
-      <span class="muted pager-count">${t("dash_showing_count", { shown, total })}</span>
-      ${(canMem || canOlder) ? `<button type="button" class="btn btn-sm btn-outline" id="load-more-btn" ${S.loadingOlder ? "disabled" : ""}>${S.loadingOlder ? t("loading_ellipsis") : t("dash_load_more")}</button>` : ""}`;
+      <span class="muted pager-count">${t("dash_showing_count", { shown, total: totalText })}</span>
+      ${canMore ? `<button type="button" class="btn btn-sm btn-outline" id="load-more-btn" ${S.loadingPage ? "disabled" : ""}>${S.loadingPage ? t("loading_ellipsis") : t("dash_load_more")}</button>` : ""}`;
     $("load-more-btn")?.addEventListener("click", loadMore);
   }
 
@@ -225,24 +237,47 @@ export function createDashboard(cfg) {
     renderSearchInfo();
   }
 
-  async function loadMore() {
-    if (S.visible < S.list.length) { S.visible += PAGE_SIZE; renderTable(); renderPager(); return; }
-    if (S.loadingOlder || !S.hasMoreOlder) return;
-    S.loadingOlder = true; renderPager();
+  // Jedna tura (30) istorije po datumu kreiranja; nova tura se samo dodaje na kraj liste.
+  async function loadPage() {
+    if (S.loadingPage || S.exhausted) return;
+    S.loadingPage = true; renderPager();
     try {
-      const res = await getOlderClosedPageBy(cfg.companyId, cfg.ownerField, cfg.uid, S.cutoff, S.olderCursor, PAGE_SIZE);
-      S.older = S.older.concat(res.orders);
-      S.olderCursor = res.cursor || S.olderCursor;
-      S.hasMoreOlder = res.hasMore;
-      S.visible += PAGE_SIZE;
-      if (!res.orders.length) toast(t("dash_no_older"), "info");
+      const res = await getOrdersPageBy(cfg.companyId, cfg.ownerField, cfg.uid, S.pageCursor, PAGE_SIZE);
+      S.pages = S.pages.concat(res.orders);
+      S.pageCursor = res.cursor || S.pageCursor;
+      S.exhausted = !res.hasMore;
     } catch (err) {
       console.error(err);
       toast(t("dash_load_error"), "error");
     } finally {
-      S.loadingOlder = false;
-      renderTable(); renderPager();
+      S.gotPage = true; S.loadingPage = false;
+      renderCards(); renderTable(); renderPager();
     }
+  }
+
+  // Ukupan broj narudžbina korisnika (jedan upit brojanja u bazi, bez čitanja dokumenata)
+  async function loadTotal() {
+    if (S.totalLoading) return;
+    S.totalLoading = true;
+    try {
+      S.total = await countOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid);
+    } catch (err) {
+      console.error("Brojanje narudžbina:", err);
+    } finally {
+      S.totalLoading = false;
+      renderCards(); renderPager();
+    }
+  }
+
+  // Podaci za prikaz "sve" (prva tura + ukupan broj) — za isporučioca tek kad izabere "Prikaži sve"
+  function ensureAllData() {
+    if (!S.gotPage && !S.loadingPage) loadPage();
+    if (S.total == null && !S.totalLoading) loadTotal();
+  }
+
+  function loadMore() {
+    if (inAllMode()) { loadPage(); return; }
+    S.visible += PAGE_SIZE; renderTable(); renderPager();
   }
 
   // ---- Pretraga cele istorije -----------------------------------------------
@@ -279,11 +314,13 @@ export function createDashboard(cfg) {
     const seq = ++S.searchSeq;
     S.searching = true; S.filter = "all";
     try {
-      if (!S.searchCache || Date.now() - S.searchCacheAt > SEARCH_CACHE_MS) {
+      // Ako je zadat period (Od/Do), baza vraća samo narudžbine kreirane u tom periodu; bez perioda čita se cela istorija.
+      const rangeKey = `${crit.fromMs ?? ""}|${crit.toMs ?? ""}`;
+      if (!S.searchCache || S.searchCacheKey !== rangeKey || Date.now() - S.searchCacheAt > SEARCH_CACHE_MS) {
         S.searchLoading = true; renderCards(true); renderTable(); renderPager(); renderSearchInfo();
-        const { orders, capped } = await getAllOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid);
+        const { orders, capped } = await getAllOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid, undefined, { fromMs: crit.fromMs, toMs: crit.toMs });
         if (seq !== S.searchSeq) return; // u međuvremenu je pokrenuta novija pretraga
-        S.searchCache = orders; S.searchCapped = capped; S.searchCacheAt = Date.now();
+        S.searchCache = orders; S.searchCacheKey = rangeKey; S.searchCapped = capped; S.searchCacheAt = Date.now();
       }
     } catch (err) {
       console.error(err);
@@ -340,7 +377,7 @@ export function createDashboard(cfg) {
       chip.setAttribute("aria-pressed", String(on));
       runSearch(false);
     }));
-    toggleBtn?.addEventListener("click", () => { S.showAll = !S.showAll; S.visible = PAGE_SIZE; renderAll(); });
+    toggleBtn?.addEventListener("click", () => { S.showAll = !S.showAll; S.visible = PAGE_SIZE; if (S.showAll) ensureAllData(); renderAll(); });
 
     const openDetails = (row) => { window.location.href = `./order-detail.html?order=${row.dataset.id}`; };
     body.addEventListener("click", async (e) => {
@@ -434,8 +471,14 @@ export function createDashboard(cfg) {
   }
 
   function onData(kind, orders) {
+    if (kind === "open") {
+      // Nova ili obrisana narudžbina menja ukupan broj — osveži ga (zatvaranje samo premešta, ali je upit jeftin)
+      const sig = orders.map((o) => o.id).sort().join(",");
+      if (S.gotOpen && sig !== S.openSig && S.total != null) loadTotal();
+      S.openSig = sig;
+    }
     S[kind] = orders;
-    S[kind === "open" ? "gotOpen" : "gotRecent"] = true;
+    S[kind === "open" ? "gotOpen" : "gotToday"] = true;
     S.now = Date.now();
     renderAll();
   }
@@ -451,11 +494,9 @@ export function createDashboard(cfg) {
       initDatepickers(document);
       bindEvents();
       renderAll();
-      countOlderClosedBy(cfg.companyId, cfg.ownerField, cfg.uid, S.cutoff)
-        .then((n) => { S.olderTotal = n; renderPager(); })
-        .catch((err) => console.error("Brojanje starijih narudžbina:", err));
+      if (S.showAll) ensureAllData();
       listenOpenOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid, (o) => onData("open", o), onError);
-      listenRecentClosedBy(cfg.companyId, cfg.ownerField, cfg.uid, S.cutoff, (o) => onData("recent", o), onError);
+      listenRecentClosedBy(cfg.companyId, cfg.ownerField, cfg.uid, S.cutoff, (o) => onData("today", o), onError);
     },
   };
 }

@@ -20,17 +20,23 @@
 - Odbijene narudžbine su u tabeli naručioca crvene, sa razlogom ispod statusa.
 - Reklamacije se i dalje rešavaju u detaljima (traže napomenu o rešenju).
 
-**Lista, paginacija i 30 dana**
-- Podrazumevano: sve otvorene + zatvorene/odbijene iz poslednjih 30 dana (računato od zatvaranja). Otvorene narudžbine nikad ne nestaju, ma koliko stare bile.
-- 25 redova odjednom, dugme **Učitaj još**; kad se iscrpi lista iz memorije, dovlače se starije zatvorene iz baze po datumu zatvaranja (po 25).
-- Isporučilac: podrazumevano samo aktivne, dugme **Prikaži sve** dodaje zatvorene i odbijene.
+**Lista, ukupan broj i paginacija (naručilac, isporučilac, admin)**
+- **Y = ukupan broj narudžbina** (svi statusi, svi datumi) dolazi iz baze (brojanje po `createdByUid` / `assignedToUid`, a za admina cela firma). Ne zavisi od `closedAt` ni od backfill-a. Kartica **Moje narudžbine** i „Prikazano X od Y“ na dnu tabele prikazuju isti broj.
+- Podrazumevani prikaz: ono što **zahteva pažnju** je uvek na vrhu (bez obzira na starost), ispod je ostalo po datumu kreiranja (najnovije prve), otvorene i zatvorene izmešano.
+- Lista se puni u **turama od 30** po datumu kreiranja. **Učitaj još** povlači sledećih 30 iz baze i dodaje ih na kraj, do poslednje. „Prikazano“ je uvek tačan broj redova na ekranu; kad se sve učita, X = Y.
+- Otvorene narudžbine se prate uživo; zatvorene u poslednja 2 dana takođe (zbog kartice *Danas završeno*). Ukupan broj se osvežava kad se pojavi nova ili nestane neka narudžbina.
+- **Kad je aktivan filter** (kartica ili pretraga/filteri), Y je broj narudžbina koje odgovaraju tom kriterijumu (npr. „Prikazano 3 od 3“), a lista se otkriva po 30 iz memorije. Broj na kartici i Y uvek se slažu.
+- Isporučilac: podrazumevano samo aktivne (Y = broj aktivnih), **Prikaži sve** prelazi na prikaz svih po turama (Y = ukupno dodeljenih).
+- Admin: kartice (aktivne, kasne, u nabavci, danas završeno) računaju se iz otvorenih + danas zatvorenih (ranije iz poslednjih 200 narudžbina), tabela ima isti „Učitaj još“.
+- **Admin pretraga** radi u bazi, po **početku** broja narudžbine (broj je oblika `NAR-20261010-37/26`): „NAR-202610“ ili samo „202610“ daje sve iz oktobra 2026, a pun broj daje tačno tu narudžbinu. Nema učitavanja istorije ni granice od 5000 (najviše 500 rezultata, uz poruku). Deo iz sredine broja (npr. samo „37“) se ne pronalazi.
+- **Admin metrike su tačne za celu firmu:** *Prosečno vreme obrade* je agregacija u bazi (`average`) nad poljem `processingMs` svih zatvorenih narudžbina; *Procenat uspešne nabavke* = reklamacije (trenutno otvorene) u odnosu na ukupan broj narudžbina iz baze. Polje `processingMs` upisuje se pri potvrdi prijema (razlika `confirmedAt − createdAt`, iz vremena servera); za stare narudžbine ga dopunjuje `backfill-orders.html`. **Do backfill-a prosek obuhvata samo narudžbine zatvorene posle ove izmene.**
 
 **Pretraga cele istorije**
 - Polje traži po delu reči (bez obzira na č/ć/š/ž/đ): broj narudžbine, naziv i šifra artikla, dobavljač, lokacija isporuke, naručilac, isporučilac, „ko je tražio“. Više reči = sve moraju da se poklope.
 - U panelu **Filteri** je **jedan red od 4 dugmeta**: *Aktivne · Zatvorene · Odbijene · Hitne*. Ishodi (Aktivne / Zatvorene / Odbijene) se sabiraju („ili“), a *Hitne* se kombinuju sa njima („i“). Klik uključuje/isključuje filter, primena je automatska. Statusi koje već pokrivaju kartice i blok „Zahteva pažnju“ (isporučena, reklamacija, čeka prihvatanje, u nabavci…) nisu posebni filteri.
 - Dugmići, datumi i dugme „Poništi“ nalaze se u panelu koji se otvara dugmetom **Filteri** pored polja za pretragu (podrazumevano je uvučen da ne zauzima mesto). Na dugmetu je broj uključenih filtera, pa se vidi da filtriranje traje i kad je panel uvučen. Polje za tekst pretrage je stalno vidljivo.
 - Datum kreiranja „Od“ / „Do“ koristi isti datepicker kao ostatak aplikacije (format dd.mm.gggg., kalendar se otvara na klik ili se datum ukuca). Primena je automatska čim se datum izabere ili ukuca (dugme „Primeni“ je uklonjeno). Pored polja su **prečice za period**: *Ovaj mesec*, *Prošli mesec*, *Poslednjih 90 dana* — klik postavlja „Od/Do“ i odmah filtrira, ponovni klik na izabranu prečicu briše period, a ručna izmena datuma gasi njeno isticanje. Ikona kalendara je velika i svetla (važi za sva polja sa kalendarom u aplikaciji).
-- Pretraga čita celu istoriju tog korisnika (do 5000 narudžbina, jednom, pa se pamti 5 minuta), pa pronalazi i narudžbine starije od 30 dana.
+- Pretraga čita istoriju tog korisnika (do 5000 narudžbina, jednom, pa se pamti 5 minuta), pa pronalazi i najstarije narudžbine. **Ako su zadati „Od/Do“, baza vraća samo narudžbine kreirane u tom periodu**, pa se ne učitava cela istorija (keš je vezan za period).
 
 **Blok „Zahteva pažnju“ (obe table)**
 - Narudžbine koje su na vrhu iz razloga, a ne zbog datuma, odvojene su od ostalih: oznaka „Zahteva pažnju“ iznad, žuta leva ivica i blaga pozadina na redovima, debela žuta linija ispod poslednjeg i oznaka „Ostale narudžbine“ ispod nje. Ostale su sortirane po datumu.
@@ -56,8 +62,8 @@
 | `js/dash-common.js` | **novo** — zajednički kontroler table (kartice, tabela, paginacija, pretraga, akcije, tajmer) |
 | `js/page-dash-narucilac.js`, `js/page-dash-isporucilac.js` | prepisano preko zajedničkog modula |
 | `narucilac-dashboard.html`, `isporucilac-dashboard.html` | pretraga, pager, dugme „Prikaži sve“ |
-| `js/orders.js` | `assignedAt`, `closedAt` pri odbijanju, polja za pretragu, jednoprolazna potvrda prijema, `confirmReceiptFull`, `repeatOrderAfterRejection`, nove liste |
-| `js/page-dash-admin.js` | samo pravilo „Kasne“ + minutni preračun |
+| `js/orders.js` | `assignedAt`, `closedAt` pri odbijanju, polja za pretragu, jednoprolazna potvrda prijema, `confirmReceiptFull`, `repeatOrderAfterRejection`, nove liste (`getOrdersPageBy`, `countOrdersBy`) |
+| `js/page-dash-admin.js` | pravilo „Kasne“, minutni preračun, ukupan broj + ture „Učitaj još“, pretraga cele istorije |
 | `js/reports.js` | period se filtrira u bazi, bez granice od 500 |
 | `js/firebase-init.js` | izvezen `startAfter` |
 | `firestore.indexes.json` | dva nova indeksa (`createdByUid+closedAt`, `assignedToUid+closedAt`) |
@@ -69,8 +75,8 @@
 ## 3. Instalacija (redom)
 
 1. **Otpremi fajlove** (Firebase Hosting ili gde god hostuješ aplikaciju). Pravila baze (`firestore.rules`) se ne menjaju.
-2. **Indeksi:** `firebase deploy --only firestore:indexes` pa sačekaj da u Firebase konzoli (Firestore → Indexes) oba nova indeksa budu *Enabled* (traje od nekoliko sekundi do nekoliko minuta). Dok se ne završe, liste zatvorenih narudžbina prijavljuju grešku „potreban indeks“.
-3. **Dopuna starih narudžbina:** prijavi se kao **Admin firme** i otvori `backfill-orders.html`. Prvo pokreni sa uključenim „Samo prebroj“, pa isključi i pokreni upis. Dopunjava polja za pretragu, `assignedAt` (= vreme kreiranja) i `closedAt` (= vreme potvrde/izmene). Bezbedno je pokrenuti više puta. **Bez ovog koraka** stare zatvorene i odbijene narudžbine neće biti na listama (nemaju `closedAt`), a pretraga po artiklu ih neće naći po nazivu artikla (naći će ih po broju i imenima).
+2. **Indeksi:** `firebase deploy --only firestore:indexes` pa sačekaj da u Firebase konzoli (Firestore → Indexes) oba nova indeksa budu *Enabled* (traje od nekoliko sekundi do nekoliko minuta). Dok se ne završe, liste zatvorenih narudžbina (kartica „Danas završeno“) prijavljuju grešku „potreban indeks“.
+3. **Dopuna starih narudžbina:** prijavi se kao **Admin firme** i otvori `backfill-orders.html`. Prvo pokreni sa uključenim „Samo prebroj“, pa isključi i pokreni upis. Dopunjava polja za pretragu, `assignedAt` (= vreme kreiranja), `closedAt` (= vreme potvrde/izmene) i `processingMs` (vreme obrade, za tačan prosek na Admin tabli). Bezbedno je pokrenuti više puta. **Bez ovog koraka** stare zatvorene i odbijene narudžbine neće biti na listama (nemaju `closedAt`), a pretraga po artiklu ih neće naći po nazivu artikla (naći će ih po broju i imenima).
 4. Osveži stranicu (Ctrl+F5 / povuci za osvežavanje na telefonu) da se učitaju novi fajlovi.
 
 Automatski testovi logike: `node tests/dash-logic.test.mjs` (Node 18+).
@@ -84,7 +90,7 @@ Pripremi bar jednog naručioca, jednog isporučioca i admina. Za vremenska pravi
 | 1 | Isporučilac | Naručilac napravi narudžbinu dodeljenu tom isporučiocu. Otvori tablu isporučioca. | Kartica „Čeka prihvatanje“ = 1, obojena i pulsira; narudžbina je prvi red; u koloni Akcije su *Prihvati* i *Odbij*. |
 | 2 | Isporučilac | Klikni *Prihvati*. | Toast „Narudžbina prihvaćena“, status „U nabavci“, kartica „Čeka prihvatanje“ pada na 0, naručilac dobija notifikaciju. |
 | 3 | Isporučilac | Nova narudžbina → *Odbij* → ostavi prazno / upiši razlog; probaj i „Otkaži“ u prozoru. | Sa razlogom: status „Odbijena“, nestaje iz aktivnih. Otkaži: ništa se ne menja. |
-| 4 | Isporučilac | Klikni *Prikaži sve*. | Pojavljuju se zatvorene i odbijene (≤30 dana). Tekst dugmeta postaje „Samo aktivne“. |
+| 4 | Isporučilac | Klikni *Prikaži sve*. | Pojavljuju se zatvorene i odbijene, po turama od 30; „Prikazano X od Y“ prikazuje ukupan broj dodeljenih. Tekst dugmeta postaje „Samo aktivne“. |
 | 5 | Naručilac | Odbijena narudžbina u tabeli. | Crven red, razlog ispod statusa, dugme *Ponovi narudžbinu*. |
 | 6 | Naručilac | Klikni *Ponovi narudžbinu* → potvrdi. | Nova narudžbina (iste stavke, lokacije, prioritet, „ko je tražio“) kod istog isporučioca u „Čeka prihvatanje“; kod originala umesto dugmeta stoji „Ponovljena: NAR-…“; ponovo ne može. |
 | 7 | Naručilac | Isporučilac isporuči narudžbinu (status „Isporučena“). | Kartica „Čeka moju potvrdu“ = 1 (pulsira), red je na vrhu sa dugmetom *Potvrdi prijem*; **ne** računa se u „Kasne“ čak ni ako je hitna i stara. |
@@ -93,12 +99,15 @@ Pripremi bar jednog naručioca, jednog isporučioca i admina. Za vremenska pravi
 | 10 | Oba | Hitna narudžbina dodeljena pre 1h50, sačekaj 10+ min (ili izmeni `assignedAt`). | Posle isteka 2h kartica „Kasne“ poraste za 1 bez osvežavanja stranice i u redu se pojavi „kasni X min“. Standardna: granica 24h. |
 | 11 | Oba, 2 uređaja | Kasna narudžbina vidljiva na dva uređaja; na jednom je isporučilac završi (status „Isporučena“). | Na drugom uređaju odmah ispada iz „Kasne“ (bez osvežavanja). |
 | 12 | Oba | Nedodeljena (admin_bira, još bez isporučioca) hitna stara narudžbina. | Ne računa se kao „kasna“ dok nije dodeljena; kad se dodeli, brojanje kreće od tog trenutka. |
-| 13 | Naručilac | Imaj >25 narudžbina. | Prikazano prvih 25, „Prikazano 25 od N“, *Učitaj još* dodaje po 25; kad se iscrpi, učitava starije zatvorene po datumu; kad nema više, dugme nestaje. |
-| 14 | Naručilac | Zatvorena narudžbina starija od 30 dana. | Nije na podrazumevanoj listi; pojavi se pri *Učitaj još* (naručilac) odnosno *Prikaži sve → Učitaj još* (isporučilac), i u pretrazi. Otvorena narudžbina starija od 30 dana **ostaje** na listi. |
+| 13 | Naručilac | Imaj >30 narudžbina. | Kartica *Moje narudžbine* i „Prikazano X od Y“ imaju isti Y (ukupno kreiranih). Prvo se prikazuje pažnja na vrhu + ostalo po datumu, *Učitaj još* dodaje sledećih 30 na kraj; kad je X = Y, dugme nestaje. Klik na karticu (npr. Kasne) daje „Prikazano a od a“, jednako broju na kartici. |
+| 14 | Naručilac | Stara zatvorena narudžbina. | Nije na prvoj turi; pojavi se pri *Učitaj još* (naručilac) odnosno *Prikaži sve → Učitaj još* (isporučilac), i u pretrazi. Stara otvorena narudžbina koja zahteva pažnju **uvek** ostaje na vrhu. |
 | 15 | Oba | Pretraga: „cem“ (deo naziva artikla), pa naziv dobavljača, naziv lokacije, ime isporučioca/naručioca, „ko je tražio“, deo broja narudžbine. | Pronalazi odgovarajuće narudžbine, uključujući starije od 30 dana; unos „ćelik“ nalazi i „celik“. Statusna linija: „Pronađeno narudžbina: N“. |
 | 16 | Oba | Otvori *Filteri*; klikni *Zatvorene* pa *Hitne*; zatim klikni prečicu *Poslednjih 90 dana* i još jednom na nju; ručno promeni datum „Od“; na kraju *Poništi*. | Lista se filtrira odmah posle svakog klika. *Hitne* se kombinuju sa ishodom, a više ishoda se sabira. Prečica postavlja „Od/Do“, ističe se i ponovnim klikom briše period; ručna izmena datuma gasi isticanje. Broj na dugmetu *Filteri* prati broj uključenih filtera. *Poništi* vraća običan prikaz. Klik na karticu tokom pretrage gasi pretragu. |
 | 17 | Naručilac | Napravi novu narudžbinu, dodaj artikal u dozvoljenom statusu, pa ga pretraži. | Novi artikal se odmah može pronaći (polje za pretragu se osvežava pri izmeni stavki, lokacija i „ko je tražio“). |
 | 18 | Admin | Admin tabla, kartica „Kasne“. | Isti broj kao zbir kasnih na tablama isporučilaca (isto pravilo). |
+| 20 | Admin | U pretragu ukucaj „NAR-202610“, pa „202610“, pa pun broj. | Prvi i drugi unos daju sve narudžbine iz tog meseca (najviše 500), treći tačno jednu. „Prikazano X od Y“ = broj pronađenih. |
+| 21 | Admin | Potvrdi prijem jedne narudžbine, pa pogledaj „Prosečno vreme obrade“. | Prosek se osveži u roku od par sekundi; nova narudžbina u Firestore-u ima polje `processingMs`. |
+| 22 | Naručilac | Zadaj „Od/Do“ (npr. Ovaj mesec) i pogledaj u Network/Firestore da upit nosi `createdAt` opseg. | Čita se samo taj period, a ne cela istorija. |
 | 19 | Admin | Izveštaji za period stariji od ~500 narudžbina unazad. | Sve narudžbine iz izabranog perioda su uključene (ranije nepotpuno). |
 | 20 | Telefon (isporučilac) | Otvori tablu na telefonu (≤700 px). | Kartice 2 u redu; tabela se skroluje levo-desno, broj narudžbine ostaje zalepljen, *Prihvati/Odbij* su odmah desno od broja i dovoljno veliki za dodir. |
 | 21 | Tastatura | Tab kroz kartice i redove. | Kartica se bira Enter/Space, red se otvara sa Enter, fokus ostaje na kartici posle osvežavanja brojki. |

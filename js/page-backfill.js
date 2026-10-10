@@ -1,5 +1,5 @@
 // Jednokratna dopuna narudžbina nastalih pre izmena na kontrolnim tablama (admin).
-// Dopunjava: searchText / supplierNames / deliveryLocationNames, assignedAt, closedAt.
+// Dopunjava: searchText / supplierNames / deliveryLocationNames, assignedAt, closedAt, processingMs.
 // Idempotentno: narudžbine koje već imaju ta polja se preskaču.
 import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
@@ -39,6 +39,10 @@ requireAuth([ROLES.ADMIN], (user, profile) => {
           if (CLOSED_STATUSES.includes(o.status) && !o.closedAt) {
             const when = o.confirmedAt || o.updatedAt || o.createdAt;
             if (when) upd.closedAt = when;
+          }
+          // Vreme obrade za tačan prosek na Admin tabli (zatvorene narudžbine koje imaju confirmedAt)
+          if (o.status === "zatvorena" && o.createdAt && o.confirmedAt && typeof o.processingMs !== "number") {
+            upd.processingMs = Math.max(0, o.confirmedAt.toMillis() - o.createdAt.toMillis());
           }
           done++;
           if (Object.keys(upd).length) {

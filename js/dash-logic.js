@@ -7,8 +7,8 @@
 //   • sortiranje redova po ulozi
 // ============================================================================
 
-export const PAGE_SIZE = 25;       // broj redova po "strani" (dugme "Učitaj još")
-export const RECENT_DAYS = 30;     // zatvorene/odbijene starije od toga nestaju sa liste
+export const PAGE_SIZE = 30;       // broj redova po "turi" (dugme "Učitaj još")
+export const CLOSED_LIVE_HOURS = 48; // zatvorene u ovom periodu se prate uživo (za karticu "Danas završeno")
 export const SEARCH_CAP = 5000;    // gornja granica pri pretrazi cele istorije
 export const SEARCH_CACHE_MS = 5 * 60 * 1000;
 export const LATE_LIMIT_HOURS = { hitno: 2, standardno: 24 };
@@ -184,4 +184,29 @@ export function periodPresets(today = new Date()) {
 
 export function compareByCreatedDesc(a, b) {
   return (toMillis(b.createdAt) ?? Infinity) - (toMillis(a.createdAt) ?? Infinity);
+}
+
+// --- Prikaz "sve narudžbine" (podrazumevani prikaz) -----------------------------
+// orders: sve što je trenutno u memoriji (otvorene uživo + zatvorene danas + učitane ture).
+// Redosled: prvo ono što zahteva pažnju (uvek, bez obzira na starost), pa ostalo po datumu
+// kreiranja (najnovije prve). Ostalo se prikazuje samo do `floorMs` — datuma kreiranja
+// najstarije učitane ture — pa svaki "Učitaj još" samo dodaje redove na kraj liste i
+// "prikazano" je uvek tačan broj redova na ekranu. floorMs = -Infinity kad je sve učitano.
+export function allViewList(orders, { floorMs = Infinity, isAttention = null, compare, now = Date.now() }) {
+  const attn = [], rest = [];
+  for (const o of orders) {
+    if (isAttention && isAttention(o, now)) attn.push(o);
+    else if ((toMillis(o.createdAt) ?? Infinity) >= floorMs) rest.push(o);
+  }
+  attn.sort(compare(now));
+  rest.sort(compareByCreatedDesc);
+  return [...attn, ...rest];
+}
+
+// Pretraga broja narudžbine na serveru (admin): broj je oblika NAR-20261010-37/26, pa se traži po
+// početku broja. Ako korisnik ukuca samo deo posle "NAR-" (npr. "202610"), prefiks se dopunjuje.
+export function orderNumberPrefix(term) {
+  const up = String(term ?? "").trim().toUpperCase();
+  if (!up) return "";
+  return "NAR-".startsWith(up) || up.startsWith("NAR-") ? up : `NAR-${up}`;
 }

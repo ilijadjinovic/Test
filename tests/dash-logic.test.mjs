@@ -4,6 +4,7 @@ import {
   lateInfo, isLate, normalizeText, buildSearchFields, parseCriteria, matchesSearch,
   compareNarucilac, compareIsporucilac, dayKey, durationParts, toMillis,
   isAttentionNarucilac, isAttentionIsporucilac, periodPresets, OUTCOME_STATUSES, OPEN_STATUSES,
+  allViewList, PAGE_SIZE, orderNumberPrefix,
 } from "../js/dash-logic.js";
 
 const H = 3600000;
@@ -138,4 +139,44 @@ ok("blok 'zahteva pažnju' je uvek neprekidan početak sortirane liste (obe ulog
     assert.ok(firstFalse > 0 && !flags.slice(firstFalse).includes(true), "blok nije neprekidan");
   }
 });
+
+// --- Prikaz "sve narudžbine": pažnja na vrhu, ostalo po datumu kreiranja, do praga učitane ture ---
+const mk = (id, status, createdAgoH, extra = {}) => ({ id, status, priority: "standardno", createdAt: ts(createdAgoH * H), ...extra });
+ok("PAGE_SIZE je 30", () => assert.equal(PAGE_SIZE, 30));
+ok("allViewList: pažnja uvek na vrhu, i kad je starija od praga ture", () => {
+  const orders = [mk("a", "zatvorena", 1), mk("b", "isporucena", 500), mk("c", "zatvorena", 2), mk("d", "zatvorena", 100)];
+  const res = allViewList(orders, { floorMs: now - 10 * H, isAttention: isAttentionNarucilac, compare: compareNarucilac, now });
+  assert.deepEqual(res.map((o) => o.id), ["b", "a", "c"]); // "d" je ispod praga (još nije učitana tura)
+});
+ok("allViewList: ostalo je po datumu kreiranja (otvorene i zatvorene izmešano), najnovije prve", () => {
+  const orders = [mk("a", "zatvorena", 5), mk("b", "u_nabavci", 3), mk("c", "odbijena", 1), mk("d", "prihvacena", 4)];
+  const res = allViewList(orders, { floorMs: -Infinity, isAttention: isAttentionNarucilac, compare: compareNarucilac, now });
+  assert.deepEqual(res.map((o) => o.id), ["c", "b", "d", "a"]);
+});
+ok("allViewList: sa floorMs = -Infinity prikazano je tačno onoliko koliko ih ima (nema ostatka)", () => {
+  const orders = Array.from({ length: 37 }, (_, i) => mk(`o${i}`, i % 3 ? "zatvorena" : "u_nabavci", i + 1));
+  const res = allViewList(orders, { floorMs: -Infinity, isAttention: isAttentionNarucilac, compare: compareNarucilac, now });
+  assert.equal(res.length, 37);
+});
+ok("allViewList: sledeća tura samo dodaje redove na kraj (prvih N ostaje isto)", () => {
+  const all = Array.from({ length: 70 }, (_, i) => mk(`o${i}`, "zatvorena", i + 1));
+  const floorAfter = (n) => toMillis(all[n - 1].createdAt);
+  const first = allViewList(all.slice(0, 30), { floorMs: floorAfter(30), isAttention: isAttentionNarucilac, compare: compareNarucilac, now });
+  const second = allViewList(all.slice(0, 60), { floorMs: floorAfter(60), isAttention: isAttentionNarucilac, compare: compareNarucilac, now });
+  assert.equal(first.length, 30); assert.equal(second.length, 60);
+  assert.deepEqual(second.slice(0, 30).map((o) => o.id), first.map((o) => o.id));
+});
+ok("allViewList: narudžbina bez createdAt (tek kreirana, čeka server) računa se kao najnovija", () => {
+  const res = allViewList([mk("a", "zatvorena", 1), { id: "n", status: "prihvacena" }], { floorMs: now - 2 * H, isAttention: isAttentionNarucilac, compare: compareNarucilac, now });
+  assert.equal(res[0].id, "n");
+});
+
+ok("orderNumberPrefix: veliko slovo, dopuna 'NAR-', delimičan unos prefiksa", () => {
+  assert.equal(orderNumberPrefix("nar-20261010-37/26"), "NAR-20261010-37/26");
+  assert.equal(orderNumberPrefix(" 202610 "), "NAR-202610");
+  assert.equal(orderNumberPrefix("na"), "NA");
+  assert.equal(orderNumberPrefix("nar-"), "NAR-");
+  assert.equal(orderNumberPrefix(""), "");
+});
+
 console.log(`\n${n} testova prošlo.`);

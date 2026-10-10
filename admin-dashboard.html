@@ -44,7 +44,7 @@
       <div class="panel-head">
         <h2 data-i18n="orders">Narudžbine</h2>
         <span id="filter-chip"></span>
-        <input type="text" id="order-search" data-i18n-placeholder="search_order_number_placeholder" placeholder="Pretraga po broju narudžbine..." style="max-width:260px;" />
+        <input type="text" id="order-search" data-i18n-placeholder="search_order_number_placeholder" placeholder="Početak broja narudžbine (npr. NAR-202610)..." style="max-width:260px;" />
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -52,6 +52,7 @@
           <tbody id="orders-body"><tr class="empty-row"><td colspan="7" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
         </table>
       </div>
+      <div class="pager" id="pager"></div>
     </div>
   </main>
 </div>

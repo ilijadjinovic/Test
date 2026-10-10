@@ -28,8 +28,14 @@
 **Pretraga cele istorije**
 - Polje traži po delu reči (bez obzira na č/ć/š/ž/đ): broj narudžbine, naziv i šifra artikla, dobavljač, lokacija isporuke, naručilac, isporučilac, „ko je tražio“. Više reči = sve moraju da se poklope.
 - Ispod polja su **dugmići-filteri**: statusi u dva reda, prioriteti u trećem. Klik uključuje/isključuje filter (može više njih odjednom, npr. „Zatvorena“ + „Odbijena“) i primena je automatska.
+- Dugmići, datumi i dugmad „Primeni/Poništi“ nalaze se u panelu koji se otvara dugmetom **Filteri** pored polja za pretragu (podrazumevano je uvučen da ne zauzima mesto). Na dugmetu je broj uključenih filtera, pa se vidi da filtriranje traje i kad je panel uvučen. Polje za tekst pretrage je stalno vidljivo.
 - Datum kreiranja „Od“ / „Do“ koristi isti datepicker kao ostatak aplikacije (format dd.mm.gggg., kalendar se otvara na klik ili se datum ukuca). Primena je automatska čim se datum izabere/ukuca; pored polja je i dugme **Primeni**. Ikona kalendara je sada veća i svetlija (važi za sva polja sa kalendarom u aplikaciji). **Poništi** briše tekst, dugmiće i datume.
 - Pretraga čita celu istoriju tog korisnika (do 5000 narudžbina, jednom, pa se pamti 5 minuta), pa pronalazi i narudžbine starije od 30 dana.
+
+**Blok „Zahteva pažnju“ (obe table)**
+- Narudžbine koje su na vrhu iz razloga, a ne zbog datuma, odvojene su od ostalih: oznaka „Zahteva pažnju“ iznad, žuta leva ivica i blaga pozadina na redovima, debela žuta linija ispod poslednjeg i oznaka „Ostale narudžbine“ ispod nje. Ostale su sortirane po datumu.
+- Naručilac: čeka potvrdu, reklamacije, kasne. Isporučilac: čeka prihvatanje, reklamacije, kasne, hitne.
+- Grupisanje se ne prikazuje dok je izabrana kartica-filter ili aktivna pretraga (lista je tada jedna celina).
 
 **Isporučilac — tabela**
 - Nove kolone: *Lokacija isporuke*, *Dobavljači*, *Dodeljena*. Redosled: čeka prihvatanje, reklamacije, kasne, hitne, ostalo (najstarije prve), zatvorene.
@@ -56,7 +62,7 @@
 | `js/firebase-init.js` | izvezen `startAfter` |
 | `firestore.indexes.json` | dva nova indeksa (`createdByUid+closedAt`, `assignedToUid+closedAt`) |
 | `css/style.css` | stilovi kartica sa podsetnikom, pretrage, akcija |
-| `i18n/sr.json`, `i18n/en.json` | 42 nova ključa |
+| `i18n/sr.json`, `i18n/en.json` | 45 novih ključeva |
 | `backfill-orders.html`, `js/page-backfill.js` | **novo** — jednokratna dopuna starih narudžbina |
 | `tests/dash-logic.test.mjs` | **novo** — automatski testovi logike |
 
@@ -105,3 +111,5 @@ Pripremi bar jednog naručioca, jednog isporučioca i admina. Za vremenska pravi
 - Dugme *Ponovi narudžbinu* pravi novu narudžbinu (novi broj); ako preferiraš da se ista narudžbina vrati na „Čeka prihvatanje“, to je mala izmena u `repeatOrderAfterRejection`.
 - Pretraga čita celu istoriju korisnika jednom po pokretanju (do 5000 narudžbina). Za više od toga potrebna je serverska pretraga (npr. Algolia/Typesense) — za očekivani obim nije potrebno.
 - Master Admin stranica nije menjana.
+- **„Prikazano X od Y“:** Y je pravi ukupan broj (narudžbine u memoriji + broj starijih zatvorenih koji baza izbroji, bez učitavanja dokumenata), pa je isti na svakom uređaju. Ranije je Y bio samo broj već učitanih narudžbina, pa je isti korisnik na jednom uređaju video „25 od 25“, a na drugom „25 od 36“, zavisno od toga šta je tamo prethodno otvarao.
+- **Admin tabla, grafikon „Broj narudžbina kroz vreme“:** stubići nisu bili vidljivi jer su koristili boje (`--brand-500`, `--ink-300`) koje postoje samo u `css/base.css`, a stranica učitava `css/style.css`. Sada koriste `--color-primary` i `--color-text-muted`. Grafikon dobija podatke iz posebnog upita za poslednjih 14 dana (ranije iz liste od najviše 200 narudžbina), a iznad stubića je upisan broj.

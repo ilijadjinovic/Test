@@ -10,7 +10,7 @@
 import { t } from "./i18n.js";
 import { initDatepickers, getISO, setISO } from "./datepicker.js";
 import { escapeHtml, formatDate, badgeClassForStatus, statusLabel, toast, ORDER_STATUS_ALL } from "./utils.js";
-import { listenOpenOrdersBy, listenRecentClosedBy, getOlderClosedPageBy, getAllOrdersBy } from "./orders.js";
+import { listenOpenOrdersBy, listenRecentClosedBy, getOlderClosedPageBy, getAllOrdersBy, countOlderClosedBy } from "./orders.js";
 import {
   PAGE_SIZE, RECENT_DAYS, SEARCH_CACHE_MS, CLOSED_STATUSES,
   isLate, lateInfo, dayKey, durationParts, parseCriteria, matchesSearch, compareByCreatedDesc,
@@ -76,12 +76,14 @@ const $ = (id) => document.getElementById(id);
 //   compare: (now) => (a, b) => number,
 //   activeOnlyDefault: bool,   // isporučilac: podrazumevano samo aktivne + "Prikaži sve"
 //   rowClass: (o) => string,
+//   isAttention: (o, now) => bool,   // blok "Zahteva pažnju" na vrhu liste (odvojen linijom)
 //   actions: { name: async (order) => void },   // data-action dugmad u redu
 //   emptyKey: string,
 // }
 export function createDashboard(cfg) {
   const S = {
     open: [], recent: [], older: [], olderCursor: null, hasMoreOlder: true, loadingOlder: false,
+    olderTotal: null, // ukupan broj starijih zatvorenih (iz baze); null dok se ne učita
     gotOpen: false, gotRecent: false,
     filter: "all", showAll: !cfg.activeOnlyDefault, visible: PAGE_SIZE,
     searching: false, results: [], searchCache: null, searchCacheAt: 0, searchCapped: false, searchSeq: 0, searchLoading: false, lastSig: "",
@@ -92,6 +94,7 @@ export function createDashboard(cfg) {
   const statHost = $("stat-cards"), chipHost = $("filter-chip"), head = $("orders-head"), body = $("orders-body");
   const pagerHost = $("pager"), toggleBtn = $("toggle-all-btn"), searchInfo = $("search-info");
   const statusHost = $("status-chips"), priorityHost = $("priority-chips");
+  const filtersToggle = $("filters-toggle"), filtersPanel = $("filters-panel"), filtersCount = $("filters-count");
   const inputs = { text: $("search-text"), from: $("search-from"), to: $("search-to") };
 
   const base = () => Array.from(byId(S.recent, S.open).values());
@@ -168,17 +171,35 @@ export function createDashboard(cfg) {
       return;
     }
     const ctx = { now: S.now };
-    body.innerHTML = shown.map((o) => `
-      <tr class="row-link ${cfg.rowClass ? cfg.rowClass(o) : ""}" data-id="${escapeHtml(o.id)}" tabindex="0">
+    // Blok "Zahteva pažnju": narudžbine koje su na vrhu zbog razloga, a ne zbog datuma, odvojene
+    // bojom, levom ivicom i linijom ispod poslednje. Bez pretrage i bez filtera kartice.
+    const grouped = !!cfg.isAttention && !S.searching && S.filter === "all";
+    const attn = grouped ? shown.map((o) => cfg.isAttention(o, S.now)) : [];
+    const lastAttn = grouped ? attn.lastIndexOf(true) : -1;
+    const hasOthers = lastAttn >= 0 && S.list.some((o) => !cfg.isAttention(o, S.now));
+    const groupRow = (cls, key) => `<tr class="group-row ${cls}"><td colspan="${cfg.columns.length}"><span class="group-label">${t(key)}</span></td></tr>`;
+    const html = [];
+    shown.forEach((o, i) => {
+      if (i === 0 && attn[0]) html.push(groupRow("attn", "dash_group_attention"));
+      const cls = [cfg.rowClass ? cfg.rowClass(o) : "", attn[i] ? "row-attention" : "", i === lastAttn && hasOthers ? "row-attention-last" : ""].filter(Boolean).join(" ");
+      html.push(`<tr class="row-link ${cls}" data-id="${escapeHtml(o.id)}" tabindex="0">
         ${cfg.columns.map((c) => `<td class="${c.cls || ""}">${c.render(o, ctx)}</td>`).join("")}
-      </tr>`).join("");
+      </tr>`);
+      if (i === lastAttn && hasOthers && i < shown.length - 1) html.push(groupRow("", "dash_group_other"));
+    });
+    body.innerHTML = html.join("");
   }
 
   function renderPager() {
-    const total = S.list.length;
-    const shown = Math.min(S.visible, total);
-    const canMem = S.visible < total;
-    const canOlder = !S.searching && S.filter === "all" && S.showAll && S.hasMoreOlder;
+    // Ukupno = ono što je već u memoriji + starije zatvorene koje još nisu učitane (broj iz baze),
+    // pa je prikaz isti na svakom uređaju bez obzira šta je korisnik već otvarao.
+    const inList = S.list.length;
+    const olderMode = !S.searching && S.filter === "all" && S.showAll;
+    const olderLeft = S.olderTotal != null ? Math.max(0, S.olderTotal - S.older.length) : (S.hasMoreOlder ? 1 : 0);
+    const total = olderMode && S.olderTotal != null ? inList + olderLeft : inList;
+    const shown = Math.min(S.visible, inList);
+    const canMem = S.visible < inList;
+    const canOlder = olderMode && S.hasMoreOlder && olderLeft > 0;
     if (!S.gotOpen || !S.gotRecent || (S.searching && S.searchLoading) || (!total && !canOlder)) { pagerHost.innerHTML = ""; return; }
     pagerHost.innerHTML = `
       <span class="muted pager-count">${t("dash_showing_count", { shown, total })}</span>
@@ -235,8 +256,18 @@ export function createDashboard(cfg) {
     searchInfo.textContent = t("dash_search_results", { count: S.list.length }) + (S.searchCapped ? ` ${t("dash_search_capped")}` : "");
   }
 
+  // Broj aktivnih filtera (dugmići statusa/prioriteta + zadati datumi) na dugmetu "Filteri",
+  // da se vidi da su filteri uključeni i kad je panel uvučen. Tekst pretrage se ne računa (stalno je vidljiv).
+  function renderFilterCount() {
+    if (!filtersCount) return;
+    const n = S.chips.status.size + S.chips.priority.size + (getISO(inputs.from) ? 1 : 0) + (getISO(inputs.to) ? 1 : 0);
+    filtersCount.textContent = String(n);
+    filtersCount.hidden = n === 0;
+  }
+
   // force = true: pokreni i kad se kriterijumi nisu promenili (dugme "Primeni", posle akcije u redu)
   async function runSearch(force = false) {
+    renderFilterCount();
     const crit = readCriteria();
     const sig = JSON.stringify([crit.tokens, crit.statuses, crit.priorities, crit.fromMs, crit.toMs]);
     if (!force && sig === S.lastSig) return; // npr. datepicker šalje "change" i pri običnom napuštanju polja
@@ -270,6 +301,7 @@ export function createDashboard(cfg) {
     S.chips.status.clear(); S.chips.priority.clear();
     document.querySelectorAll(".fchip").forEach((b) => { b.classList.remove("active"); b.setAttribute("aria-pressed", "false"); });
     S.searching = false; S.results = []; S.searchSeq++; S.searchLoading = false; S.lastSig = "";
+    renderFilterCount();
     if (rerun) { S.visible = PAGE_SIZE; renderAll(); }
   }
 
@@ -286,6 +318,12 @@ export function createDashboard(cfg) {
     // dugme "Primeni" radi isto na zahtev.
     [inputs.from, inputs.to].forEach((el) => el?.addEventListener("change", () => runSearch(false)));
     $("search-apply")?.addEventListener("click", () => runSearch(true));
+    // Dugme "Filteri": širi / uvlači panel sa dugmićima i datumima da ne zauzimaju mesto kad nisu potrebni
+    filtersToggle?.addEventListener("click", () => {
+      const open = filtersPanel.hidden;
+      filtersPanel.hidden = !open;
+      filtersToggle.setAttribute("aria-expanded", String(open));
+    });
     $("search-reset")?.addEventListener("click", () => clearSearch(true));
     // Dugmići statusa i prioriteta: klik uključuje/isključuje filter (može više njih), primena je automatska.
     [statusHost, priorityHost].forEach((host) => host?.addEventListener("click", (e) => {
@@ -387,6 +425,9 @@ export function createDashboard(cfg) {
       initDatepickers(document);
       bindEvents();
       renderAll();
+      countOlderClosedBy(cfg.companyId, cfg.ownerField, cfg.uid, S.cutoff)
+        .then((n) => { S.olderTotal = n; renderPager(); })
+        .catch((err) => console.error("Brojanje starijih narudžbina:", err));
       listenOpenOrdersBy(cfg.companyId, cfg.ownerField, cfg.uid, (o) => onData("open", o), onError);
       listenRecentClosedBy(cfg.companyId, cfg.ownerField, cfg.uid, S.cutoff, (o) => onData("recent", o), onError);
     },

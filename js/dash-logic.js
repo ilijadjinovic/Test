@@ -159,6 +159,13 @@ export function compareIsporucilac(now = Date.now()) {
   };
 }
 
+// Narudžbine koje su na vrhu iz razloga potrebne pažnje (a ne zbog datuma). Poklapaju se
+// sa prvim rangovima u compare* funkcijama, pa uvek čine neprekidan blok na početku liste.
+export const isAttentionNarucilac = (o, now = Date.now()) =>
+  o.status === "isporucena" || o.status === "reklamacija" || isLate(o, now);
+export const isAttentionIsporucilac = (o, now = Date.now()) =>
+  !isClosed(o) && (o.status === "ceka_prihvatanje" || o.status === "reklamacija" || isLate(o, now) || o.priority === "hitno");
+
 export function compareByCreatedDesc(a, b) {
   return (toMillis(b.createdAt) ?? Infinity) - (toMillis(a.createdAt) ?? Infinity);
 }

@@ -580,5 +580,8 @@
   "backfill_done_dry": "Provera gotova. Pregledano: {total}, potrebna izmena: {changed}.",
   "backfill_error": "Greška: {message}",
   "dash_search_apply": "Primeni",
-  "dash_search_results": "Pronađeno narudžbina: {count}"
+  "dash_search_results": "Pronađeno narudžbina: {count}",
+  "dash_group_attention": "Zahteva pažnju",
+  "dash_group_other": "Ostale narudžbine",
+  "dash_filters": "Filteri"
 }

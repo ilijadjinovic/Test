@@ -8,7 +8,7 @@ import {
 import { getCompanySettings } from "./settings.js";
 import { generateOrderPdf } from "./order-print.js";
 import { formatDate, escapeHtml, ROLES, toast } from "./utils.js";
-import { compareNarucilac } from "./dash-logic.js";
+import { compareNarucilac, isAttentionNarucilac } from "./dash-logic.js";
 import {
   createDashboard, statusCellHtml, priorityCellHtml, closedCellHtml,
 } from "./dash-common.js";
@@ -40,6 +40,7 @@ requireAuth([ROLES.NARUCILAC], (user, profile) => {
     companyId, uid: user.uid, ownerField: "createdByUid",
     cardKeys: ["awaiting_confirm", "claims", "late", "in_purchase", "finished_today", "all"],
     compare: compareNarucilac,
+    isAttention: isAttentionNarucilac,
     emptyKey: "no_orders_yet",
     rowClass: (o) => (o.status === "odbijena" ? "row-rejected" : ""),
     columns: [

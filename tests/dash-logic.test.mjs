@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   lateInfo, isLate, normalizeText, buildSearchFields, parseCriteria, matchesSearch,
   compareNarucilac, compareIsporucilac, dayKey, durationParts, toMillis,
+  isAttentionNarucilac, isAttentionIsporucilac,
 } from "../js/dash-logic.js";
 
 const H = 3600000;
@@ -95,5 +96,19 @@ ok("dayKey koristi zonu Europe/Belgrade (ponoć po lokalnom vremenu)", () => {
   assert.equal(dayKey(Date.UTC(2026, 6, 1, 22, 30)), "2026-07-02");
   assert.equal(dayKey(Date.UTC(2026, 6, 1, 21, 30)), "2026-07-01");
   assert.equal(toMillis(null), null);
+});
+ok("blok 'zahteva pažnju' je uvek neprekidan početak sortirane liste (obe uloge)", () => {
+  const statuses = ["kreirana", "ceka_prihvatanje", "u_nabavci", "isporucena", "reklamacija", "zatvorena", "odbijena"];
+  const list = [];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 300; i++) list.push({
+    id: i, status: statuses[Math.floor(rnd() * statuses.length)], priority: rnd() < 0.4 ? "hitno" : "standardno",
+    assignedToUid: rnd() < 0.9 ? "u" : null, assignedAt: ts(rnd() * 60 * H), createdAt: ts(rnd() * 60 * H), closedAt: ts(rnd() * 60 * H),
+  });
+  for (const [cmp, isAttn] of [[compareNarucilac, isAttentionNarucilac], [compareIsporucilac, isAttentionIsporucilac]]) {
+    const flags = [...list].sort(cmp(now)).map((o) => isAttn(o, now));
+    const firstFalse = flags.indexOf(false);
+    assert.ok(firstFalse > 0 && !flags.slice(firstFalse).includes(true), "blok nije neprekidan");
+  }
 });
 console.log(`\n${n} testova prošlo.`);

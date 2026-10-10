@@ -3,7 +3,7 @@ import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
 import { acceptOrder, rejectOrder } from "./orders.js";
 import { formatDate, escapeHtml, ROLES, toast } from "./utils.js";
-import { compareIsporucilac } from "./dash-logic.js";
+import { compareIsporucilac, isAttentionIsporucilac } from "./dash-logic.js";
 import {
   createDashboard, statusCellHtml, priorityCellHtml, closedCellHtml, listCellHtml,
 } from "./dash-common.js";
@@ -29,6 +29,7 @@ requireAuth([ROLES.ISPORUCILAC], (user, profile) => {
     companyId, uid: user.uid, ownerField: "assignedToUid",
     cardKeys: ["awaiting_accept", "claims", "late", "active_deliveries", "in_purchase", "finished_today"],
     compare: compareIsporucilac,
+    isAttention: isAttentionIsporucilac,
     activeOnlyDefault: true,      // podrazumevano samo aktivne, "Prikaži sve" dodaje zatvorene/odbijene
     emptyKey: "no_orders",
     columns: [

@@ -1,7 +1,7 @@
 import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t, currentLang } from "./i18n.js";
-import { listenAllOrders, assignOrder, listenUnassignedOrders } from "./orders.js";
+import { listenAllOrders, listenOrdersSince, assignOrder, listenUnassignedOrders } from "./orders.js";
 import { getIsporucioci } from "./users.js";
 import { isLate } from "./dash-logic.js";
 import { formatDate, escapeHtml, badgeClassForStatus, statusLabel, ROLES, roleLabel, debounce } from "./utils.js";
@@ -9,6 +9,7 @@ import { formatDate, escapeHtml, badgeClassForStatus, statusLabel, ROLES, roleLa
 await loadLang();
 
 let allOrders = [];
+let chartOrders = []; // narudžbine iz poslednjih 14 dana (poseban upit — tačne brojke i kad ih ima više od 200)
 let activeFilter = null; // null (bez filtera) | "active" | "late" | "in_purchase" | "finished_today"
 let searchTerm = "";
 
@@ -34,16 +35,24 @@ requireAuth([ROLES.ADMIN], (user, profile) => {
   listenAllOrders(profile.companyId, (orders) => {
     allOrders = orders;
     renderStats(orders);
-    renderChart(orders);
     renderMetrics(orders);
     renderFilterChip();
     renderOrdersTable(applyFilters(orders));
   });
 
+  const chartSince = new Date();
+  chartSince.setDate(chartSince.getDate() - 13);
+  chartSince.setHours(0, 0, 0, 0);
+  listenOrdersSince(profile.companyId, chartSince, (orders) => {
+    chartOrders = orders;
+    renderChart(chartOrders);
+  }, (err) => console.error("Grafikon narudžbina:", err));
+
   // Kašnjenje zavisi od vremena — preračunaj brojke svakog minuta (bez čitanja iz baze)
   setInterval(() => {
     if (document.hidden || !allOrders.length) return;
     renderStats(allOrders);
+    renderChart(chartOrders); // pomera prozor od 14 dana posle ponoći
     renderOrdersTable(applyFilters(allOrders));
   }, 60000);
 });
@@ -106,8 +115,9 @@ function renderChart(orders) {
   const max = Math.max(1, ...counts);
   document.getElementById("chart-orders").innerHTML = days.map((d, i) => `
     <div title="${d.toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'sr-RS')}: ${counts[i]}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;">
-      <div style="width:70%;background:var(--brand-500);border-radius:4px 4px 0 0;height:${(counts[i] / max) * 100}%;min-height:2px;"></div>
-      <span style="font-size:9px;color:var(--ink-300);margin-top:4px;">${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.</span>
+      <span style="font-size:10px;font-weight:700;color:var(--color-text);margin-bottom:3px;">${counts[i] || ""}</span>
+      <div style="width:70%;background:var(--color-primary);border-radius:4px 4px 0 0;height:${(counts[i] / max) * 85}%;min-height:${counts[i] ? 4 : 2}px;"></div>
+      <span style="font-size:10px;color:var(--color-text-muted);margin-top:4px;">${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.</span>
     </div>
   `).join("");
 }

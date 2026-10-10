@@ -4,7 +4,7 @@
 import {
   db, collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, onSnapshot,
   orderBy, where, query, limit, serverTimestamp, writeBatch, increment,
-  runTransaction, storage, ref, deleteObject, startAfter, Timestamp,
+  runTransaction, storage, ref, deleteObject, startAfter, Timestamp, getCountFromServer,
 } from "./firebase-init.js";
 import { ORDER_STATUS, DELIVERY_LOCATION_STATUS, statusLabel, uid } from "./utils.js";
 import { OPEN_STATUSES, SEARCH_CAP, buildSearchFields } from "./dash-logic.js";
@@ -470,6 +470,12 @@ export function listenOpenOrdersBy(companyId, field, value, callback, onError) {
   const q = query(ordersCol(companyId), where(field, "==", value), where("status", "in", OPEN_STATUSES));
   return onSnapshot(q, (snap) => callback(mapDocs(snap)), onError);
 }
+// Sve narudžbine firme kreirane od zadatog datuma (za grafikon na Admin tabli) —
+// odvojeno od listenAllOrders (ograničen na 200), da brojke po danima budu tačne.
+export function listenOrdersSince(companyId, sinceDate, callback, onError) {
+  const q = query(ordersCol(companyId), where("createdAt", ">=", Timestamp.fromDate(sinceDate)), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snap) => callback(mapDocs(snap)), onError);
+}
 export function listenRecentClosedBy(companyId, field, value, sinceDate, callback, onError) {
   const q = query(ordersCol(companyId), where(field, "==", value), where("closedAt", ">=", Timestamp.fromDate(sinceDate)), orderBy("closedAt", "desc"));
   return onSnapshot(q, (snap) => callback(mapDocs(snap)), onError);
@@ -480,6 +486,12 @@ export async function getOlderClosedPageBy(companyId, field, value, beforeDate, 
   parts.push(limit(size));
   const snap = await getDocs(query(ordersCol(companyId), ...parts));
   return { orders: mapDocs(snap), cursor: snap.docs[snap.docs.length - 1] || null, hasMore: snap.docs.length === size };
+}
+// Koliko zatvorenih/odbijenih narudžbina starijih od datuma korisnik ima ukupno (broji baza,
+// ne učitava dokumente) — da "Prikazano X od Y" uvek prikazuje pravi ukupan broj.
+export async function countOlderClosedBy(companyId, field, value, beforeDate) {
+  const q = query(ordersCol(companyId), where(field, "==", value), where("closedAt", "<", Timestamp.fromDate(beforeDate)));
+  return (await getCountFromServer(q)).data().count;
 }
 // Cela istorija jednog korisnika (za pretragu) — po 500, do SEARCH_CAP.
 export async function getAllOrdersBy(companyId, field, value, cap = SEARCH_CAP) {

@@ -27,14 +27,23 @@
         <span id="filter-chip"></span>
       </div>
       <div class="dash-search">
-        <input type="search" id="search-text" data-i18n-placeholder="dash_search_placeholder" placeholder="Pretraga: broj, artikal, osoba, dobavljač..." autocomplete="off" />
-        <div class="chip-group" id="status-chips" role="group"></div>
-        <div class="chip-group" id="priority-chips" role="group"></div>
-        <div class="dash-dates">
-          <label class="dash-date"><span data-i18n="dash_date_from">Od</span><input type="text" class="js-datepicker" id="search-from" /></label>
-          <label class="dash-date"><span data-i18n="dash_date_to">Do</span><input type="text" class="js-datepicker" id="search-to" /></label>
-          <button type="button" class="btn btn-sm btn-primary" id="search-apply" data-i18n="dash_search_apply">Primeni</button>
-          <button type="button" class="btn btn-sm btn-ghost" id="search-reset" data-i18n="dash_search_reset">Poništi</button>
+        <div class="dash-search-bar">
+          <input type="search" id="search-text" data-i18n-placeholder="dash_search_placeholder" placeholder="Pretraga: broj, artikal, osoba, dobavljač..." autocomplete="off" />
+          <button type="button" class="btn btn-outline filters-toggle" id="filters-toggle" aria-expanded="false" aria-controls="filters-panel">
+            <span data-i18n="dash_filters">Filteri</span>
+            <span class="ft-count" id="filters-count" hidden>0</span>
+            <span class="ft-caret" aria-hidden="true">▾</span>
+          </button>
+        </div>
+        <div class="filters-panel" id="filters-panel" hidden>
+          <div class="chip-group" id="status-chips" role="group"></div>
+          <div class="chip-group" id="priority-chips" role="group"></div>
+          <div class="dash-dates">
+            <label class="dash-date"><span data-i18n="dash_date_from">Od</span><input type="text" class="js-datepicker" id="search-from" /></label>
+            <label class="dash-date"><span data-i18n="dash_date_to">Do</span><input type="text" class="js-datepicker" id="search-to" /></label>
+            <button type="button" class="btn btn-sm btn-primary" id="search-apply" data-i18n="dash_search_apply">Primeni</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="search-reset" data-i18n="dash_search_reset">Poništi</button>
+          </div>
         </div>
       </div>
       <div class="muted dash-search-info" id="search-info" aria-live="polite"></div>

@@ -580,5 +580,8 @@
   "backfill_done_dry": "Check finished. Checked: {total}, need updating: {changed}.",
   "backfill_error": "Error: {message}",
   "dash_search_apply": "Apply",
-  "dash_search_results": "Orders found: {count}"
+  "dash_search_results": "Orders found: {count}",
+  "dash_group_attention": "Needs attention",
+  "dash_group_other": "Other orders",
+  "dash_filters": "Filters"
 }

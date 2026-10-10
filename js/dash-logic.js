@@ -129,8 +129,9 @@ export function compareNarucilac(now = Date.now()) {
   const rank = (o) => {
     if (o.status === "isporucena") return 0;
     if (o.status === "reklamacija") return 1;
+    if (o.status === "kreirana") return 2;   // čeka da naručilac izabere isporučioca
     if (isClosed(o)) return 9;
-    return isLate(o, now) ? 2 : 3;
+    return isLate(o, now) ? 3 : 4;
   };
   return (a, b) => {
     const ra = rank(a), rb = rank(b);
@@ -162,9 +163,24 @@ export function compareIsporucilac(now = Date.now()) {
 // Narudžbine koje su na vrhu iz razloga potrebne pažnje (a ne zbog datuma). Poklapaju se
 // sa prvim rangovima u compare* funkcijama, pa uvek čine neprekidan blok na početku liste.
 export const isAttentionNarucilac = (o, now = Date.now()) =>
-  o.status === "isporucena" || o.status === "reklamacija" || isLate(o, now);
+  o.status === "isporucena" || o.status === "reklamacija" || o.status === "kreirana" || isLate(o, now);
 export const isAttentionIsporucilac = (o, now = Date.now()) =>
   !isClosed(o) && (o.status === "ceka_prihvatanje" || o.status === "reklamacija" || isLate(o, now) || o.priority === "hitno");
+
+// Dugmići ishoda u filterima (Aktivne / Zatvorene / Odbijene) → statusi koje obuhvataju
+export const OUTCOME_STATUSES = { active: OPEN_STATUSES, closed: ["zatvorena"], rejected: ["odbijena"] };
+
+// Prečice za period (lokalni datumi, YYYY-MM-DD): ovaj mesec, prošli mesec, poslednjih 90 dana
+const pad2 = (n) => String(n).padStart(2, "0");
+const isoDate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+export function periodPresets(today = new Date()) {
+  const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+  return {
+    this_month: { from: isoDate(new Date(y, m, 1)), to: isoDate(today) },
+    last_month: { from: isoDate(new Date(y, m - 1, 1)), to: isoDate(new Date(y, m, 0)) },
+    last_90: { from: isoDate(new Date(y, m, d - 89)), to: isoDate(today) },
+  };
+}
 
 export function compareByCreatedDesc(a, b) {
   return (toMillis(b.createdAt) ?? Infinity) - (toMillis(a.createdAt) ?? Infinity);

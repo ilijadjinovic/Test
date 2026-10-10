@@ -38,7 +38,7 @@ requireAuth([ROLES.NARUCILAC], (user, profile) => {
 
   createDashboard({
     companyId, uid: user.uid, ownerField: "createdByUid",
-    cardKeys: ["awaiting_confirm", "claims", "late", "in_purchase", "finished_today", "all"],
+    cardKeys: ["awaiting_assign", "awaiting_confirm", "claims", "late", "in_purchase", "finished_today", "all"],
     compare: compareNarucilac,
     isAttention: isAttentionNarucilac,
     emptyKey: "no_orders_yet",

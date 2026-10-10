@@ -579,9 +579,16 @@
   "backfill_done": "Gotovo. Pregledano: {total}, izmenjeno: {changed}.",
   "backfill_done_dry": "Provera gotova. Pregledano: {total}, potrebna izmena: {changed}.",
   "backfill_error": "Greška: {message}",
-  "dash_search_apply": "Primeni",
   "dash_search_results": "Pronađeno narudžbina: {count}",
   "dash_group_attention": "Zahteva pažnju",
   "dash_group_other": "Ostale narudžbine",
-  "dash_filters": "Filteri"
+  "dash_filters": "Filteri",
+  "dash_f_active": "Aktivne",
+  "dash_f_closed": "Zatvorene",
+  "dash_f_rejected": "Odbijene",
+  "dash_f_urgent": "Hitne",
+  "dash_p_this_month": "Ovaj mesec",
+  "dash_p_last_month": "Prošli mesec",
+  "dash_p_90": "Poslednjih 90 dana",
+  "dash_awaiting_assign": "Čeka izbor isporučioca"
 }

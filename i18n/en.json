@@ -579,9 +579,16 @@
   "backfill_done": "Done. Checked: {total}, updated: {changed}.",
   "backfill_done_dry": "Check finished. Checked: {total}, need updating: {changed}.",
   "backfill_error": "Error: {message}",
-  "dash_search_apply": "Apply",
   "dash_search_results": "Orders found: {count}",
   "dash_group_attention": "Needs attention",
   "dash_group_other": "Other orders",
-  "dash_filters": "Filters"
+  "dash_filters": "Filters",
+  "dash_f_active": "Active",
+  "dash_f_closed": "Closed",
+  "dash_f_rejected": "Rejected",
+  "dash_f_urgent": "Urgent",
+  "dash_p_this_month": "This month",
+  "dash_p_last_month": "Last month",
+  "dash_p_90": "Last 90 days",
+  "dash_awaiting_assign": "Awaiting deliverer selection"
 }

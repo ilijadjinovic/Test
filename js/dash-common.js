@@ -9,11 +9,12 @@
 // ============================================================================
 import { t } from "./i18n.js";
 import { initDatepickers, getISO, setISO } from "./datepicker.js";
-import { escapeHtml, formatDate, badgeClassForStatus, statusLabel, toast, ORDER_STATUS_ALL } from "./utils.js";
+import { escapeHtml, formatDate, badgeClassForStatus, statusLabel, toast } from "./utils.js";
 import { listenOpenOrdersBy, listenRecentClosedBy, getOlderClosedPageBy, getAllOrdersBy, countOlderClosedBy } from "./orders.js";
 import {
   PAGE_SIZE, RECENT_DAYS, SEARCH_CACHE_MS, CLOSED_STATUSES,
   isLate, lateInfo, dayKey, durationParts, parseCriteria, matchesSearch, compareByCreatedDesc,
+  OUTCOME_STATUSES, periodPresets,
 } from "./dash-logic.js";
 
 export { isLate, lateInfo } from "./dash-logic.js";
@@ -23,6 +24,7 @@ export { isLate, lateInfo } from "./dash-logic.js";
 // broj na kartici uvek odgovara broju redova kad se kartica izabere.
 export const CARD_DEFS = {
   all: { labelKey: "my_orders", color: "", predicate: () => true },
+  awaiting_assign: { labelKey: "dash_awaiting_assign", color: "amber", attention: true, predicate: (o) => o.status === "kreirana" },
   awaiting_accept: { labelKey: "dash_awaiting_accept", color: "amber", attention: true, predicate: (o) => o.status === "ceka_prihvatanje" },
   awaiting_confirm: { labelKey: "dash_awaiting_confirm", color: "amber", attention: true, predicate: (o) => o.status === "isporucena" },
   claims: { labelKey: "dash_claims", color: "red", attention: true, predicate: (o) => o.status === "reklamacija" },
@@ -87,13 +89,13 @@ export function createDashboard(cfg) {
     gotOpen: false, gotRecent: false,
     filter: "all", showAll: !cfg.activeOnlyDefault, visible: PAGE_SIZE,
     searching: false, results: [], searchCache: null, searchCacheAt: 0, searchCapped: false, searchSeq: 0, searchLoading: false, lastSig: "",
-    chips: { status: new Set(), priority: new Set() },
+    chips: { outcome: new Set(), priority: new Set() },
     list: [], now: Date.now(), cardSig: null,
     cutoff: new Date(Date.now() - RECENT_DAYS * 86400000),
   };
   const statHost = $("stat-cards"), chipHost = $("filter-chip"), head = $("orders-head"), body = $("orders-body");
   const pagerHost = $("pager"), toggleBtn = $("toggle-all-btn"), searchInfo = $("search-info");
-  const statusHost = $("status-chips"), priorityHost = $("priority-chips");
+  const chipsHost = $("filter-chips"), presetsHost = $("period-presets");
   const filtersToggle = $("filters-toggle"), filtersPanel = $("filters-panel"), filtersCount = $("filters-count");
   const inputs = { text: $("search-text"), from: $("search-from"), to: $("search-to") };
 
@@ -245,7 +247,7 @@ export function createDashboard(cfg) {
 
   // ---- Pretraga cele istorije -----------------------------------------------
   const readCriteria = () => parseCriteria({
-    text: inputs.text?.value, statuses: [...S.chips.status], priorities: [...S.chips.priority],
+    text: inputs.text?.value, statuses: [...S.chips.outcome].flatMap((k) => OUTCOME_STATUSES[k]), priorities: [...S.chips.priority],
     from: getISO(inputs.from), to: getISO(inputs.to),
   });
 
@@ -260,7 +262,8 @@ export function createDashboard(cfg) {
   // da se vidi da su filteri uključeni i kad je panel uvučen. Tekst pretrage se ne računa (stalno je vidljiv).
   function renderFilterCount() {
     if (!filtersCount) return;
-    const n = S.chips.status.size + S.chips.priority.size + (getISO(inputs.from) ? 1 : 0) + (getISO(inputs.to) ? 1 : 0);
+    syncPresetHighlight();
+    const n = S.chips.outcome.size + S.chips.priority.size + (getISO(inputs.from) ? 1 : 0) + (getISO(inputs.to) ? 1 : 0);
     filtersCount.textContent = String(n);
     filtersCount.hidden = n === 0;
   }
@@ -298,7 +301,7 @@ export function createDashboard(cfg) {
   function clearSearch(rerun = true) {
     if (inputs.text) inputs.text.value = "";
     setISO(inputs.from, ""); setISO(inputs.to, "");
-    S.chips.status.clear(); S.chips.priority.clear();
+    S.chips.outcome.clear(); S.chips.priority.clear();
     document.querySelectorAll(".fchip").forEach((b) => { b.classList.remove("active"); b.setAttribute("aria-pressed", "false"); });
     S.searching = false; S.results = []; S.searchSeq++; S.searchLoading = false; S.lastSig = "";
     renderFilterCount();
@@ -317,7 +320,6 @@ export function createDashboard(cfg) {
     // Datumi se primenjuju automatski čim se izabere/ukuca datum ("change" šalje datepicker.js);
     // dugme "Primeni" radi isto na zahtev.
     [inputs.from, inputs.to].forEach((el) => el?.addEventListener("change", () => runSearch(false)));
-    $("search-apply")?.addEventListener("click", () => runSearch(true));
     // Dugme "Filteri": širi / uvlači panel sa dugmićima i datumima da ne zauzimaju mesto kad nisu potrebni
     filtersToggle?.addEventListener("click", () => {
       const open = filtersPanel.hidden;
@@ -325,8 +327,9 @@ export function createDashboard(cfg) {
       filtersToggle.setAttribute("aria-expanded", String(open));
     });
     $("search-reset")?.addEventListener("click", () => clearSearch(true));
-    // Dugmići statusa i prioriteta: klik uključuje/isključuje filter (može više njih), primena je automatska.
-    [statusHost, priorityHost].forEach((host) => host?.addEventListener("click", (e) => {
+    // Dugmići (Aktivne / Zatvorene / Odbijene / Hitne): klik uključuje/isključuje filter, primena je automatska.
+    // Ishodi se međusobno sabiraju („ili“), a „Hitne“ se kombinuju sa njima („i“).
+    [chipsHost].forEach((host) => host?.addEventListener("click", (e) => {
       const chip = e.target.closest(".fchip");
       if (!chip) return;
       const set = S.chips[chip.dataset.chipGroup];
@@ -391,20 +394,43 @@ export function createDashboard(cfg) {
     });
   }
 
-  // Dugmići: statusi u dva reda, prioriteti u trećem
+  // Jedan red od 4 dugmeta + prečice za period
   const chipHtml = (group, value, label) =>
     `<button type="button" class="fchip" data-chip-group="${group}" data-chip-value="${value}" aria-pressed="false">${escapeHtml(label)}</button>`;
+  const PRESET_KEYS = { this_month: "dash_p_this_month", last_month: "dash_p_last_month", last_90: "dash_p_90" };
   function buildChips() {
-    if (statusHost) {
-      const half = Math.ceil(ORDER_STATUS_ALL.length / 2);
-      statusHost.setAttribute("aria-label", t("status"));
-      statusHost.innerHTML = [ORDER_STATUS_ALL.slice(0, half), ORDER_STATUS_ALL.slice(half)]
-        .map((row) => `<div class="chip-row">${row.map((s) => chipHtml("status", s, statusLabel(s))).join("")}</div>`).join("");
+    if (chipsHost) {
+      chipsHost.setAttribute("aria-label", t("dash_filters"));
+      chipsHost.innerHTML = `<div class="chip-row">${[
+        ["outcome", "active", "dash_f_active"], ["outcome", "closed", "dash_f_closed"],
+        ["outcome", "rejected", "dash_f_rejected"], ["priority", "hitno", "dash_f_urgent"],
+      ].map(([g, v, k]) => chipHtml(g, v, t(k))).join("")}</div>`;
     }
-    if (priorityHost) {
-      priorityHost.setAttribute("aria-label", t("priority"));
-      priorityHost.innerHTML = `<div class="chip-row">${chipHtml("priority", "hitno", t("urgent"))}${chipHtml("priority", "standardno", t("standard"))}</div>`;
+    if (presetsHost) {
+      presetsHost.innerHTML = Object.entries(PRESET_KEYS)
+        .map(([k, label]) => `<button type="button" class="fchip" data-preset="${k}" aria-pressed="false">${escapeHtml(t(label))}</button>`).join("");
+      // Klik postavlja "Od/Do" i odmah filtrira; ponovni klik na izabranu prečicu briše period
+      presetsHost.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-preset]");
+        if (!btn) return;
+        const range = periodPresets()[btn.dataset.preset];
+        const same = getISO(inputs.from) === range.from && getISO(inputs.to) === range.to;
+        setISO(inputs.from, same ? "" : range.from);
+        setISO(inputs.to, same ? "" : range.to);
+        runSearch(false);
+      });
     }
+  }
+  // Prečica je istaknuta samo dok "Od/Do" tačno odgovaraju njenom periodu (ručna izmena datuma je gasi)
+  function syncPresetHighlight() {
+    if (!presetsHost) return;
+    const ranges = periodPresets();
+    presetsHost.querySelectorAll("[data-preset]").forEach((btn) => {
+      const r = ranges[btn.dataset.preset];
+      const on = getISO(inputs.from) === r.from && getISO(inputs.to) === r.to;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
   }
 
   function onData(kind, orders) {

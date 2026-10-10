@@ -547,7 +547,7 @@ table.data-table.table-fixed th { white-space: normal; }
 
 /* ── KONTROLNE TABLE: kartice sa podsetnikom, pretraga, akcije u redu, paginacija ── */
 /* Šest kartica se ravnomerno raspoređuju (2 u redu na telefonu, više na širem ekranu) */
-.stat-grid.stat-grid-auto { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.stat-grid.stat-grid-auto { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 
 /* Vizuelni podsetnik: kartice koje traže reakciju (čeka prihvatanje / potvrdu, reklamacije)
    dobijaju obojenu ivicu, znak "!" i blago pulsiranje dok je broj veći od nule. */
@@ -606,6 +606,7 @@ table.data-table.table-fixed th { white-space: normal; }
 .dash-dates { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .dash-date { display: flex; flex-direction: column; gap: 3px; margin: 0; font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; }
 .dash-date input { width: 170px; }
+.period-presets { align-items: center; padding-bottom: 6px; }
 .dash-search-info { font-size: 12.5px; min-height: 18px; margin-bottom: 8px; }
 .pager { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding-top: 14px; }
 .pager-count { font-size: 12.5px; }

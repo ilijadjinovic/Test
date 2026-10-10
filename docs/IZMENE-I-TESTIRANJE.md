@@ -3,7 +3,7 @@
 ## 1. Šta je novo
 
 **Kartice (obe table)**
-- Naručilac: *Čeka moju potvrdu*, *Reklamacije*, *Kasne*, *U nabavci*, *Danas završeno*, *Moje narudžbine*.
+- Naručilac: *Čeka izbor isporučioca* (status „kreirana“ — naručilac sam bira isporučioca), *Čeka moju potvrdu*, *Reklamacije*, *Kasne*, *U nabavci*, *Danas završeno*, *Moje narudžbine*.
 - Isporučilac: *Čeka prihvatanje*, *Reklamacije*, *Kasne*, *Aktivne isporuke*, *U nabavci*, *Danas završeno*.
 - Kartice koje traže reakciju (čeka prihvatanje / potvrdu, reklamacije) kad je broj veći od nule dobijaju obojenu ivicu, znak „!“ i blago pulsiranje (isključuje se ako korisnik u sistemu ima uključeno „smanji kretanje“). Klik na karticu filtrira tabelu, drugi klik ukida filter.
 
@@ -27,14 +27,14 @@
 
 **Pretraga cele istorije**
 - Polje traži po delu reči (bez obzira na č/ć/š/ž/đ): broj narudžbine, naziv i šifra artikla, dobavljač, lokacija isporuke, naručilac, isporučilac, „ko je tražio“. Više reči = sve moraju da se poklope.
-- Ispod polja su **dugmići-filteri**: statusi u dva reda, prioriteti u trećem. Klik uključuje/isključuje filter (može više njih odjednom, npr. „Zatvorena“ + „Odbijena“) i primena je automatska.
-- Dugmići, datumi i dugmad „Primeni/Poništi“ nalaze se u panelu koji se otvara dugmetom **Filteri** pored polja za pretragu (podrazumevano je uvučen da ne zauzima mesto). Na dugmetu je broj uključenih filtera, pa se vidi da filtriranje traje i kad je panel uvučen. Polje za tekst pretrage je stalno vidljivo.
-- Datum kreiranja „Od“ / „Do“ koristi isti datepicker kao ostatak aplikacije (format dd.mm.gggg., kalendar se otvara na klik ili se datum ukuca). Primena je automatska čim se datum izabere/ukuca; pored polja je i dugme **Primeni**. Ikona kalendara je sada veća i svetlija (važi za sva polja sa kalendarom u aplikaciji). **Poništi** briše tekst, dugmiće i datume.
+- U panelu **Filteri** je **jedan red od 4 dugmeta**: *Aktivne · Zatvorene · Odbijene · Hitne*. Ishodi (Aktivne / Zatvorene / Odbijene) se sabiraju („ili“), a *Hitne* se kombinuju sa njima („i“). Klik uključuje/isključuje filter, primena je automatska. Statusi koje već pokrivaju kartice i blok „Zahteva pažnju“ (isporučena, reklamacija, čeka prihvatanje, u nabavci…) nisu posebni filteri.
+- Dugmići, datumi i dugme „Poništi“ nalaze se u panelu koji se otvara dugmetom **Filteri** pored polja za pretragu (podrazumevano je uvučen da ne zauzima mesto). Na dugmetu je broj uključenih filtera, pa se vidi da filtriranje traje i kad je panel uvučen. Polje za tekst pretrage je stalno vidljivo.
+- Datum kreiranja „Od“ / „Do“ koristi isti datepicker kao ostatak aplikacije (format dd.mm.gggg., kalendar se otvara na klik ili se datum ukuca). Primena je automatska čim se datum izabere ili ukuca (dugme „Primeni“ je uklonjeno). Pored polja su **prečice za period**: *Ovaj mesec*, *Prošli mesec*, *Poslednjih 90 dana* — klik postavlja „Od/Do“ i odmah filtrira, ponovni klik na izabranu prečicu briše period, a ručna izmena datuma gasi njeno isticanje. Ikona kalendara je velika i svetla (važi za sva polja sa kalendarom u aplikaciji).
 - Pretraga čita celu istoriju tog korisnika (do 5000 narudžbina, jednom, pa se pamti 5 minuta), pa pronalazi i narudžbine starije od 30 dana.
 
 **Blok „Zahteva pažnju“ (obe table)**
 - Narudžbine koje su na vrhu iz razloga, a ne zbog datuma, odvojene su od ostalih: oznaka „Zahteva pažnju“ iznad, žuta leva ivica i blaga pozadina na redovima, debela žuta linija ispod poslednjeg i oznaka „Ostale narudžbine“ ispod nje. Ostale su sortirane po datumu.
-- Naručilac: čeka potvrdu, reklamacije, kasne. Isporučilac: čeka prihvatanje, reklamacije, kasne, hitne.
+- Naručilac: čeka izbor isporučioca (`kreirana`), čeka potvrdu, reklamacije, kasne. Isporučilac: čeka prihvatanje, reklamacije, kasne, hitne.
 - Grupisanje se ne prikazuje dok je izabrana kartica-filter ili aktivna pretraga (lista je tada jedna celina).
 
 **Isporučilac — tabela**
@@ -62,7 +62,7 @@
 | `js/firebase-init.js` | izvezen `startAfter` |
 | `firestore.indexes.json` | dva nova indeksa (`createdByUid+closedAt`, `assignedToUid+closedAt`) |
 | `css/style.css` | stilovi kartica sa podsetnikom, pretrage, akcija |
-| `i18n/sr.json`, `i18n/en.json` | 45 novih ključeva |
+| `i18n/sr.json`, `i18n/en.json` | 52 nova ključa |
 | `backfill-orders.html`, `js/page-backfill.js` | **novo** — jednokratna dopuna starih narudžbina |
 | `tests/dash-logic.test.mjs` | **novo** — automatski testovi logike |
 
@@ -96,13 +96,14 @@ Pripremi bar jednog naručioca, jednog isporučioca i admina. Za vremenska pravi
 | 13 | Naručilac | Imaj >25 narudžbina. | Prikazano prvih 25, „Prikazano 25 od N“, *Učitaj još* dodaje po 25; kad se iscrpi, učitava starije zatvorene po datumu; kad nema više, dugme nestaje. |
 | 14 | Naručilac | Zatvorena narudžbina starija od 30 dana. | Nije na podrazumevanoj listi; pojavi se pri *Učitaj još* (naručilac) odnosno *Prikaži sve → Učitaj još* (isporučilac), i u pretrazi. Otvorena narudžbina starija od 30 dana **ostaje** na listi. |
 | 15 | Oba | Pretraga: „cem“ (deo naziva artikla), pa naziv dobavljača, naziv lokacije, ime isporučioca/naručioca, „ko je tražio“, deo broja narudžbine. | Pronalazi odgovarajuće narudžbine, uključujući starije od 30 dana; unos „ćelik“ nalazi i „celik“. Statusna linija: „Pronađeno narudžbina: N“. |
-| 16 | Oba | Klikni dugmiće statusa (npr. „Zatvorena“ + „Odbijena“) i prioriteta, izaberi datume „Od/Do“ iz kalendara (ikona desno u polju) ili ih ukucaj; zatim *Poništi*. | Lista se filtrira odmah, bez dodatnog klika (dugme *Primeni* radi isto na zahtev). Statusi se unutar grupe „ili“, grupe se međusobno kombinuju („i“). *Poništi* vraća običan prikaz. Klik na karticu tokom pretrage gasi pretragu. |
+| 16 | Oba | Otvori *Filteri*; klikni *Zatvorene* pa *Hitne*; zatim klikni prečicu *Poslednjih 90 dana* i još jednom na nju; ručno promeni datum „Od“; na kraju *Poništi*. | Lista se filtrira odmah posle svakog klika. *Hitne* se kombinuju sa ishodom, a više ishoda se sabira. Prečica postavlja „Od/Do“, ističe se i ponovnim klikom briše period; ručna izmena datuma gasi isticanje. Broj na dugmetu *Filteri* prati broj uključenih filtera. *Poništi* vraća običan prikaz. Klik na karticu tokom pretrage gasi pretragu. |
 | 17 | Naručilac | Napravi novu narudžbinu, dodaj artikal u dozvoljenom statusu, pa ga pretraži. | Novi artikal se odmah može pronaći (polje za pretragu se osvežava pri izmeni stavki, lokacija i „ko je tražio“). |
 | 18 | Admin | Admin tabla, kartica „Kasne“. | Isti broj kao zbir kasnih na tablama isporučilaca (isto pravilo). |
 | 19 | Admin | Izveštaji za period stariji od ~500 narudžbina unazad. | Sve narudžbine iz izabranog perioda su uključene (ranije nepotpuno). |
 | 20 | Telefon (isporučilac) | Otvori tablu na telefonu (≤700 px). | Kartice 2 u redu; tabela se skroluje levo-desno, broj narudžbine ostaje zalepljen, *Prihvati/Odbij* su odmah desno od broja i dovoljno veliki za dodir. |
 | 21 | Tastatura | Tab kroz kartice i redove. | Kartica se bira Enter/Space, red se otvara sa Enter, fokus ostaje na kartici posle osvežavanja brojki. |
 | 22 | Jezik | Prebaci na engleski. | Svi novi natpisi, dugmad, poruke i status linije su na engleskom. |
+| 23 | Naručilac | Firma ima način dodele „naručilac bira“. Napravi narudžbinu i ne biraj isporučioca. | Kartica „Čeka izbor isporučioca“ = 1 (pulsira), narudžbina je u bloku „Zahteva pažnju“ posle reklamacija i pre kasnih; posle izbora isporučioca nestaje iz bloka. |
 
 ## 5. Poznate napomene
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   lateInfo, isLate, normalizeText, buildSearchFields, parseCriteria, matchesSearch,
   compareNarucilac, compareIsporucilac, dayKey, durationParts, toMillis,
-  isAttentionNarucilac, isAttentionIsporucilac,
+  isAttentionNarucilac, isAttentionIsporucilac, periodPresets, OUTCOME_STATUSES, OPEN_STATUSES,
 } from "../js/dash-logic.js";
 
 const H = 3600000;
@@ -96,6 +96,33 @@ ok("dayKey koristi zonu Europe/Belgrade (ponoć po lokalnom vremenu)", () => {
   assert.equal(dayKey(Date.UTC(2026, 6, 1, 22, 30)), "2026-07-02");
   assert.equal(dayKey(Date.UTC(2026, 6, 1, 21, 30)), "2026-07-01");
   assert.equal(toMillis(null), null);
+});
+ok("naručilac: 'kreirana' (čeka izbor isporučioca) je u bloku pažnje, posle reklamacije a pre kasnih", () => {
+  const mk = (id, extra) => ({ id, priority: "standardno", createdAt: ts(1 * H), ...extra });
+  const list = [
+    mk("obicna", { status: "u_nabavci" }),
+    mk("kasna", { status: "u_nabavci", priority: "hitno", assignedToUid: "u", assignedAt: ts(5 * H) }),
+    mk("kre", { status: "kreirana" }),
+    mk("rekl", { status: "reklamacija" }),
+  ];
+  assert.equal(isAttentionNarucilac(list[2], now), true);
+  assert.deepEqual(list.sort(compareNarucilac(now)).map((o) => o.id), ["rekl", "kre", "kasna", "obicna"]);
+  assert.equal(isAttentionIsporucilac({ status: "kreirana", priority: "standardno" }, now), false); // za isporučioca nije relevantno
+});
+ok("prečice za period: ovaj mesec, prošli mesec, poslednjih 90 dana", () => {
+  const p = periodPresets(new Date(2026, 9, 10)); // 10.10.2026.
+  assert.deepEqual(p.this_month, { from: "2026-10-01", to: "2026-10-10" });
+  assert.deepEqual(p.last_month, { from: "2026-09-01", to: "2026-09-30" });
+  assert.deepEqual(p.last_90, { from: "2026-07-13", to: "2026-10-10" }); // 90 dana uključujući danas
+  const jan = periodPresets(new Date(2026, 0, 15));
+  assert.deepEqual(jan.last_month, { from: "2025-12-01", to: "2025-12-31" }); // prelaz godine
+  assert.deepEqual(periodPresets(new Date(2026, 2, 1)).last_month, { from: "2026-02-01", to: "2026-02-28" });
+});
+ok("dugmići ishoda: Aktivne = svi otvoreni statusi, Zatvorene, Odbijene", () => {
+  assert.deepEqual(OUTCOME_STATUSES.closed, ["zatvorena"]);
+  assert.deepEqual(OUTCOME_STATUSES.rejected, ["odbijena"]);
+  assert.ok(OUTCOME_STATUSES.active.includes("u_nabavci") && !OUTCOME_STATUSES.active.includes("zatvorena") && !OUTCOME_STATUSES.active.includes("odbijena"));
+  assert.equal(OUTCOME_STATUSES.active, OPEN_STATUSES);
 });
 ok("blok 'zahteva pažnju' je uvek neprekidan početak sortirane liste (obe uloge)", () => {
   const statuses = ["kreirana", "ceka_prihvatanje", "u_nabavci", "isporucena", "reklamacija", "zatvorena", "odbijena"];

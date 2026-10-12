@@ -1,3 +1,4 @@
+import { itemsInfoBtnHtml } from "./order-items-popover.js";
 import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
@@ -44,7 +45,7 @@ requireAuth([ROLES.NARUCILAC], (user, profile) => {
     emptyKey: "no_orders_yet",
     rowClass: (o) => (o.status === "odbijena" ? "row-rejected" : ""),
     columns: [
-      { headKey: "export_col_number", cls: "mono", render: (o) => escapeHtml(o.orderNumber) },
+      { headKey: "export_col_number", cls: "mono", render: (o) => `${escapeHtml(o.orderNumber)}${itemsInfoBtnHtml()}` },
       { headKey: "dash_actions", render: actionsCell },
       { headKey: "status", render: (o, ctx) => statusCellHtml(o, { showReason: true, now: ctx.now }) },
       { headKey: "priority", render: priorityCellHtml },

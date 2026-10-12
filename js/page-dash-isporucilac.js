@@ -1,3 +1,4 @@
+import { itemsInfoBtnHtml } from "./order-items-popover.js";
 import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
@@ -33,7 +34,7 @@ requireAuth([ROLES.ISPORUCILAC], (user, profile) => {
     activeOnlyDefault: true,      // podrazumevano samo aktivne, "Prikaži sve" dodaje zatvorene/odbijene
     emptyKey: "no_orders",
     columns: [
-      { headKey: "export_col_number", cls: "mono", render: (o) => escapeHtml(o.orderNumber) },
+      { headKey: "export_col_number", cls: "mono", render: (o) => `${escapeHtml(o.orderNumber)}${itemsInfoBtnHtml()}` },
       { headKey: "dash_actions", render: actionsCell },
       { headKey: "status", render: (o, ctx) => statusCellHtml(o, { now: ctx.now }) },
       { headKey: "role_narucilac", render: (o) => escapeHtml(o.createdByName || "—") },

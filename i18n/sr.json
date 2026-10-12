@@ -591,5 +591,8 @@
   "dash_p_this_month": "Ovaj mesec",
   "dash_p_last_month": "Prošli mesec",
   "dash_p_90": "Poslednjih 90 dana",
-  "dash_awaiting_assign": "Čeka izbor isporučioca"
+  "dash_awaiting_assign": "Čeka izbor isporučioca",
+  "items_pop_empty": "Narudžbina nema artikala",
+  "items_pop_more": "+ još {count}",
+  "items_pop_label": "Prikaži artikle"
 }

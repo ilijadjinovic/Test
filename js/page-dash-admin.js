@@ -5,6 +5,7 @@ import {
   listenOrdersSince, listenOpenOrdersBy, listenRecentClosedBy,
   getOrdersPageBy, countOrdersBy, searchOrdersByNumberPrefix, getAverageProcessingMs,
 } from "./orders.js";
+import { attachOrderItemsPopover, itemsInfoBtnHtml } from "./order-items-popover.js";
 import { isLate, allViewList, compareByCreatedDesc, toMillis, orderNumberPrefix, PAGE_SIZE, CLOSED_LIVE_HOURS } from "./dash-logic.js";
 import { formatDate, escapeHtml, badgeClassForStatus, statusLabel, ROLES, roleLabel, debounce, toast } from "./utils.js";
 
@@ -226,6 +227,7 @@ function renderMetrics() {
 
 function renderOrdersTable() {
   const body = document.getElementById("orders-body");
+  attachOrderItemsPopover(body, { companyId, getOrder: (id) => D.list.find((o) => o.id === id) });
   D.list = getPool();
   if (!D.gotOpen || !D.gotToday || (inAllMode() && !D.gotPage) || (searchTerm && D.searchLoading)) {
     body.innerHTML = `<tr class="empty-row"><td colspan="7">${t(searchTerm && D.searchLoading ? "dash_search_loading" : "loading_ellipsis")}</td></tr>`;
@@ -239,7 +241,7 @@ function renderOrdersTable() {
   }
   body.innerHTML = orders.map((o) => `
     <tr class="row-link" data-id="${escapeHtml(o.id)}">
-      <td class="mono">${escapeHtml(o.orderNumber)}</td>
+      <td class="mono">${escapeHtml(o.orderNumber)}${itemsInfoBtnHtml()}</td>
       <td>${escapeHtml(o.createdByName || "—")}</td>
       <td>${escapeHtml(o.assignedToName || "—")}</td>
       <td>${o.priority === "hitno" ? `<span class="badge badge-urgent">${t("urgent")}</span>` : `<span class="badge badge-gray">${t("standard")}</span>`}</td>
@@ -250,7 +252,9 @@ function renderOrdersTable() {
   `).join("");
 
   body.querySelectorAll(".row-link").forEach((row) => {
-    row.addEventListener("click", () => { window.location.href = `./order-detail.html?order=${row.dataset.id}`; });
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("[data-items-btn]")) return;
+      window.location.href = `./order-detail.html?order=${row.dataset.id}`; });
   });
 }
 

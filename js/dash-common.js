@@ -10,6 +10,7 @@
 // sve narudžbine korisnika; kartica/pretraga = broj koji odgovara tom filteru).
 // ============================================================================
 import { t } from "./i18n.js";
+import { attachOrderItemsPopover } from "./order-items-popover.js";
 import { initDatepickers, getISO, setISO } from "./datepicker.js";
 import { escapeHtml, formatDate, badgeClassForStatus, statusLabel, toast } from "./utils.js";
 import { listenOpenOrdersBy, listenRecentClosedBy, getOrdersPageBy, getAllOrdersBy, countOrdersBy } from "./orders.js";
@@ -378,6 +379,8 @@ export function createDashboard(cfg) {
       runSearch(false);
     }));
     toggleBtn?.addEventListener("click", () => { S.showAll = !S.showAll; S.visible = PAGE_SIZE; if (S.showAll) ensureAllData(); renderAll(); });
+
+    attachOrderItemsPopover(body, { companyId: cfg.companyId, getOrder: (id) => S.list.find((o) => o.id === id) });
 
     const openDetails = (row) => { window.location.href = `./order-detail.html?order=${row.dataset.id}`; };
     body.addEventListener("click", async (e) => {

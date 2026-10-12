@@ -56,10 +56,12 @@ function getPool() {
   return allViewList(Array.from(liveMap().values()), { floorMs: floorMs(), compare: () => () => 0 });
 }
 
+let adminCompanyId = null; // postavlja se pri prijavi; koristi ga balon sa artiklima
 let loadPage = () => {}, loadTotal = () => {}, loadAvg = () => {}, runSearch = () => {}; // dodeljuju se kad se korisnik prijavi
 
 requireAuth([ROLES.ADMIN], (user, profile) => {
   const companyId = profile.companyId;
+  adminCompanyId = companyId;
   renderNav({ companyId, uid: user.uid, profile });
   document.getElementById("company-name-eyebrow").textContent = roleLabel("admin");
 
@@ -227,7 +229,7 @@ function renderMetrics() {
 
 function renderOrdersTable() {
   const body = document.getElementById("orders-body");
-  attachOrderItemsPopover(body, { companyId, getOrder: (id) => D.list.find((o) => o.id === id) });
+  attachOrderItemsPopover(body, { companyId: adminCompanyId, getOrder: (id) => D.list.find((o) => o.id === id) });
   D.list = getPool();
   if (!D.gotOpen || !D.gotToday || (inAllMode() && !D.gotPage) || (searchTerm && D.searchLoading)) {
     body.innerHTML = `<tr class="empty-row"><td colspan="7">${t(searchTerm && D.searchLoading ? "dash_search_loading" : "loading_ellipsis")}</td></tr>`;

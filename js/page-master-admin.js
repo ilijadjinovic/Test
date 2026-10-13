@@ -65,6 +65,14 @@ function renderCompanies(companies) {
   });
 }
 
+// Detalji se prevode pri prikazu. Stariji zapisi (pre detailsKey) imaju srpski tekst, pa ih prepoznajemo.
+function auditDetailsText(l) {
+  if (l.detailsKey) return t(l.detailsKey, l.detailsParams || {});
+  const m = /^Iznos: (.*) · Račun: (.*) \((.*)\)$/.exec(l.details || "");
+  if (m) return t("audit_payment_details", { amount: m[1], receipt: m[2], date: m[3] });
+  return l.details || "";
+}
+
 async function loadLogs(companyId) {
   const body = document.getElementById("audit-body");
   body.innerHTML = `<tr class="empty-row"><td colspan="4">${t("loading_ellipsis")}</td></tr>`;
@@ -78,7 +86,7 @@ async function loadLogs(companyId) {
       <td>${formatDate(l.createdAt)}</td>
       <td>${escapeHtml(l.action)}</td>
       <td>${escapeHtml(l.actorName || t("system_actor_fallback"))}</td>
-      <td>${escapeHtml(l.details || "—")}</td>
+      <td>${escapeHtml(auditDetailsText(l) || "—")}</td>
     </tr>
   `).join("");
 }

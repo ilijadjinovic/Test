@@ -8,10 +8,12 @@ import { db, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp
 // Napomena: actorName ostaje null kad nije prosleđen — prikaz "sistemske" akcije
 // se prevodi u trenutku prikaza (page-master-admin.js), ne u trenutku upisa,
 // da bi poštovao jezik onoga ko GLEDA log, ne onoga ko je akciju izazvao.
-export async function logAudit(companyId, { action, entity, entityId, actorUid = null, actorName = null, details = "" }) {
+export async function logAudit(companyId, { action, entity, entityId, actorUid = null, actorName = null, details = "", detailsKey = null, detailsParams = null }) {
   try {
     await addDoc(collection(db, "companies", companyId, "auditLogs"), {
       action, entity, entityId, actorUid, actorName, details,
+      // Strukturirani detalji: prevode se pri PRIKAZU (jezik onoga ko gleda log), a ne pri upisu.
+      ...(detailsKey ? { detailsKey, detailsParams: detailsParams || {} } : {}),
       createdAt: serverTimestamp(),
     });
   } catch (e) {

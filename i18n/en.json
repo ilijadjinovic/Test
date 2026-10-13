@@ -594,5 +594,6 @@
   "dash_awaiting_assign": "Awaiting deliverer selection",
   "items_pop_empty": "This order has no items",
   "items_pop_more": "+ {count} more",
-  "items_pop_label": "Show items"
+  "items_pop_label": "Show items",
+  "audit_payment_details": "Amount: {amount} · Receipt: {receipt} ({date})"
 }

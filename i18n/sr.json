@@ -594,5 +594,6 @@
   "dash_awaiting_assign": "Čeka izbor isporučioca",
   "items_pop_empty": "Narudžbina nema artikala",
   "items_pop_more": "+ još {count}",
-  "items_pop_label": "Prikaži artikle"
+  "items_pop_label": "Prikaži artikle",
+  "audit_payment_details": "Iznos: {amount} · Račun: {receipt} ({date})"
 }

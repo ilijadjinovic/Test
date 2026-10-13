@@ -34,7 +34,10 @@ function fmtQty(it) {
 }
 
 function contentHtml(order, items) {
-  const head = `<div class="items-pop-head">${escapeHtml(order?.orderNumber || "")}</div>`;
+  // Zaglavlje: broj narudžbenice levo, "Ko je tražio" desno (samo ako je uneto)
+  const by = (order?.requestedByName || "").trim();
+  const byHtml = by ? `<span class="items-pop-by">${escapeHtml(t("requested_by_meta_label"))}: <strong>${escapeHtml(by)}</strong></span>` : "";
+  const head = `<div class="items-pop-head"><span class="items-pop-num">${escapeHtml(order?.orderNumber || "")}</span>${byHtml}</div>`;
   if (items === null) return `${head}<div class="items-pop-empty">${t("loading_ellipsis")}</div>`;
   if (!items.length) return `${head}<div class="items-pop-empty">${t("items_pop_empty")}</div>`;
   const rows = items.slice(0, MAX_ITEMS).map((it) => `

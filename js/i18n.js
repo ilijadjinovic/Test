@@ -8,6 +8,7 @@ export async function loadLang(lang = currentLang) {
   const res = await fetch(`./i18n/${lang}.json`);
   dict = await res.json();
   currentLang = lang;
+  document.documentElement.lang = lang;
   localStorage.setItem("lang", lang);
   applyTranslations();
 }

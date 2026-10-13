@@ -45,7 +45,9 @@ export function setPurchaseReceiptNumber(companyId, orderId, purchaseId, receipt
 export function setPurchasePayment(companyId, orderId, purchaseId, { paidAmount, receiptNumber, receiptDate }, actorName) {
   logAudit(companyId, {
     action: "purchase_payment_set", entity: "Purchases", entityId: purchaseId, actorName,
-    details: `Iznos: ${paidAmount} · Račun: ${receiptNumber || "—"} (${receiptDate || "—"})`,
+    details: `Iznos: ${paidAmount} · Račun: ${receiptNumber || "—"} (${receiptDate || "—"})`, // rezervni tekst; prikaz koristi detailsKey
+    detailsKey: "audit_payment_details",
+    detailsParams: { amount: String(paidAmount), receipt: receiptNumber || "—", date: receiptDate || "—" },
   });
   return updateDoc(doc(db, "companies", companyId, "orders", orderId, "purchases", purchaseId), {
     paidAmount: Number(paidAmount) || 0, receiptNumber: receiptNumber || "", receiptDate: receiptDate || "",

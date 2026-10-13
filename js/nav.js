@@ -164,6 +164,9 @@ export function renderNav({ companyId, uid, profile }) {
       if (btn.dataset.lang === currentLang) return;
       await setLang(btn.dataset.lang);
       syncLangToggle();
+      // Sadržaj koji JS iscrtava (tabele, statusi, kartice, modali) koristi t() pri renderovanju,
+      // pa se mora ponovo iscrtati. Jezik je već sačuvan u localStorage, pa ga reload preuzima.
+      window.location.reload();
     });
   });
   document.getElementById("logout-btn").addEventListener("click", () => logout());

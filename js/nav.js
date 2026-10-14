@@ -41,7 +41,8 @@ export function renderNav({ companyId, uid, profile }) {
   if (!host) return;
 
   host.innerHTML = `
-    <aside class="sidebar">
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <aside class="sidebar" id="app-sidebar">
       <div class="brand">
         <img class="brand-mark" src="./assets/icon-192.png" alt="Order & Supply" />
         <span class="brand-name" title="${t("app_name")}">O&amp;S</span>
@@ -132,7 +133,7 @@ export function renderNav({ companyId, uid, profile }) {
       </div>
     </div>
     <header class="topbar">
-      <button class="icon-btn" id="menu-toggle" aria-label="${t("menu_aria")}">☰</button>
+      <button class="icon-btn" id="menu-toggle" aria-label="${t("menu_aria")}" aria-expanded="false" aria-controls="app-sidebar">☰</button>
       <div class="topbar-spacer"></div>
       <div class="lang-toggle" id="lang-toggle" role="group" aria-label="${t("language_aria")}">
         <button type="button" class="lang-option" data-lang="sr">SR</button>
@@ -170,8 +171,24 @@ export function renderNav({ companyId, uid, profile }) {
     });
   });
   document.getElementById("logout-btn").addEventListener("click", () => logout());
-  document.getElementById("menu-toggle").addEventListener("click", () => {
-    document.querySelector(".sidebar").classList.toggle("open");
+  // Mobilni meni: otvara se na ☰, zatvara se klikom/dodirom van menija (na zatamnjenu pozadinu),
+  // tasterom Escape, klikom na stavku menija ili povratkom na široki ekran.
+  const sidebarEl = document.getElementById("app-sidebar");
+  const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+  const menuToggleBtn = document.getElementById("menu-toggle");
+  const setSidebarOpen = (open) => {
+    sidebarEl.classList.toggle("open", open);
+    sidebarBackdrop.classList.toggle("show", open);
+    menuToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+  menuToggleBtn.addEventListener("click", () => setSidebarOpen(!sidebarEl.classList.contains("open")));
+  sidebarBackdrop.addEventListener("click", () => setSidebarOpen(false));
+  sidebarEl.querySelectorAll(".side-link").forEach((el) => el.addEventListener("click", () => setSidebarOpen(false)));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setSidebarOpen(false);
+  });
+  window.matchMedia("(min-width: 881px)").addEventListener("change", (e) => {
+    if (e.matches) setSidebarOpen(false);
   });
 
   const aboutModal = document.getElementById("about-modal");

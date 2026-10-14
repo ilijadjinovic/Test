@@ -155,6 +155,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .icon-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
 #menu-toggle { display: none; }
+.sidebar-backdrop { display: none; }
 .lang-toggle {
   display: flex; align-items: center; gap: 2px;
   background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 999px; padding: 2px;
@@ -527,7 +528,19 @@ table.data-table.table-fixed th { white-space: normal; }
   .app-shell { grid-template-columns: 1fr; grid-template-areas: "topbar" "main"; }
   .sidebar { position: fixed; inset: 0 auto 0 0; width: 232px; transform: translateX(-100%); transition: transform .2s ease; z-index: 50; }
   .sidebar.open { transform: translateX(0); }
-  #menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  #menu-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; font-size: 26px; line-height: 1; font-weight: 700;
+    color: var(--color-primary); background: var(--color-primary-glow);
+    border: 1px solid var(--color-primary); flex-shrink: 0;
+  }
+  #menu-toggle:hover, #menu-toggle:active { background: var(--color-primary); color: #fff; }
+  /* Zatamnjena pozadina iza otvorenog menija — dodir na nju zatvara meni */
+  .sidebar-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 45;
+    background: rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  .sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
   main.content { padding: 18px; }
   .form-row { grid-template-columns: 1fr; }
 

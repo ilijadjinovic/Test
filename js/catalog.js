@@ -48,12 +48,57 @@ export async function bulkUpdateProducts(companyId, supplierId, items, data, act
     details: `${items.length} × ${items.map((i) => i.name).join(", ")}`,
   });
 }
-export function deleteProduct(companyId, supplierId, productId) {
-  return deleteDoc(doc(db, "companies", companyId, "suppliers", supplierId, "products", productId));
+
+// --- Brisanje i pasivizacija proizvoda ---
+// Proizvod je "aktivan" osim ako je active === false (stari zapisi bez polja važe kao aktivni).
+// Pasivizirani proizvod ostaje u katalogu (i veza sa starim narudžbenicama), ali se ne nudi
+// pri kreiranju novih narudžbenica — vidi getProducts(..., { activeOnly: true }).
+export const isProductActive = (p) => p.active !== false;
+
+const productRef = (companyId, supplierId, productId) =>
+  doc(db, "companies", companyId, "suppliers", supplierId, "products", productId);
+
+// Izvršava operaciju nad više proizvoda; u audit upisuje SAMO one koji su uspeli, pa se
+// log ne razilazi sa stvarnim stanjem ako neko brisanje/izmena padne (npr. nedostaju prava).
+async function runBulk(companyId, supplierId, items, op, action, actorName, actorUid) {
+  const results = await Promise.allSettled(items.map((item) => op(productRef(companyId, supplierId, item.id))));
+  const done = items.filter((_, i) => results[i].status === "fulfilled");
+  if (done.length) {
+    await logAudit(companyId, {
+      action, entity: "SupProducts", entityId: supplierId, actorUid, actorName,
+      details: `${done.length} × ${done.map((i) => i.name).join(", ")}`,
+    });
+  }
+  const failed = results.find((r) => r.status === "rejected");
+  if (failed) throw failed.reason;
+  return done.length;
 }
-export async function getProducts(companyId, supplierId) {
+
+export async function deleteProduct(companyId, supplierId, productId, { name = "", actorName = null, actorUid = null } = {}) {
+  await deleteDoc(productRef(companyId, supplierId, productId));
+  await logAudit(companyId, { action: "product_deleted", entity: "SupProducts", entityId: productId, actorUid, actorName, details: name });
+}
+// items: [{ id, name }]
+export function bulkDeleteProducts(companyId, supplierId, items, { actorName = null, actorUid = null } = {}) {
+  return runBulk(companyId, supplierId, items, (ref) => deleteDoc(ref), "products_bulk_deleted", actorName, actorUid);
+}
+
+export async function setProductActive(companyId, supplierId, productId, active, { name = "", actorName = null, actorUid = null } = {}) {
+  await updateDoc(productRef(companyId, supplierId, productId), { active });
+  await logAudit(companyId, {
+    action: active ? "product_activated" : "product_deactivated", entity: "SupProducts", entityId: productId, actorUid, actorName, details: name,
+  });
+}
+export function bulkSetProductsActive(companyId, supplierId, items, active, { actorName = null, actorUid = null } = {}) {
+  return runBulk(companyId, supplierId, items, (ref) => updateDoc(ref, { active }),
+    active ? "products_bulk_activated" : "products_bulk_deactivated", actorName, actorUid);
+}
+
+// activeOnly: true → bez pasiviziranih (za kreiranje/izmenu narudžbina); katalog admin strana vidi sve.
+export async function getProducts(companyId, supplierId, { activeOnly = false } = {}) {
   const snap = await getDocs(query(productsCol(companyId, supplierId), orderBy("name")));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return activeOnly ? list.filter(isProductActive) : list;
 }
 export function listenProducts(companyId, supplierId, callback) {
   return onSnapshot(query(productsCol(companyId, supplierId), orderBy("name")), (snap) => {

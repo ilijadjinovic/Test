@@ -2,7 +2,7 @@ import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
 import { getSuppliers, getSupplierLocations } from "./suppliers.js";
-import { getProducts, addProduct, updateProduct, getCategories } from "./catalog.js";
+import { getProducts, addProduct, updateProduct, getCategories, setProductActive, isProductActive } from "./catalog.js";
 import { getLocations } from "./locations.js";
 import { createOrder, assignOrder, getRecentRequesterNames } from "./orders.js";
 import { getIsporucioci } from "./users.js";
@@ -20,6 +20,9 @@ let chosenDeliveryLocations = []; // {locationId, locationName}
 // Katalog trenutno izabranog dobavljača (osvežava se pri promeni dobavljača) —
 // koristi se za detekciju duplikata/sličnih naziva pri slobodnom (ručnom) unosu.
 let currentSupplierCatalog = [];
+// Pasivizirani proizvodi istog dobavljača — ne nude se u listi, ali ih slobodan unos prepoznaje
+// i nudi ponovnu aktivaciju (umesto da se napravi duplikat u katalogu).
+let currentSupplierPassive = [];
 
 requireAuth(["narucilac"], async (user, profile) => {
   companyId = profile.companyId; uidValue = user.uid; actorName = profile.name;
@@ -78,13 +81,22 @@ document.getElementById("supplier-select").addEventListener("change", async (e) 
   productList.innerHTML = `<tr class="empty-row"><td colspan="6">${t("select_supplier_prompt")}</td></tr>`;
   searchInput.value = "";
   document.getElementById("product-category-filter").value = "";
+  currentSupplierCatalog = []; currentSupplierPassive = []; // dok se novi katalog učitava, stari ne sme da važi
   if (!supplierId) return;
 
-  const [locs, products] = await Promise.all([getSupplierLocations(companyId, supplierId), getProducts(companyId, supplierId)]);
+  const [locs, allProducts] = await Promise.all([getSupplierLocations(companyId, supplierId), getProducts(companyId, supplierId)]);
   pickupSelect.innerHTML += locs.map((l) => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join("");
-  currentSupplierCatalog = products;
+  currentSupplierCatalog = allProducts.filter(isProductActive);
+  currentSupplierPassive = allProducts.filter((p) => !isProductActive(p));
   acClose(); // katalog za predloge se promenio (drugi dobavljač) — stara lista predloga više ne važi
 
+  renderProductTable(currentSupplierCatalog, supplierId);
+});
+
+// Iscrtava tabelu kataloga (samo aktivni proizvodi) + vezuje dugmad "+ Dodaj" po redu.
+function renderProductTable(products, supplierId) {
+  const pickupSelect = document.getElementById("pickup-select");
+  const productList = document.getElementById("product-list");
   if (!products.length) { productList.innerHTML = `<tr class="empty-row"><td colspan="6">${t("no_products_in_catalog")}</td></tr>`; return; }
   const supplier = suppliers.find((s) => s.id === supplierId);
   productList.innerHTML = products.map((p) => `
@@ -129,7 +141,28 @@ document.getElementById("supplier-select").addEventListener("change", async (e) 
       }
     });
   });
-});
+}
+
+// Osvežava tabelu kataloga a čuva već unete količine/napomene/šifre/nazive po redovima.
+function refreshProductTableKeepingInput(supplierId) {
+  const saved = {};
+  document.querySelectorAll("#product-list tr[data-product-id]").forEach((row) => {
+    saved[row.dataset.productId] = {
+      qty: row.querySelector(".qty-input").value, note: row.querySelector(".note-input").value,
+      code: row.querySelector(".row-code-input").value, name: row.querySelector(".row-name-input").value,
+    };
+  });
+  renderProductTable(currentSupplierCatalog, supplierId);
+  document.querySelectorAll("#product-list tr[data-product-id]").forEach((row) => {
+    const v = saved[row.dataset.productId];
+    if (!v) return;
+    row.querySelector(".qty-input").value = v.qty;
+    row.querySelector(".note-input").value = v.note;
+    row.querySelector(".row-code-input").value = v.code;
+    row.querySelector(".row-name-input").value = v.name;
+  });
+  applyProductListFilter();
+}
 
 // --- Pretraga + filter po kategoriji (filtrira tabelu, ne dira već unete
 // količine/napomene). Kombinuju se — red mora da zadovolji I termin pretrage I
@@ -310,7 +343,7 @@ manualNameInput.addEventListener("blur", () => {
   setTimeout(() => { if (document.activeElement !== manualNameInput) acClose(); }, 0);
 });
 
-function addManualItemToCartAndOptionallyCatalog({ supplierId, name, qty, unit, note, productId = "", code = "", categoryId = "", createInCatalog = false }) {
+function addManualItemToCartAndOptionallyCatalog({ supplierId, name, qty, unit, note, productId = "", code = "", categoryId = "", createInCatalog = false, silent = false }) {
   const supplier = suppliers.find((s) => s.id === supplierId);
   const pickupSelect = document.getElementById("pickup-select");
   const pickupOpt = pickupSelect.options[pickupSelect.selectedIndex];
@@ -341,7 +374,7 @@ function addManualItemToCartAndOptionallyCatalog({ supplierId, name, qty, unit, 
         toast(t("toast_item_added", { name }), "success");
       });
   } else if (productId) {
-    toast(t("toast_item_matched_catalog", { name }), "success");
+    if (!silent) toast(t("toast_item_matched_catalog", { name }), "success");
   } else {
     toast(t("toast_item_added", { name }), "success");
   }
@@ -368,10 +401,23 @@ function processManualItem({ supplierId, name, code, qty, unit, note, categoryId
     return;
   }
 
+  // Isti artikal postoji u katalogu, ali je pasiviziran -> ponudi ponovnu aktivaciju.
+  const passiveMatch = findClosestCatalogMatch(name, currentSupplierPassive);
+  if (passiveMatch?.type === "exact") {
+    openReactivateModal({ supplierId, name, code, qty, unit, note, categoryId, product: passiveMatch.product, type: "exact" });
+    return;
+  }
+
   if (match?.type === "similar") {
     pendingSimilarItem = { supplierId, name, code, qty, unit, note, categoryId, existingProduct: match.product };
     openSimilarItemModal(match.product.name, name);
     return; // sačekaj odgovor korisnika (DODAJ / ODBACI STAVKU)
+  }
+
+  // Sličan (ali pasiviziran) artikal -> ponudi aktivaciju, ili dodavanje kao novog artikla.
+  if (passiveMatch?.type === "similar") {
+    openReactivateModal({ supplierId, name, code, qty, unit, note, categoryId, product: passiveMatch.product, type: "similar" });
+    return;
   }
 
   // Nema poklapanja -> nova stavka, automatski se katalogizuje sa izabranom kategorijom.
@@ -400,6 +446,72 @@ document.getElementById("similar-item-add-btn").addEventListener("click", () => 
   const { supplierId, name, code, qty, unit, note, categoryId } = pendingSimilarItem;
   addManualItemToCartAndOptionallyCatalog({ supplierId, name, code, qty, unit, note, categoryId, createInCatalog: true });
   closeSimilarItemModal();
+  resetManualEntryForm();
+});
+
+// --- Modal: "Artikal je pasiviziran" — ponuda ponovne aktivacije pri slobodnom unosu ---
+const reactivateModal = document.getElementById("reactivate-item-modal");
+let pendingReactivation = null; // { supplierId, name, code, qty, unit, note, categoryId, product, type: "exact"|"similar" }
+
+function openReactivateModal(pending) {
+  pendingReactivation = pending;
+  document.getElementById("reactivate-item-text").textContent = t(pending.type === "exact" ? "reactivate_item_text_exact" : "reactivate_item_text_similar");
+  document.getElementById("reactivate-item-existing-name").textContent = pending.product.name;
+  document.getElementById("reactivate-item-new-name").textContent = pending.name;
+  // "Dodaj kao novi" ima smisla samo kad je naziv samo SLIČAN; za identičan bi pravio duplikat.
+  document.getElementById("reactivate-item-new-btn").classList.toggle("hidden", pending.type === "exact");
+  reactivateModal.classList.remove("hidden");
+}
+function closeReactivateModal() {
+  reactivateModal.classList.add("hidden");
+  pendingReactivation = null;
+}
+document.getElementById("close-reactivate-item-modal").addEventListener("click", closeReactivateModal);
+document.getElementById("reactivate-item-discard-btn").addEventListener("click", () => {
+  toast(t("toast_item_discarded"), "info");
+  closeReactivateModal();
+});
+document.getElementById("reactivate-item-new-btn").addEventListener("click", () => {
+  if (!pendingReactivation) return;
+  const { supplierId, name, code, qty, unit, note, categoryId } = pendingReactivation;
+  addManualItemToCartAndOptionallyCatalog({ supplierId, name, code, qty, unit, note, categoryId, createInCatalog: true });
+  closeReactivateModal();
+  resetManualEntryForm();
+});
+document.getElementById("reactivate-item-activate-btn").addEventListener("click", async (e) => {
+  if (!pendingReactivation) return;
+  const btn = e.currentTarget;
+  const { supplierId, code, qty, unit, note, product } = pendingReactivation;
+  btn.disabled = true;
+  try {
+    await setProductActive(companyId, supplierId, product.id, true, { name: product.name, actorName, actorUid: uidValue });
+  } catch (err) {
+    console.error(err);
+    toast(t("toast_generic_error"), "error");
+    btn.disabled = false;
+    return; // modal ostaje otvoren — korisnik može ponovo ili da odbaci
+  }
+  btn.disabled = false;
+  product.active = true;
+
+  // Samo ako je isti dobavljač i dalje izabran, prebaci proizvod iz pasivnih u aktivne i osveži tabelu.
+  if (document.getElementById("supplier-select").value === supplierId) {
+    currentSupplierPassive = currentSupplierPassive.filter((x) => x.id !== product.id);
+    currentSupplierCatalog.push(product);
+    currentSupplierCatalog.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    refreshProductTableKeepingInput(supplierId);
+  }
+
+  // Isto kao kod tačnog poklapanja: dopuni šifru ako je katalog nema, ne prepisuj postojeću.
+  const finalCode = product.code || code || "";
+  if (code && !product.code) {
+    updateProduct(companyId, supplierId, product.id, { code }).then(() => { product.code = code; }).catch((err) => console.error(err));
+  }
+  addManualItemToCartAndOptionallyCatalog({
+    supplierId, name: product.name, qty, unit, note, productId: product.id, code: finalCode, createInCatalog: false, silent: true,
+  });
+  toast(t("toast_item_reactivated", { name: product.name }), "success");
+  closeReactivateModal();
   resetManualEntryForm();
 });
 

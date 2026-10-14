@@ -38,7 +38,7 @@ let order = null, items = [], purchases = [], deliveryLocations = [], claims = [
 let companyLocationsCache = null;
 const supplierProductsCache = {};
 async function getSupplierProductsCached(supplierId) {
-  if (!supplierProductsCache[supplierId]) supplierProductsCache[supplierId] = await getProducts(companyId, supplierId);
+  if (!supplierProductsCache[supplierId]) supplierProductsCache[supplierId] = await getProducts(companyId, supplierId, { activeOnly: true });
   return supplierProductsCache[supplierId];
 }
 async function getCompanyLocationsCached() {

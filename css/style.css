@@ -545,6 +545,14 @@ table.data-table.table-fixed th { white-space: normal; }
 .bulk-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: var(--color-primary-soft, #fff4de); }
 .bulk-edit-bar #bulk-edit-count { font-weight: 600; }
 
+/* Katalog — pasivizirani proizvodi i dijalog za potvrdu brisanja */
+tr.row-inactive td:not(:first-child):not(:last-child):not(:nth-last-child(2)) { opacity: 0.55; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.delete-confirm-list { margin: 0 0 10px; padding-left: 20px; font-size: 13px; max-height: 140px; overflow-y: auto; }
+.delete-confirm-note { margin: 14px 0; padding: 12px 14px; border-radius: 10px; background: var(--color-warning-soft, #fff4de); font-size: 13px; line-height: 1.45; }
+.delete-confirm-note p { margin: 6px 0 0; }
+.modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
 /* ── KONTROLNE TABLE: kartice sa podsetnikom, pretraga, akcije u redu, paginacija ── */
 /* Šest kartica se ravnomerno raspoređuju (2 u redu na telefonu, više na širem ekranu) */
 .stat-grid.stat-grid-auto { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }

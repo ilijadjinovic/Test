@@ -43,9 +43,12 @@
 
       <div class="panel bulk-edit-bar hidden" id="bulk-edit-bar">
         <span id="bulk-edit-count"></span>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button type="button" class="btn btn-sm" id="bulk-edit-clear-btn" data-i18n="bulk_clear_selection_btn">Poništi izbor</button>
           <button type="button" class="btn btn-sm btn-amber" id="bulk-edit-open-btn" data-i18n="bulk_edit_btn">✎ Izmeni izabrano</button>
+          <button type="button" class="btn btn-sm btn-outline" id="bulk-deactivate-btn" data-i18n="bulk_deactivate_btn">Pasiviziraj izabrano</button>
+          <button type="button" class="btn btn-sm btn-outline" id="bulk-activate-btn" data-i18n="bulk_activate_btn">Aktiviraj izabrano</button>
+          <button type="button" class="btn btn-sm btn-danger" id="bulk-delete-btn" data-i18n="bulk_delete_btn">🗑 Obriši izabrano</button>
         </div>
       </div>
 
@@ -54,16 +57,17 @@
           <table class="data-table table-fixed">
             <colgroup>
               <col style="width:4%">
+              <col style="width:9%">
+              <col style="width:27%">
+              <col style="width:6%">
+              <col style="width:13%">
+              <col style="width:6%">
+              <col style="width:8%">
               <col style="width:10%">
-              <col style="width:32%">
-              <col style="width:7%">
-              <col style="width:15%">
-              <col style="width:7%">
-              <col style="width:10%">
-              <col style="width:12%">
+              <col style="width:17%">
             </colgroup>
-            <thead><tr><th><input type="checkbox" id="products-select-all" /></th><th data-i18n="code">Šifra</th><th data-i18n="name">Naziv</th><th data-i18n="unit_short">JM</th><th data-i18n="category">Kategorija</th><th data-i18n="vat_short">PDV</th><th data-i18n="min_qty_short">Min. kol.</th><th></th></tr></thead>
-            <tbody id="products-body"><tr class="empty-row"><td colspan="8" data-i18n="select_a_supplier">Izaberite dobavljača.</td></tr></tbody>
+            <thead><tr><th><input type="checkbox" id="products-select-all" /></th><th data-i18n="code">Šifra</th><th data-i18n="name">Naziv</th><th data-i18n="unit_short">JM</th><th data-i18n="category">Kategorija</th><th data-i18n="vat_short">PDV</th><th data-i18n="min_qty_short">Min. kol.</th><th data-i18n="status">Status</th><th></th></tr></thead>
+            <tbody id="products-body"><tr class="empty-row"><td colspan="9" data-i18n="select_a_supplier">Izaberite dobavljača.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -126,6 +130,28 @@
         <button type="submit" class="btn btn-amber" style="height:42px;width:100%;" data-i18n="bulk_apply_btn">Primeni na izabrane</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="delete-confirm-modal">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+    <div class="modal-head"><h2 id="delete-confirm-title" data-i18n="delete_confirm_title">Brisanje proizvoda</h2><button type="button" class="icon-btn" id="delete-confirm-close">✕</button></div>
+    <p id="delete-confirm-question" style="font-weight:600;margin-bottom:6px;"></p>
+    <ul id="delete-confirm-list" class="delete-confirm-list"></ul>
+    <p class="hint" data-i18n="delete_confirm_permanent">Brisanje je trajno i ne može da se poništi.</p>
+
+    <div class="delete-confirm-note" id="delete-confirm-alt">
+      <strong data-i18n="delete_confirm_alt_title">Da li želite da pasivizirate umesto da brišete?</strong>
+      <p data-i18n="delete_confirm_alt_text">Pasivizirani proizvod se više ne nudi pri kreiranju novih narudžbenica, ali ostaje u katalogu i može se kasnije ponovo aktivirati.</p>
+      <p data-i18n="delete_confirm_old_orders">Stare narudžbenice: i kad proizvod obrišete, one zadržavaju naziv, šifru i jedinicu mere stavke, ali se veza stavke sa katalogom gubi. Pasivizacijom ta veza ostaje sačuvana.</p>
+    </div>
+    <p class="hint hidden" id="delete-confirm-all-passive" data-i18n="delete_confirm_all_passive">Izabrani proizvodi su već pasivizirani.</p>
+
+    <div class="modal-actions">
+      <button type="button" class="btn" id="delete-confirm-cancel" data-i18n="cancel">Otkaži</button>
+      <button type="button" class="btn btn-amber" id="delete-confirm-deactivate"></button>
+      <button type="button" class="btn btn-danger" id="delete-confirm-delete" data-i18n="delete_confirm_yes_btn">Da, obriši trajno</button>
+    </div>
   </div>
 </div>
 

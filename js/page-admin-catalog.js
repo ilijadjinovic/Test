@@ -2,7 +2,10 @@ import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
 import { getSuppliers } from "./suppliers.js";
-import { addCategory, deleteCategory, getCategories, addProduct, updateProduct, deleteProduct, listenProducts, bulkUpdateProducts } from "./catalog.js";
+import {
+  addCategory, deleteCategory, getCategories, addProduct, updateProduct, listenProducts, bulkUpdateProducts,
+  deleteProduct, bulkDeleteProducts, setProductActive, bulkSetProductsActive, isProductActive,
+} from "./catalog.js";
 import { escapeHtml, toast, getParam, ROLES } from "./utils.js";
 
 await loadLang();
@@ -43,12 +46,12 @@ function renderProducts(products, supplierId) {
   const stillValid = new Set(products.map((p) => p.id));
   selectedIds = new Set(Array.from(selectedIds).filter((id) => stillValid.has(id)));
 
-  const isAdmin = currentRole === ROLES.ADMIN;
   const body = document.getElementById("products-body");
-  if (!products.length) { body.innerHTML = `<tr class="empty-row"><td colspan="8">${t("no_products_for_supplier")}</td></tr>`; updateBulkEditBar(); return; }
+  if (!products.length) { body.innerHTML = `<tr class="empty-row"><td colspan="9">${t("no_products_for_supplier")}</td></tr>`; updateBulkEditBar(); return; }
   body.innerHTML = products.map((p) => {
     const catName = categories.find((c) => c.id === p.categoryId)?.name || "—";
-    return `<tr class="row-link" data-id="${p.id}" title="${t("details_label")}">
+    const active = isProductActive(p);
+    return `<tr class="row-link${active ? "" : " row-inactive"}" data-id="${p.id}" title="${t("details_label")}">
       <td><input type="checkbox" class="product-select-cb" data-id="${p.id}" ${selectedIds.has(p.id) ? "checked" : ""} /></td>
       <td class="mono">${escapeHtml(p.code || "—")}</td>
       <td><strong>${escapeHtml(p.name)}</strong></td>
@@ -56,15 +59,20 @@ function renderProducts(products, supplierId) {
       <td>${escapeHtml(catName)}</td>
       <td>${p.vatRate}%</td>
       <td>${p.minQuantity}</td>
-      <td>${isAdmin ? `<button class="btn btn-sm btn-danger" data-id="${p.id}" data-supplier="${supplierId}">${t("delete")}</button>` : ""}</td>
+      <td><span class="badge ${active ? "badge-teal" : "badge-gray"}">${active ? t("active") : t("product_passive")}</span></td>
+      <td><div class="row-actions">
+        <button class="btn btn-sm btn-outline" data-action="toggle-active" data-id="${p.id}">${active ? t("deactivate_product_btn") : t("activate_product_btn")}</button>
+        <button class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">${t("delete")}</button>
+      </div></td>
     </tr>`;
   }).join("");
-  body.querySelectorAll("button[data-id]").forEach((btn) => {
+  body.querySelectorAll("button[data-action]").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      await deleteProduct(companyId, btn.dataset.supplier, btn.dataset.id);
-      selectedIds.delete(btn.dataset.id);
-      toast(t("toast_product_deleted"), "success");
+      const product = products.find((x) => x.id === btn.dataset.id);
+      if (!product) return;
+      if (btn.dataset.action === "delete") await handleDelete([product]);
+      else await handleSetActive([product], !isProductActive(product));
     });
   });
 
@@ -89,6 +97,107 @@ function renderProducts(products, supplierId) {
 
   updateBulkEditBar();
 }
+
+// --- Brisanje / pasivizacija (pojedinačno i masovno) — dozvoljeno adminu i naručiocu ---
+let busy = false;
+const actorOpts = () => ({ actorName, actorUid: currentUid });
+
+async function handleSetActive(items, active) {
+  const targets = items.filter((p) => isProductActive(p) !== active);
+  if (!targets.length || busy) { if (!targets.length) toast(t("toast_bulk_nothing_to_change"), "info"); return; }
+  busy = true;
+  try {
+    if (targets.length === 1) {
+      await setProductActive(companyId, currentSupplierId, targets[0].id, active, { name: targets[0].name, ...actorOpts() });
+      toast(t(active ? "toast_product_activated" : "toast_product_deactivated"), "success");
+    } else {
+      const refs = targets.map((p) => ({ id: p.id, name: p.name }));
+      const n = await bulkSetProductsActive(companyId, currentSupplierId, refs, active, actorOpts());
+      toast(t(active ? "toast_bulk_activated" : "toast_bulk_deactivated", { count: n }), "success");
+    }
+  } catch (err) {
+    console.error(err);
+    toast(t("toast_generic_error"), "error");
+  } finally {
+    busy = false;
+  }
+}
+
+// Brisanje: prvo potvrda (sa mogućnošću da se odmah pređe na pasivizaciju), pa tek onda brisanje.
+async function handleDelete(items) {
+  if (!items.length || busy) return;
+  const choice = await askDeleteChoice(items);
+  if (choice === "deactivate") return handleSetActive(items, false);
+  if (choice !== "delete") return;
+  busy = true;
+  try {
+    if (items.length === 1) {
+      await deleteProduct(companyId, currentSupplierId, items[0].id, { name: items[0].name, ...actorOpts() });
+      toast(t("toast_product_deleted"), "success");
+    } else {
+      const refs = items.map((p) => ({ id: p.id, name: p.name }));
+      const n = await bulkDeleteProducts(companyId, currentSupplierId, refs, actorOpts());
+      toast(t("toast_bulk_deleted", { count: n }), "success");
+    }
+    items.forEach((p) => selectedIds.delete(p.id));
+  } catch (err) {
+    console.error(err);
+    toast(t("toast_generic_error"), "error");
+  } finally {
+    busy = false;
+    updateBulkEditBar();
+  }
+}
+
+const deleteModal = document.getElementById("delete-confirm-modal");
+let deleteResolver = null;
+const MAX_LISTED = 6;
+
+// Vraća Promise: "delete" | "deactivate" | null (otkazano / zatvoreno).
+function askDeleteChoice(items) {
+  const many = items.length > 1;
+  const activeCount = items.filter(isProductActive).length;
+  document.getElementById("delete-confirm-question").textContent = many
+    ? t("delete_confirm_question_many", { count: items.length })
+    : t("delete_confirm_question_one", { name: items[0].name || items[0].code || "" });
+
+  const list = document.getElementById("delete-confirm-list");
+  list.classList.toggle("hidden", !many);
+  list.innerHTML = items.slice(0, MAX_LISTED).map((p) => `<li>${escapeHtml(p.name)}</li>`).join("")
+    + (items.length > MAX_LISTED ? `<li>${t("delete_confirm_and_more", { count: items.length - MAX_LISTED })}</li>` : "");
+
+  // Pasivizacija ima smisla samo za proizvode koji su još aktivni.
+  const canDeactivate = activeCount > 0;
+  const deactivateBtn = document.getElementById("delete-confirm-deactivate");
+  deactivateBtn.classList.toggle("hidden", !canDeactivate);
+  deactivateBtn.textContent = many ? t("delete_confirm_passivize_many_btn", { count: activeCount }) : t("delete_confirm_passivize_btn");
+  document.getElementById("delete-confirm-alt").classList.toggle("hidden", !canDeactivate);
+  document.getElementById("delete-confirm-all-passive").classList.toggle("hidden", canDeactivate);
+
+  deleteModal.classList.remove("hidden");
+  deactivateBtn.classList.contains("hidden") ? document.getElementById("delete-confirm-cancel").focus() : deactivateBtn.focus();
+  return new Promise((resolve) => { deleteResolver = resolve; });
+}
+
+function closeDeleteModal(choice) {
+  deleteModal.classList.add("hidden");
+  const resolve = deleteResolver;
+  deleteResolver = null;
+  if (resolve) resolve(choice);
+}
+document.getElementById("delete-confirm-delete").addEventListener("click", () => closeDeleteModal("delete"));
+document.getElementById("delete-confirm-deactivate").addEventListener("click", () => closeDeleteModal("deactivate"));
+document.getElementById("delete-confirm-cancel").addEventListener("click", () => closeDeleteModal(null));
+document.getElementById("delete-confirm-close").addEventListener("click", () => closeDeleteModal(null));
+deleteModal.addEventListener("click", (e) => { if (e.target === deleteModal) closeDeleteModal(null); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !deleteModal.classList.contains("hidden")) closeDeleteModal(null);
+});
+
+const selectedProducts = () => currentProducts.filter((p) => selectedIds.has(p.id));
+document.getElementById("bulk-delete-btn").addEventListener("click", () => handleDelete(selectedProducts()));
+document.getElementById("bulk-deactivate-btn").addEventListener("click", () => handleSetActive(selectedProducts(), false));
+document.getElementById("bulk-activate-btn").addEventListener("click", () => handleSetActive(selectedProducts(), true));
 
 // --- Masovna izmena (bulk edit) — selektuj više proizvoda i promeni zajednička
 // polja (kategorija, JM, PDV, min. količina) odjednom umesto jedan po jedan. ---

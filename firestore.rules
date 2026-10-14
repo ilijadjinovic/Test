@@ -93,11 +93,12 @@ service cloud.firestore {
           allow read: if isCompanyMember(companyId);
           // Naručilac sme da KREIRA proizvod (auto-katalogizacija stavki iz slobodnog
           // unosa pri kreiranju narudžbine — vidi page-new-order.js). Naručilac i admin
-          // smeju da IZMENE postojeći proizvod (npr. ispravka naziva/šifre/PDV-a); brisanje
-          // ostaje isključivo admin, da naručilac ne bi trajno uklonio tuđe stavke.
+          // smeju da IZMENE postojeći proizvod (npr. ispravka naziva/šifre/PDV-a, pasivizacija).
+          // Brisanje proizvoda smeju i admin i naručilac (UI traži potvrdu i nudi pasivizaciju
+          // umesto brisanja; svako brisanje se upisuje u audit log).
           allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
           allow update: if isAdminOf(companyId) || isNarucilacOf(companyId);
-          allow delete: if isAdminOf(companyId);
+          allow delete: if isAdminOf(companyId) || isNarucilacOf(companyId);
         }
       }
 

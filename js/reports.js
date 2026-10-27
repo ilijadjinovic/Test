@@ -1,19 +1,23 @@
 // ============================================================================
 // REPORTS — učitavanje i agregacija podataka za izveštaje (Poglavlje 7)
 // Izveštaji: po narudžbenicama, po naručiocima, po isporučiocima,
-// po dobavljačima, finansijski pregled.
+// po dobavljačima, po artiklima, finansijski pregled.
 // ============================================================================
 import { db, collection, getDocs, orderBy, query, limit, where, startAfter, Timestamp } from "./firebase-init.js";
 import { getOrderItems, getOrderPurchases } from "./orders.js";
 import { t } from "./i18n.js";
+export { aggregateByItem } from "./report-logic.js";
 
 // Narudžbine firme po stranama od po 500, opciono ograničene periodom kreiranja
 // (filtriranje radi baza, ne browser). Ranije se učitavalo samo poslednjih 500 i
 // tek onda filtriralo po periodu, pa su izveštaji za starije periode bili
 // nepotpuni. max = gornja granica radi zaštite (5000).
-export async function getOrdersInRange(companyId, { dateFrom = null, dateTo = null, max = 5000 } = {}) {
+// ownerUid (opciono): samo narudžbine koje je kreirao taj korisnik (izveštaji naručioca);
+// koristi postojeći indeks createdByUid + createdAt.
+export async function getOrdersInRange(companyId, { dateFrom = null, dateTo = null, max = 5000, ownerUid = null } = {}) {
   const ordersRef = collection(db, "companies", companyId, "orders");
   const filters = [];
+  if (ownerUid) filters.push(where("createdByUid", "==", ownerUid));
   if (dateFrom) filters.push(where("createdAt", ">=", Timestamp.fromDate(dateFrom)));
   if (dateTo) filters.push(where("createdAt", "<=", Timestamp.fromDate(dateTo)));
   const out = [];
@@ -37,8 +41,8 @@ export async function getAllOrdersOnce(companyId, max = 5000) {
 // Učitava narudžbine (opciono filtrirane po periodu kreiranja) zajedno sa
 // njihovim stavkama i nabavkama (potrebno za finansijske i detaljne izveštaje).
 // dateFrom / dateTo: JS Date objekti (opciono).
-export async function buildReportDataset(companyId, { dateFrom = null, dateTo = null, max = 5000 } = {}) {
-  const filtered = await getOrdersInRange(companyId, { dateFrom, dateTo, max });
+export async function buildReportDataset(companyId, { dateFrom = null, dateTo = null, max = 5000, ownerUid = null } = {}) {
+  const filtered = await getOrdersInRange(companyId, { dateFrom, dateTo, max, ownerUid });
 
   // Stavke i nabavke se čitaju u grupama (da se ne pokrene hiljade upita odjednom)
   const rows = [];

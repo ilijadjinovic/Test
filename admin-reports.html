@@ -15,7 +15,7 @@
   <div id="app-nav"></div>
   <main class="content">
     <div class="page-header">
-      <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="reports">Izveštaji</h1></div>
+      <div><div class="eyebrow" id="page-eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="reports">Izveštaji</h1></div>
     </div>
 
     <!-- FILTERI -->
@@ -45,6 +45,7 @@
       <button class="tab-btn" data-tab="narucioci" data-i18n="tab_by_requester">Po naručiocima</button>
       <button class="tab-btn" data-tab="isporucioci" data-i18n="tab_by_fulfiller">Po isporučiocima</button>
       <button class="tab-btn" data-tab="suppliers" data-i18n="tab_by_supplier">Po dobavljačima</button>
+      <button class="tab-btn" data-tab="items" data-i18n="tab_by_item">Po artiklima</button>
       <button class="tab-btn" data-tab="finance" data-i18n="finance_overview_title">Finansijski pregled</button>
     </div>
 
@@ -52,7 +53,8 @@
     <div id="tab-orders">
       <div class="panel">
         <div class="panel-head"><h2 data-i18n="orders_detailed_title">Narudžbine — detaljno</h2>
-          <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label class="checkbox-row" style="margin:0;"><input type="checkbox" id="f-detailed" /><span data-i18n="report_detailed_checkbox">Detaljno</span></label>
             <span class="muted" data-i18n="generate_report_arrow">Generiši izveštaj →</span>
             <button class="btn btn-sm btn-outline" data-export="csv" data-view="orders">⇩ CSV</button>
             <button class="btn btn-sm btn-outline" data-export="excel" data-view="orders">⇩ Excel</button>
@@ -123,6 +125,26 @@
           <table class="data-table">
             <thead><tr><th data-i18n="supplier">Dobavljač</th><th data-i18n="export_col_order_count">Broj narudžbina</th><th data-i18n="export_col_total_paid">Ukupno plaćeno</th></tr></thead>
             <tbody id="suppliers-body-report"><tr class="empty-row"><td colspan="3" data-i18n="no_data">Nema podataka.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PO ARTIKLIMA -->
+    <div id="tab-items" class="hidden">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="tab_by_item">Po artiklima</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="muted" data-i18n="generate_report_arrow">Generiši izveštaj →</span>
+            <button class="btn btn-sm btn-outline" data-export="csv" data-view="items">⇩ CSV</button>
+            <button class="btn btn-sm btn-outline" data-export="excel" data-view="items">⇩ Excel</button>
+            <button class="btn btn-sm btn-outline" data-export="pdf" data-view="items">⇩ PDF</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th data-i18n="code">Šifra</th><th data-i18n="product_label">Proizvod</th><th data-i18n="unit">Jedinica mere</th><th data-i18n="report_col_total_quantity">Ukupna količina</th><th data-i18n="export_col_order_count">Broj narudžbina</th></tr></thead>
+            <tbody id="items-body"><tr class="empty-row"><td colspan="5" data-i18n="no_data">Nema podataka.</td></tr></tbody>
           </table>
         </div>
       </div>

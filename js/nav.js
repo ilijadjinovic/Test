@@ -28,6 +28,7 @@ const MENUS = {
     { href: "admin-suppliers.html", label: "suppliers", icon: "🚚" },
     { href: "admin-locations.html", label: "locations", icon: "📍" },
     { href: "admin-users.html", label: "users", icon: "👥" },
+    { href: "admin-reports.html", label: "reports", icon: "📈" },
   ],
   isporucilac: [
     { href: "isporucilac-dashboard.html", label: "dashboard", icon: "📊" },

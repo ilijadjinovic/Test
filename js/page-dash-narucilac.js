@@ -8,6 +8,7 @@ import {
 } from "./orders.js";
 import { getCompanySettings } from "./settings.js";
 import { generateOrderPdf } from "./order-print.js";
+import { openRoutePlanner } from "./route-planner.js";
 import { formatDate, escapeHtml, ROLES, toast } from "./utils.js";
 import { compareNarucilac, isAttentionNarucilac } from "./dash-logic.js";
 import {
@@ -36,6 +37,8 @@ requireAuth([ROLES.NARUCILAC], (user, profile) => {
     btns.push(`<button type="button" class="btn btn-sm btn-outline" data-action="pdf" data-id="${escapeHtml(o.id)}" title="${t("download_order_pdf_title")}">🖨️ PDF</button>`);
     return `<div class="row-actions">${btns.join("")}</div>`;
   };
+
+  document.getElementById("route-btn")?.addEventListener("click", () => openRoutePlanner({ companyId: profile.companyId, ownerField: "createdByUid", ownerUid: user.uid }));
 
   createDashboard({
     companyId, uid: user.uid, ownerField: "createdByUid",

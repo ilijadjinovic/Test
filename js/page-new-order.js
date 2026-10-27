@@ -449,6 +449,24 @@ document.getElementById("similar-item-add-btn").addEventListener("click", () => 
   resetManualEntryForm();
 });
 
+// DODAJ IZ KATALOGA — minorna (npr. sintaksna) razlika: umesto unetog naziva uzima se postojeći
+// artikal iz kataloga, povezuje se sa njim (naziv i JM iz kataloga), bez novog upisa u katalog.
+// Šifra se dopuni samo ako je katalog nema; postojeća šifra se ne prepisuje.
+document.getElementById("similar-item-catalog-btn").addEventListener("click", () => {
+  if (!pendingSimilarItem) return;
+  const { supplierId, code, qty, unit, note, existingProduct } = pendingSimilarItem;
+  const finalCode = existingProduct.code || code || "";
+  if (code && !existingProduct.code) {
+    updateProduct(companyId, supplierId, existingProduct.id, { code }).then(() => { existingProduct.code = code; }).catch((err) => console.error(err));
+  }
+  addManualItemToCartAndOptionallyCatalog({
+    supplierId, name: existingProduct.name, qty, unit: existingProduct.unit || unit, note,
+    productId: existingProduct.id, code: finalCode, createInCatalog: false,
+  });
+  closeSimilarItemModal();
+  resetManualEntryForm();
+});
+
 // --- Modal: "Artikal je pasiviziran" — ponuda ponovne aktivacije pri slobodnom unosu ---
 const reactivateModal = document.getElementById("reactivate-item-modal");
 let pendingReactivation = null; // { supplierId, name, code, qty, unit, note, categoryId, product, type: "exact"|"similar" }
@@ -548,6 +566,17 @@ function applyAutoDeliveryLocation() {
 }
 
 // --- Cart rendering ---
+// Stavke grupisane po dobavljaču (redosled prikaza). Isti redosled se koristi i za redne
+// brojeve u listi i pri slanju narudžbenice, da brojevi ostanu isti i posle slanja.
+function getCartInDisplayOrder() {
+  const bySupplier = new Map();
+  cart.forEach((i) => {
+    if (!bySupplier.has(i.supplierId)) bySupplier.set(i.supplierId, []);
+    bySupplier.get(i.supplierId).push(i);
+  });
+  return Array.from(bySupplier.values()).flat();
+}
+
 function renderCart() {
   const host = document.getElementById("cart-host");
   if (!cart.length) { host.innerHTML = `<p class="muted">${t("no_items_added_yet")}</p>`; return; }
@@ -562,11 +591,16 @@ function renderCart() {
     ? chosenDeliveryLocations.map((l) => `<option value="${l.locationId}">${escapeHtml(l.locationName)}</option>`).join("")
     : `<option value="">${t("choose_delivery_location_placeholder")}</option>`;
 
+  // Redni brojevi teku neprekidno kroz sve grupe dobavljača (1, 2, 3...), kao u detalju narudžbenice.
+  const rowNumber = {};
+  getCartInDisplayOrder().forEach((i, idx) => { rowNumber[i.tempId] = idx + 1; });
+
   host.innerHTML = Object.entries(bySupplier).map(([supplierId, group]) => `
     <div class="supplier-block">
       <div class="supplier-block-head"><h3>${escapeHtml(group.name)}</h3><span class="muted">${t("items_count", { count: group.items.length })}</span></div>
       ${group.items.map((item) => `
-        <div class="item-row" data-temp-id="${item.tempId}" style="grid-template-columns:80px 1.5fr 90px 110px 1fr 90px auto;">
+        <div class="item-row" data-temp-id="${item.tempId}" style="grid-template-columns:32px 80px 1.5fr 90px 110px 1fr 90px auto;">
+          <span class="cart-row-num muted" style="text-align:right;font-weight:600;">${rowNumber[item.tempId]}.</span>
           <input type="text" class="cart-code mono" value="${escapeHtml(item.code || "")}" placeholder="${t('code_optional_placeholder')}" />
           <div>
             <input type="text" class="cart-name" value="${escapeHtml(item.productName)}" style="width:100%;font-weight:600;" />
@@ -679,7 +713,7 @@ document.getElementById("submit-order").addEventListener("click", async () => {
   btn.disabled = true;
 
   try {
-    const items = cart.map(({ tempId, ...rest }) => rest);
+    const items = getCartInDisplayOrder().map(({ tempId, ...rest }) => rest);
     const orderId = await createOrder(companyId, {
       createdByUid: uidValue, createdByName: actorName, priority, requestedByName, items,
       deliveryLocations: chosenDeliveryLocations, assignmentMode,

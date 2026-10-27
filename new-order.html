@@ -169,7 +169,7 @@
 <div class="modal-overlay hidden" id="similar-item-modal">
   <div class="modal-card">
     <div class="modal-head"><h2 data-i18n="similar_item_modal_title">Slična stavka postoji</h2><button class="icon-btn" id="close-similar-item-modal">✕</button></div>
-    <p data-i18n="similar_item_modal_text">Slična stavka postoji u katalogu — da li da ipak dodamo ovu u katalog?</p>
+    <p data-i18n="similar_item_modal_text">Slična stavka postoji u katalogu. Dodaj uneto kao novu stavku u katalog, ili iskoristi postojeću iz kataloga.</p>
     <div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap;">
       <div style="flex:1;min-width:180px;">
         <div class="muted" style="font-size:12px;" data-i18n="similar_item_existing_label">Postojeći naziv u katalogu</div>
@@ -180,8 +180,9 @@
         <strong id="similar-item-new-name"></strong>
       </div>
     </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;">
-      <button class="btn btn-sm" id="similar-item-discard-btn" data-i18n="similar_item_discard_btn">ODBACI STAVKU</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-sm" id="similar-item-discard-btn" data-i18n="similar_item_discard_btn">ODBACI</button>
+      <button class="btn btn-sm btn-amber" id="similar-item-catalog-btn" data-i18n="similar_item_catalog_btn">DODAJ IZ KATALOGA</button>
       <button class="btn btn-sm btn-amber" id="similar-item-add-btn" data-i18n="similar_item_add_btn">DODAJ</button>
     </div>
   </div>

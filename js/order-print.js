@@ -15,6 +15,8 @@
 // ============================================================================
 import { formatDate } from "./utils.js";
 import { getSupplierLocations } from "./suppliers.js";
+import { getOrderDeliveryLocations } from "./orders.js";
+import { groupItemsBySupplier } from "./report-logic.js";
 import { t, currentLang } from "./i18n.js";
 
 function loadScript(src) {
@@ -401,4 +403,73 @@ export async function generateOrderPdf({ company, order, items, purchases = [], 
   // pa se samo za ime fajla zamenjuje sa "-".
   const bezbedanBroj = String(order.orderNumber).replace(/\//g, "-");
   pdf.save(`${t("order_form_filename_prefix")}-${bezbedanBroj}.pdf`);
+}
+
+
+// ── ZBIRNI IZVEŠTAJ „NARUDŽBINE — DETALJNO" ────────────────────
+// Zaglavlje firme, naslov sa periodom/brojem/ukupnim iznosom, pa sve narudžbenice
+// jedna za drugom (bez nove strane za svaku), svaka u izgledu pojedinačnog PDF-a:
+// naslov + meta, stavke po dobavljaču, finansijski pregled. Bez odobrenja i potpisa.
+// rows: redovi izveštaja (narudžbina + items + purchases + total)
+// subtitle: tekst ispod naslova (period · broj narudžbina · ukupno)
+export async function generateOrdersReportPdf({ company, companyId, rows, subtitle = "", filename }) {
+  const JsPDF = await getJsPDF();
+  const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  await registerFont(pdf);
+  const currency = company?.currency || "RSD";
+
+  // Lokacije isporuke po narudžbini (u grupama, da ne krene stotine upita odjednom)
+  const locsByOrder = {};
+  for (let i = 0; i < rows.length; i += 20) {
+    await Promise.all(rows.slice(i, i + 20).map(async (r) => {
+      locsByOrder[r.id] = await getOrderDeliveryLocations(companyId, r.id).catch(() => []);
+    }));
+  }
+
+  // Adrese lokacija preuzimanja — jednom po dobavljaču za ceo izveštaj
+  const pickupAddressMap = {};
+  const supplierIds = [...new Set(rows.flatMap((r) => (r.items || []).map((i) => i.supplierId)).filter(Boolean))];
+  const locsPerSupplier = await Promise.all(supplierIds.map((sid) => getSupplierLocations(companyId, sid).catch(() => [])));
+  locsPerSupplier.forEach((locs) => locs.forEach((l) => { pickupAddressMap[l.id] = l.address || ""; }));
+
+  let y = drawCompanyHeader(pdf, company);
+  pdf.setFont(REPORT_FONT, "bold");
+  pdf.setFontSize(14);
+  pdf.setTextColor(26, 29, 33);
+  pdf.text(t("report_title_orders_detailed"), M, y);
+  y += 6;
+  if (subtitle) {
+    pdf.setFont(REPORT_FONT, "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(85);
+    const lines = pdf.splitTextToSize(subtitle, PW);
+    pdf.text(lines, M, y);
+    y += lines.length * 4.5;
+  }
+  y += 10;
+
+  rows.forEach((order, idx) => {
+    // narudžbenice teku jedna za drugom; između njih tanka linija
+    // (ne crta se na vrhu nove strane) i da naslov ne ostane sam na dnu strane
+    const before = y;
+    y = checkPageBreak(pdf, y, 40);
+    if (idx > 0 && y === before) {
+      pdf.setDrawColor(216, 221, 227);
+      pdf.setLineWidth(0.8);
+      pdf.line(M, y - 3, M + PW, y - 3);
+      y += 6;
+    }
+    y = drawOrderTitle(pdf, order, y);
+    y = drawOrderMeta(pdf, order, locsByOrder[order.id] || [], y);
+
+    groupItemsBySupplier(order.items || []).forEach((group) => {
+      y = drawSupplierSection(pdf, group, y, pickupAddressMap);
+    });
+
+    const total = (order.purchases || []).reduce((s, p) => s + (Number(p.paidAmount) || 0), 0);
+    if (total > 0) y = drawFinanceSection(pdf, order.purchases, currency, total, y);
+  });
+
+  drawPageNumbers(pdf);
+  pdf.save(`${filename}.pdf`);
 }

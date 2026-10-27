@@ -21,6 +21,13 @@ service cloud.firestore {
     function isAdminOf(companyId) { return isCompanyMember(companyId) && myRole() == 'admin'; }
     function isNarucilacOf(companyId) { return isCompanyMember(companyId) && myRole() == 'narucilac'; }
     function isIsporucilacOf(companyId) { return isCompanyMember(companyId) && myRole() == 'isporucilac'; }
+    // Izmena SAMO polja koordinata lokacije (ruta/mapa): lat, lng, geoSource, geoQuality, geoUpdatedAt.
+    // Ostala polja lokacije i brisanje ostaju samo za admina.
+    function onlyGeoFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['lat', 'lng', 'geoSource', 'geoQuality', 'geoUpdatedAt']);
+    }
+    function canEditGeo(companyId) { return isAdminOf(companyId) || isNarucilacOf(companyId) || isIsporucilacOf(companyId); }
 
     // Brisanje CELE narudžbine (ne samo odbijanje): admin sme uvek i bilo koju;
     // naručilac sme SAMO svoju, i SAMO dok nije prihvaćena od isporučioca
@@ -65,7 +72,8 @@ service cloud.firestore {
       match /locations/{locId} {
         allow read: if isCompanyMember(companyId);
         allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
-        allow update, delete: if isAdminOf(companyId);
+        allow update: if isAdminOf(companyId) || (canEditGeo(companyId) && onlyGeoFieldsChanged());
+        allow delete: if isAdminOf(companyId);
       }
 
       // --- Kategorije (naručilac sme samo da dodaje, briše samo admin) ---
@@ -87,7 +95,8 @@ service cloud.firestore {
         match /locations/{locId} {
           allow read: if isCompanyMember(companyId);
           allow create: if isAdminOf(companyId) || isNarucilacOf(companyId);
-          allow update, delete: if isAdminOf(companyId);
+          allow update: if isAdminOf(companyId) || (canEditGeo(companyId) && onlyGeoFieldsChanged());
+          allow delete: if isAdminOf(companyId);
         }
         match /products/{productId} {
           allow read: if isCompanyMember(companyId);

@@ -70,6 +70,26 @@ i promeni polje `role` u `master_admin`.
   po periodu, naručiocu, isporučiocu, dobavljaču i statusu; pregledi po
   narudžbenicama (detaljno), po naručiocima, po isporučiocima, po dobavljačima i
   finansijski pregled; izvoz u CSV/Excel/PDF (`js/reports.js`, `js/page-admin-reports.js`).
+- **Koordinate lokacija i „🧭 Predloži rutu"** — lokacije preuzimanja dobavljača i
+  lokacije firme (magacini) imaju polja `lat`, `lng`, `geoSource` (`auto`/`manual`),
+  `geoQuality` (`tacno`/`ulica`/`naselje`) i `geoUpdatedAt`. Pri dodavanju lokacije ili
+  novog dobavljača štiklirano je „Odmah odredi koordinate": adresa se geokodira
+  (OpenStreetMap/Nominatim, 1 zahtev/s) i prikazuje se mapa sa markerom koji se može
+  prevući ili se klikne na mapu (tada je `geoSource = manual`). Novi dobavljač sa adresom
+  dobija „Glavnu lokaciju". Na stranicama **Dobavljači** i **Lokacije** (admin) dugme
+  „📍 Odredi koordinate za sve bez koordinata" obrađuje postojeće i prikazuje tabelu ✅ / ⚠ / ❌ sa
+  dugmetom [Podesi]. Ručno podešene koordinate se ne prepisuju. Dugme „🧭 Predloži rutu" je na
+  kartici narudžbine (naručilac, isporučilac) i na kontrolnim tablama naručioca i
+  isporučioca. Ruta: prvo sva preuzimanja, pa sve isporuke; ista lokacija u više
+  narudžbina je jedna stanica; kupljene/nenađene stavke ne ulaze; najkraći redosled se računa
+  lokalno (vazdušna linija × 1,3; do 12 stanica po grupi tačno, preko toga heuristika);
+  redosled se ručno menja (↑↓); link za Google Maps (`dir_action=navigate`) se deli na delove
+  po ~9 usputnih stanica; stanice bez koordinata idu kao tekst adrese.
+  Kod: `js/geo.js`, `js/geo-ui.js`, `js/map-picker.js`, `js/route-planner.js`;
+  testovi: `node tests/geo-logic.test.mjs`. Pravila baze (`firestore.rules`): admin,
+  naručilac i isporučilac smeju da menjaju samo geo polja lokacija (`onlyGeoFieldsChanged`).
+  Napomena: OSM geokodiranje za srpske adrese nije uvek tačno — zato je ručno
+  podešavanje na mapi važan deo toka. Država pretrage se menja u `GEO_COUNTRY` (`js/geo.js`).
 - **Dobavljači — izmena i dodatna polja** — `admin-suppliers.html` sada ima
   dugme "✎ Izmeni" i polja PIB, matični broj, adresa i tekući račun
   (`js/suppliers.js → updateSupplier`).
@@ -145,9 +165,9 @@ unutar `companies/{companyId}`, u skladu sa entitetima iz specifikacije:
 ```
 companies/{companyId}                        Company
   usersIndex/{uid}                            (indeks za listanje korisnika)
-  locations/{locationId}                      ComLocations
+  locations/{locationId}                      ComLocations (+ lat, lng, geoSource, geoQuality, geoUpdatedAt)
   suppliers/{supplierId}                      Suppliers
-    locations/{locId}                         SupLocations
+    locations/{locId}                         SupLocations (+ lat, lng, geoSource, geoQuality, geoUpdatedAt)
     products/{productId}                      SupProducts
   categories/{categoryId}                     Categories
   templates/{templateId}                      (šabloni/liste/ponavljajuće)

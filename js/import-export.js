@@ -157,17 +157,56 @@ function drawTableRowWrapped(pdf, cols, values, y, shade = false) {
   return y + rowHeight;
 }
 
-export async function exportPdf(filename, title, rows) {
+// Zaglavlje firme (isto kao na PDF-u narudžbenice): naziv, adresa, PIB/MB, telefon, linija.
+function drawCompanyHeader(pdf, company) {
+  let y = M;
+  pdf.setFont(REPORT_FONT, "bold");
+  pdf.setFontSize(16);
+  pdf.setTextColor(26, 29, 33);
+  pdf.text(company?.name || t("company_generic"), M, y);
+  y += 6;
+
+  pdf.setFont(REPORT_FONT, "normal");
+  pdf.setFontSize(9);
+  pdf.setTextColor(85);
+  const lines = [];
+  if (company?.address) lines.push(`${t("address_label")}: ${company.address}`);
+  const pibLine = [
+    company?.pib ? `${t("pib_label")}: ${company.pib}` : null,
+    company?.maticniBroj ? `${t("company_id_label")}: ${company.maticniBroj}` : null,
+  ].filter(Boolean).join("   ·   ");
+  if (pibLine) lines.push(pibLine);
+  if (company?.phone) lines.push(`${t("phone_label")}: ${company.phone}`);
+  lines.forEach((line) => { pdf.text(line, M, y); y += 4.5; });
+
+  y += 2;
+  pdf.setDrawColor(26, 29, 33);
+  pdf.setLineWidth(0.6);
+  pdf.line(M, y, M + PW, y);
+  return y + 8;
+}
+
+// company (opciono): ako je prosleđen, na vrhu ide zaglavlje firme.
+// subtitle (opciono): jedan red ispod naslova (period, broj narudžbina...).
+export async function exportPdf(filename, title, rows, { company = null, subtitle = "" } = {}) {
   const JsPDF = await getJsPDF();
   const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   await registerFont(pdf);
 
-  let y = M;
+  let y = company ? drawCompanyHeader(pdf, company) : M;
   pdf.setFont(REPORT_FONT, "bold");
   pdf.setFontSize(15);
   pdf.setTextColor(26, 29, 33);
   pdf.text(title, M, y);
   y += 10;
+  if (subtitle) {
+    pdf.setFont(REPORT_FONT, "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(85);
+    const subLines = pdf.splitTextToSize(subtitle, PW);
+    pdf.text(subLines, M, y - 3);
+    y += subLines.length * 4.5;
+  }
 
   if (!rows.length) {
     pdf.setFont(REPORT_FONT, "normal");

@@ -6,8 +6,8 @@ import { logAudit } from "./audit.js";
 
 const col = (companyId) => collection(db, "companies", companyId, "locations");
 
-export async function addLocation(companyId, { name, address, actorName }) {
-  const ref = await addDoc(col(companyId), { name, address, active: true, createdAt: serverTimestamp() });
+export async function addLocation(companyId, { name, address, actorName, geo = {} }) {
+  const ref = await addDoc(col(companyId), { name, address, ...geo, active: true, createdAt: serverTimestamp() });
   await logAudit(companyId, { action: "location_created", entity: "ComLocations", entityId: ref.id, actorName });
   return ref.id;
 }

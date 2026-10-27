@@ -1,7 +1,8 @@
 import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
-import { listenSuppliers, addSupplier, updateSupplier, deleteSupplier, addSupplierLocation, deleteSupplierLocation, getSupplierLocations } from "./suppliers.js";
+import { listenSuppliers, addSupplier, updateSupplier, deleteSupplier, addSupplierLocation, updateSupplierLocation, deleteSupplierLocation, getSupplierLocations } from "./suppliers.js";
+import { coordsBadgeHtml, createGeoField, openCoordsEditor, geocodeMissing, showBatchResults } from "./geo-ui.js";
 import { getCompanySettings } from "./settings.js";
 import { escapeHtml, toast, ROLES } from "./utils.js";
 
@@ -15,6 +16,7 @@ requireAuth([ROLES.ADMIN, ROLES.NARUCILAC], (user, profile) => {
   currentUid = user.uid; currentRole = profile.role;
   renderNav({ companyId, uid: user.uid, profile });
   listenSuppliers(companyId, (suppliers) => { latestSuppliers = suppliers; render(sortSuppliers(suppliers)); });
+  if (profile.role === ROLES.ADMIN) document.getElementById("suppliers-geo-btn")?.classList.remove("hidden");
 });
 
 // Osnovna lista već stiže sortirana po nazivu (A-Z) iz Firestore upita
@@ -108,6 +110,8 @@ function openSupplierModal(supplier = null, editable = true) {
   document.getElementById("s-email").value = supplier?.email || "";
   document.getElementById("s-hours").value = supplier?.workingHours || "";
   document.getElementById("s-note").value = supplier?.note || "";
+  document.getElementById("s-geo-host").classList.toggle("hidden", !!supplier);   // samo za novog dobavljača
+  if (!supplier) supplierGeoField.reset();
 
   // Detalji-only prikaz: polja zaključana za izmenu, dugme za čuvanje sakriveno.
   supplierFieldIds.forEach((id) => { document.getElementById(id).disabled = isDetailsOnly; });
@@ -116,6 +120,9 @@ function openSupplierModal(supplier = null, editable = true) {
   supplierModal.classList.remove("hidden");
 }
 
+// „☑ Odmah odredi koordinate": važi za NOVOG dobavljača. Ako nema nijednu lokaciju preuzimanja,
+// automatski se pravi „Glavna lokacija" iz njegove adrese (sa koordinatama), jer se ruta računa po lokacijama.
+const supplierGeoField = createGeoField(document.getElementById("s-geo-host"), { getAddress: () => document.getElementById("s-address").value });
 document.getElementById("new-supplier-btn").addEventListener("click", () => openSupplierModal(null));
 document.getElementById("close-supplier-modal").addEventListener("click", () => supplierModal.classList.add("hidden"));
 document.getElementById("supplier-form").addEventListener("submit", async (e) => {
@@ -137,7 +144,11 @@ document.getElementById("supplier-form").addEventListener("submit", async (e) =>
       await updateSupplier(companyId, activeEditId, data, actorName);
       toast(t("toast_supplier_updated"), "success");
     } else {
-      await addSupplier(companyId, { ...data, actorName, createdBy: currentUid });
+      const geo = data.address ? await supplierGeoField.resolve() : {};
+      const newId = await addSupplier(companyId, { ...data, actorName, createdBy: currentUid });
+      if (data.address) {
+        await addSupplierLocation(companyId, newId, { name: t("geo_main_location"), address: data.address, createdBy: currentUid, geo });
+      }
       toast(t("toast_supplier_added"), "success");
     }
     supplierModal.classList.add("hidden");
@@ -164,26 +175,40 @@ async function refreshLocations() {
   const isAdmin = currentRole === ROLES.ADMIN;
   const locs = await getSupplierLocations(companyId, activeSupplierId);
   const host = document.getElementById("location-list");
+  // Koordinate smeju da podese i admin i naručilac (pravila baze dozvoljavaju samo geo polja)
   host.innerHTML = locs.length
-    ? locs.map((l) => `<div class="attachment-item"><span>📍 ${escapeHtml(l.name)} ${l.address ? "— " + escapeHtml(l.address) : ""}</span>${isAdmin ? `<button class="btn btn-sm btn-danger" data-id="${l.id}" style="margin-left:auto;">✕</button>` : ""}</div>`).join("")
+    ? locs.map((l) => `<div class="attachment-item" style="flex-wrap:wrap;gap:6px;"><span>📍 ${escapeHtml(l.name)} ${l.address ? "— " + escapeHtml(l.address) : ""}</span><span style="margin-left:auto;">${coordsBadgeHtml(l)}</span><button class="btn btn-sm btn-outline" data-geo="${l.id}" title="${t("geo_adjust_btn")}">🎯</button>${isAdmin ? `<button class="btn btn-sm btn-danger" data-del="${l.id}">✕</button>` : ""}</div>`).join("")
     : `<p class="muted">${t("no_locations_added_hint")}</p>`;
-  host.querySelectorAll("button[data-id]").forEach((btn) => {
+  host.querySelectorAll("button[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await deleteSupplierLocation(companyId, activeSupplierId, btn.dataset.id);
+      await deleteSupplierLocation(companyId, activeSupplierId, btn.dataset.del);
       refreshLocations();
     });
   });
+  host.querySelectorAll("button[data-geo]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const loc = locs.find((l) => l.id === btn.dataset.geo);
+      openCoordsEditor({
+        title: `${activeSupplierName} — ${loc.name}`, address: loc.address || "", lat: loc.lat, lng: loc.lng,
+        onSave: async (f) => { await updateSupplierLocation(companyId, activeSupplierId, loc.id, f); await refreshLocations(); },
+      });
+    });
+  });
 }
+const locationGeoField = createGeoField(document.getElementById("l-geo-host"), { getAddress: () => document.getElementById("l-address").value });
 
 document.getElementById("location-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
+    const geo = await locationGeoField.resolve();
     await addSupplierLocation(companyId, activeSupplierId, {
       name: document.getElementById("l-name").value.trim(),
       address: document.getElementById("l-address").value.trim(),
       createdBy: currentUid,
+      geo,
     });
     e.target.reset();
+    locationGeoField.reset();
     refreshLocations();
   } catch (err) {
     console.error(err);
@@ -215,5 +240,34 @@ pdfBtn.addEventListener("click", async () => {
   } finally {
     pdfBtn.disabled = false;
     pdfBtn.textContent = originalLabel;
+  }
+});
+
+// --- Masovno određivanje koordinata (samo admin) za sve lokacije preuzimanja bez koordinata.
+// Dobavljač koji nema nijednu lokaciju a ima adresu dobija „Glavnu lokaciju". 1 zahtev/s (pravila Nominatima).
+// Ručno podešene koordinate se ne diraju (obrađuju se samo lokacije BEZ koordinata).
+const geoAllBtn = document.getElementById("suppliers-geo-btn");
+geoAllBtn?.addEventListener("click", async () => {
+  if (!latestSuppliers.length) return;
+  geoAllBtn.disabled = true;
+  const original = geoAllBtn.textContent;
+  try {
+    const items = [];
+    for (const sup of latestSuppliers) {
+      let locs = await getSupplierLocations(companyId, sup.id);
+      if (!locs.length && sup.address) {
+        const id = await addSupplierLocation(companyId, sup.id, { name: t("geo_main_location"), address: sup.address, createdBy: currentUid });
+        locs = [{ id, name: t("geo_main_location"), address: sup.address }];
+      }
+      locs.forEach((l) => items.push({ ...l, label: `${sup.name} / ${l.name}`, save: (f) => updateSupplierLocation(companyId, sup.id, l.id, f) }));
+    }
+    const rows = await geocodeMissing(items, { onProgress: (i, n, label) => { geoAllBtn.textContent = `${i}/${n} — ${label}`; } });
+    showBatchResults(rows);
+  } catch (err) {
+    console.error(err);
+    toast(err.message || t("geo_service_error"), "error");
+  } finally {
+    geoAllBtn.disabled = false;
+    geoAllBtn.textContent = original;
   }
 });

@@ -5,6 +5,7 @@ import { loadLang, t } from "./i18n.js";
 import { acceptOrder, rejectOrder } from "./orders.js";
 import { formatDate, escapeHtml, ROLES, toast } from "./utils.js";
 import { compareIsporucilac, isAttentionIsporucilac } from "./dash-logic.js";
+import { openRoutePlanner } from "./route-planner.js";
 import {
   createDashboard, statusCellHtml, priorityCellHtml, closedCellHtml, listCellHtml,
 } from "./dash-common.js";
@@ -25,6 +26,8 @@ requireAuth([ROLES.ISPORUCILAC], (user, profile) => {
          <button type="button" class="btn btn-sm btn-danger" data-action="reject" data-id="${escapeHtml(o.id)}">${t("reject")}</button>
        </div>`
     : "—");
+
+  document.getElementById("route-btn")?.addEventListener("click", () => openRoutePlanner({ companyId, ownerField: "assignedToUid", ownerUid: user.uid }));
 
   createDashboard({
     companyId, uid: user.uid, ownerField: "assignedToUid",

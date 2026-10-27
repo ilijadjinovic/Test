@@ -24,6 +24,7 @@
             <option value="name_desc" data-i18n="sort_name_desc">Naziv (Š–A)</option>
           </select>
         </div>
+        <button class="btn btn-outline hidden" id="suppliers-geo-btn" data-i18n="geo_all_btn">📍 Odredi koordinate za sve bez koordinata</button>
         <button class="btn btn-outline" id="suppliers-pdf-btn" data-i18n="export_list_pdf_btn">⇩ PDF</button>
         <button class="btn btn-amber" id="new-supplier-btn" data-i18n="new_supplier_btn">+ Novi dobavljač</button>
       </div>
@@ -58,6 +59,7 @@
         <div class="field"><label data-i18n="company_id_label">Matični broj</label><input type="text" id="s-maticni" /></div>
       </div>
       <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="s-address" /></div>
+      <div id="s-geo-host"></div>
       <div class="field"><label data-i18n="bank_account_label">Tekući račun</label><input type="text" id="s-bank" placeholder="npr. 160-0000000000000-00" /></div>
       <div class="field"><label data-i18n="contact_person_label">Kontakt osoba</label><input type="text" id="s-contact" /></div>
       <div class="form-row">
@@ -75,10 +77,13 @@
   <div class="modal-card">
     <div class="modal-head"><h2 data-i18n="pickup_locations_title">Lokacije preuzimanja</h2><button class="icon-btn" id="close-location-modal">✕</button></div>
     <div id="location-list" style="margin-bottom:14px;"></div>
-    <form id="location-form" class="form-row" style="align-items:end;">
-      <div class="field"><label data-i18n="location_name_label">Naziv lokacije</label><input type="text" id="l-name" required /></div>
-      <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="l-address" /></div>
-      <button type="submit" class="btn btn-amber" style="height:42px;" data-i18n="add_plus_btn">+ Dodaj</button>
+    <form id="location-form">
+      <div class="form-row" style="align-items:end;">
+        <div class="field"><label data-i18n="location_name_label">Naziv lokacije</label><input type="text" id="l-name" required /></div>
+        <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="l-address" /></div>
+        <button type="submit" class="btn btn-amber" style="height:42px;" data-i18n="add_plus_btn">+ Dodaj</button>
+      </div>
+      <div id="l-geo-host"></div>
     </form>
   </div>
 </div>

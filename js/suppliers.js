@@ -42,9 +42,14 @@ export function listenSuppliers(companyId, callback) {
 }
 
 // --- Lokacije preuzimanja robe za dobavljača (SupLocations) — narucilac sme da doda, briše samo admin (vidi firestore.rules) ---
-export async function addSupplierLocation(companyId, supplierId, { name, address = "", createdBy }) {
-  const ref = await addDoc(supLocationsCol(companyId, supplierId), { name, address, createdAt: serverTimestamp(), createdBy: createdBy || null });
+// geo: { lat, lng, geoSource, geoQuality, geoUpdatedAt } — vidi geo-ui.js
+export async function addSupplierLocation(companyId, supplierId, { name, address = "", createdBy, geo = {} }) {
+  const ref = await addDoc(supLocationsCol(companyId, supplierId), { name, address, ...geo, createdAt: serverTimestamp(), createdBy: createdBy || null });
   return ref.id;
+}
+// Izmena lokacije preuzimanja — pravila baze: sve izmene samo admin; geo polja smeju i naručilac/isporučilac
+export function updateSupplierLocation(companyId, supplierId, locId, data) {
+  return updateDoc(doc(db, "companies", companyId, "suppliers", supplierId, "locations", locId), data);
 }
 export function deleteSupplierLocation(companyId, supplierId, locId) {
   return deleteDoc(doc(db, "companies", companyId, "suppliers", supplierId, "locations", locId));

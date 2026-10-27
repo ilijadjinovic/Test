@@ -11,6 +11,7 @@ import { getSupplierLocations } from "./suppliers.js";
 import { getProducts, smartSearch } from "./catalog.js";
 import { getLocations } from "./locations.js";
 import { generateOrderPdf } from "./order-print.js";
+import { openRoutePlanner } from "./route-planner.js";
 import { markLocationDelivered, confirmLocationReceipt } from "./deliveries.js";
 import { openClaim, resolveClaim, listenClaims } from "./claims.js";
 import { sendMessageAndNotify, listenMessages } from "./chat.js";
@@ -63,6 +64,7 @@ async function ensurePickupAddresses(itemsList) {
 requireAuth(null, (user, p) => {
   companyId = p.companyId; uidValue = user.uid; profile = p;
   renderNav({ companyId, uid: user.uid, profile });
+  document.getElementById("route-btn").classList.toggle("hidden", !["narucilac", "isporucilac"].includes(p.role));
   getCompanySettings(companyId).then((s) => { companySettings = s; renderAll(); });
 
   listenOrder(companyId, orderId, (o) => { order = o; renderAll(); });
@@ -806,6 +808,10 @@ function renderAttachments(list) {
       </div>`).join("")
     : `<p class="muted">${t("no_attachments")}</p>`;
 }
+// ---------------------------------------------------------------- RUTA (naručilac, isporučilac) — jedna narudžbina
+const routeBtn = document.getElementById("route-btn");
+routeBtn.addEventListener("click", () => openRoutePlanner({ companyId, orderId }));
+routeBtn.classList.add("hidden");   // prikazuje se posle prijave, samo za naručioca i isporučioca
 // ---------------------------------------------------------------- PDF NARUDŽBENICA (štampa/izvoz)
 document.getElementById("print-pdf-btn").addEventListener("click", async (e) => {
   if (!order) return;

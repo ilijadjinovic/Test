@@ -16,22 +16,26 @@
   <main class="content">
     <div class="page-header">
       <div><div class="eyebrow" data-i18n="role_admin">Admin firme</div><h1 data-i18n="locations">Lokacije</h1></div>
+      <div class="header-actions"><button class="btn btn-outline hidden" id="loc-geo-btn" data-i18n="geo_all_btn">📍 Odredi koordinate za sve bez koordinata</button></div>
     </div>
 
     <div class="panel">
       <div class="panel-head"><h2 data-i18n="add_location_title">Dodaj lokaciju</h2></div>
-      <form id="loc-form" class="form-row" style="align-items:end;">
-        <div class="field"><label data-i18n="location_name_hint">Naziv (npr. Magacin Novi Beograd)</label><input type="text" id="loc-name" required /></div>
-        <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="loc-address" /></div>
-        <button type="submit" class="btn btn-amber" style="height:42px;" data-i18n="add_plus_btn">+ Dodaj</button>
+      <form id="loc-form">
+        <div class="form-row" style="align-items:end;">
+          <div class="field"><label data-i18n="location_name_hint">Naziv (npr. Magacin Novi Beograd)</label><input type="text" id="loc-name" required /></div>
+          <div class="field"><label data-i18n="address_label">Adresa</label><input type="text" id="loc-address" /></div>
+          <button type="submit" class="btn btn-amber" style="height:42px;" data-i18n="add_plus_btn">+ Dodaj</button>
+        </div>
+        <div id="loc-geo-host"></div>
       </form>
     </div>
 
     <div class="panel">
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th data-i18n="name">Naziv</th><th data-i18n="address_label">Adresa</th><th></th></tr></thead>
-          <tbody id="loc-body"><tr class="empty-row"><td colspan="3" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
+          <thead><tr><th data-i18n="name">Naziv</th><th data-i18n="address_label">Adresa</th><th data-i18n="geo_coords_col">Koordinate</th><th></th></tr></thead>
+          <tbody id="loc-body"><tr class="empty-row"><td colspan="4" data-i18n="loading_ellipsis">Učitavanje...</td></tr></tbody>
         </table>
       </div>
     </div>

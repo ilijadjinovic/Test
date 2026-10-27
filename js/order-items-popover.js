@@ -33,11 +33,25 @@ function fmtQty(it) {
   return `${q}${it.unit ? ` ${it.unit}` : ""}`.trim();
 }
 
+const ICON_USER = `<svg class="items-pop-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>`;
+const ICON_TRUCK = `<svg class="items-pop-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg>`;
+
+// Jedinstveni dobavljači iz SVIH stavki narudžbine (ne samo prvih MAX_ITEMS), redosled prvog pojavljivanja
+function supplierNames(items) {
+  const seen = new Set();
+  (items || []).forEach((it) => { const n = (it.supplierName || "").trim(); if (n) seen.add(n); });
+  return [...seen];
+}
+
 function contentHtml(order, items) {
-  // Zaglavlje: broj narudžbenice levo, "Ko je tražio" desno (samo ako je uneto)
+  // Zaglavlje: red 1 = broj narudžbenice; red 2 = ime osobe (ako je uneto) · dobavljači.
+  // Dugačka lista dobavljača se lomi u najviše dva reda (CSS), ostatak se skraćuje tri tačke.
   const by = (order?.requestedByName || "").trim();
-  const byHtml = by ? `<span class="items-pop-by">${escapeHtml(t("requested_by_meta_label"))}: <strong>${escapeHtml(by)}</strong></span>` : "";
-  const head = `<div class="items-pop-head"><span class="items-pop-num">${escapeHtml(order?.orderNumber || "")}</span>${byHtml}</div>`;
+  const sup = supplierNames(items);
+  const byHtml = by ? `<span class="items-pop-by">${ICON_USER}<strong>${escapeHtml(by)}</strong></span>` : "";
+  const supHtml = sup.length ? `<span class="items-pop-sup" title="${escapeHtml(t("items_pop_suppliers"))}">${ICON_TRUCK}<span class="items-pop-sup-text">${escapeHtml(sup.join(", "))}</span></span>` : "";
+  const meta = (byHtml || supHtml) ? `<div class="items-pop-meta">${byHtml}${byHtml && supHtml ? '<span class="items-pop-dot">·</span>' : ""}${supHtml}</div>` : "";
+  const head = `<div class="items-pop-head"><span class="items-pop-num">${escapeHtml(order?.orderNumber || "")}</span></div>${meta}`;
   if (items === null) return `${head}<div class="items-pop-empty">${t("loading_ellipsis")}</div>`;
   if (!items.length) return `${head}<div class="items-pop-empty">${t("items_pop_empty")}</div>`;
   const rows = items.slice(0, MAX_ITEMS).map((it) => `

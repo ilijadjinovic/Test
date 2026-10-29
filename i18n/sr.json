@@ -684,5 +684,11 @@
   "route_copy_link": "Kopiraj link",
   "route_copied": "Link kopiran",
   "route_move_up": "Pomeri gore",
-  "route_move_down": "Pomeri dole"
+  "route_move_down": "Pomeri dole",
+  "add_btn_plus": "+ Dodaj",
+  "delivery_add_supplier_label": "Dodaj dobavljača kao odredište (povrat robe)",
+  "delivery_supplier_placeholder": "— izaberi dobavljača —",
+  "delivery_supplier_badge": "Dobavljač",
+  "delivery_supplier_group": "Dobavljači (povrat robe)",
+  "delivery_supplier_same_warning": "Pažnja: {names} je istovremeno i dobavljač od koga se roba preuzima i odredište isporuke (povrat). Proverite da je to namerno."
 }

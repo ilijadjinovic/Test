@@ -355,8 +355,9 @@ export async function getRecentRequesterNames(companyId, max = 300) {
 }
 
 // --- Lokacije isporuke narudžbine — dodavanje/uklanjanje dok nije prihvaćena ---
-export async function addOrderDeliveryLocation(companyId, orderId, { locationId, locationName }) {
-  const ref = await addDoc(deliveryLocCol(companyId, orderId), { locationId, locationName, status: "ceka", createdAt: serverTimestamp() });
+export async function addOrderDeliveryLocation(companyId, orderId, { locationId, locationName, kind, supplierId, supplierLocationId }) {
+  const extra = kind === "supplier" ? { kind, supplierId: supplierId || "", supplierLocationId: supplierLocationId || "" } : {};
+  const ref = await addDoc(deliveryLocCol(companyId, orderId), { locationId, locationName, ...extra, status: "ceka", createdAt: serverTimestamp() });
   await safeRefreshSearchData(companyId, orderId);
   return ref.id;
 }
@@ -385,7 +386,7 @@ export async function confirmReceipt(companyId, orderId, { actorUid, actorName, 
     return createOrder(companyId, {
       createdByUid: order.createdByUid, createdByName: order.createdByName, priority: "standardno",
       requestedByName: order.requestedByName || "",
-      items: missingItemsToCarryOver, deliveryLocations: deliveryLocations.map((l) => ({ locationId: l.id, locationName: l.locationName })),
+      items: missingItemsToCarryOver, deliveryLocations: deliveryLocations.map((l) => ({ locationId: l.id, locationName: l.locationName, ...supplierDestFields(l) })),
       assignmentMode: "admin_bira",
     });
   }
@@ -447,7 +448,7 @@ export async function repeatOrderAfterRejection(companyId, orderId, { actorUid, 
     if (clean.deliveryLocationId && subToMaster[clean.deliveryLocationId]) clean.deliveryLocationId = subToMaster[clean.deliveryLocationId];
     return clean;
   });
-  const newLocations = locations.map((l) => ({ locationId: l.locationId, locationName: l.locationName, ...(l.itemProductIds ? { itemProductIds: l.itemProductIds } : {}) }));
+  const newLocations = locations.map((l) => ({ locationId: l.locationId, locationName: l.locationName, ...supplierDestFields(l), ...(l.itemProductIds ? { itemProductIds: l.itemProductIds } : {}) }));
 
   const newId = await createOrder(companyId, {
     createdByUid: order.createdByUid, createdByName: order.createdByName, priority: order.priority || "standardno",
@@ -463,6 +464,11 @@ export async function repeatOrderAfterRejection(companyId, orderId, { actorUid, 
   });
   await logAudit(companyId, { action: "order_repeated", entity: "Orders", entityId: orderId, actorUid, actorName, details: created?.orderNumber || "" });
   return { id: newId, orderNumber: created?.orderNumber || "" };
+}
+
+// Odredište koje je dobavljač (povrat robe) nosi dodatna polja; za lokacije firme vraća prazan objekat.
+function supplierDestFields(l) {
+  return l && l.kind === "supplier" ? { kind: "supplier", supplierId: l.supplierId || "", supplierLocationId: l.supplierLocationId || "" } : {};
 }
 
 // --- Polja za pretragu (searchText, supplierNames, deliveryLocationNames) -----

@@ -1,7 +1,7 @@
 import { requireAuth } from "./auth.js";
 import { renderNav } from "./nav.js";
 import { loadLang, t } from "./i18n.js";
-import { getSuppliers, getSupplierLocations } from "./suppliers.js";
+import { getSuppliers, getSupplierLocations, getSupplierDestinations } from "./suppliers.js";
 import { getProducts, addProduct, updateProduct, getCategories, setProductActive, isProductActive } from "./catalog.js";
 import { getLocations } from "./locations.js";
 import { createOrder, assignOrder, getRecentRequesterNames } from "./orders.js";
@@ -15,7 +15,9 @@ await loadLang();
 let companyId, uidValue, actorName;
 let suppliers = [], companyLocations = [], assignmentMode = "admin_bira", categories = [];
 let cart = [];               // {tempId, supplierId, supplierName, productId, productName, unit, quantity, note, pickupLocationId, pickupLocationName, deliveryLocationId, deliveryLocationName}
-let chosenDeliveryLocations = []; // {locationId, locationName}
+let chosenDeliveryLocations = []; // {locationId, locationName[, kind:"supplier", supplierId, supplierLocationId]}
+let supplierDestOptions = [];    // sve moguće opcije "dobavljač kao odredište"
+let addedSupplierDests = [];     // opcije koje je korisnik dodao na ovu narudžbenicu
 
 // Katalog trenutno izabranog dobavljača (osvežava se pri promeni dobavljača) —
 // koristi se za detekciju duplikata/sličnih naziva pri slobodnom (ručnom) unosu.
@@ -42,6 +44,8 @@ requireAuth(["narucilac"], async (user, profile) => {
 
   companyLocations = await getLocations(companyId);
   renderDeliveryLocationOptions();
+  supplierDestOptions = await getSupplierDestinations(companyId, suppliers);
+  renderSupplierDestSelect();
 
   const templates = await getTemplates(companyId);
   document.getElementById("template-select").innerHTML += templates.map((tp) => `<option value="${tp.id}">${escapeHtml(tp.name)} (${tp.type})</option>`).join("");
@@ -536,21 +540,63 @@ document.getElementById("reactivate-item-activate-btn").addEventListener("click"
 // --- Delivery locations ---
 function renderDeliveryLocationOptions() {
   const host = document.getElementById("delivery-locations");
-  if (!companyLocations.length) { host.innerHTML = `<p class="muted">${t("no_company_locations_hint")}</p>`; return; }
-  host.innerHTML = companyLocations.map((l) => `
+  const wasChecked = new Set(chosenDeliveryLocations.map((l) => l.locationId));
+  const cards = [
+    ...companyLocations.map((l) => ({ locationId: l.id, locationName: l.name, kind: "", badge: "" })),
+    ...addedSupplierDests.map((d) => ({ ...d, badge: t("delivery_supplier_badge") })),
+  ];
+  if (!cards.length) { host.innerHTML = `<p class="muted">${t("no_company_locations_hint")}</p>`; return; }
+  host.innerHTML = cards.map((l) => `
     <label class="checkbox-row" style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;">
-      <input type="checkbox" class="delivery-loc-check" value="${l.id}" data-name="${escapeHtml(l.name)}" />
-      <span>${escapeHtml(l.name)}</span>
+      <input type="checkbox" class="delivery-loc-check" value="${escapeHtml(l.locationId)}" data-name="${escapeHtml(l.locationName)}"
+        ${l.kind === "supplier" ? `data-kind="supplier" data-supplier-id="${escapeHtml(l.supplierId)}" data-supplier-loc-id="${escapeHtml(l.supplierLocationId || "")}"` : ""}
+        ${wasChecked.has(l.locationId) ? "checked" : ""} />
+      <span>${escapeHtml(l.locationName)}</span>${l.badge ? ` <span class="badge">${escapeHtml(l.badge)}</span>` : ""}
     </label>
   `).join("");
-  host.querySelectorAll(".delivery-loc-check").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      chosenDeliveryLocations = Array.from(host.querySelectorAll(".delivery-loc-check:checked"))
-        .map((c) => ({ locationId: c.value, locationName: c.dataset.name }));
-      applyAutoDeliveryLocation();
-      renderCart();
-    });
-  });
+  host.querySelectorAll(".delivery-loc-check").forEach((cb) => cb.addEventListener("change", () => { syncChosenFromDom(); applyAutoDeliveryLocation(); renderCart(); }));
+  syncChosenFromDom();
+}
+
+function syncChosenFromDom() {
+  const host = document.getElementById("delivery-locations");
+  chosenDeliveryLocations = Array.from(host.querySelectorAll(".delivery-loc-check:checked")).map((c) => (
+    c.dataset.kind === "supplier"
+      ? { locationId: c.value, locationName: c.dataset.name, kind: "supplier", supplierId: c.dataset.supplierId, supplierLocationId: c.dataset.supplierLocId || "" }
+      : { locationId: c.value, locationName: c.dataset.name }
+  ));
+  updateSupplierDestWarning();
+}
+
+// Padajuća lista dobavljača (odredište za povrat robe) — već dodati se ne nude ponovo.
+function renderSupplierDestSelect() {
+  const sel = document.getElementById("delivery-supplier-select");
+  const added = new Set(addedSupplierDests.map((d) => d.locationId));
+  const avail = supplierDestOptions.filter((d) => !added.has(d.locationId));
+  sel.innerHTML = `<option value="">${t("delivery_supplier_placeholder")}</option>` +
+    avail.map((d) => `<option value="${escapeHtml(d.locationId)}">${escapeHtml(d.locationName)}</option>`).join("");
+}
+document.getElementById("delivery-supplier-add").addEventListener("click", () => {
+  const sel = document.getElementById("delivery-supplier-select");
+  const opt = supplierDestOptions.find((d) => d.locationId === sel.value);
+  if (!opt) return;
+  addedSupplierDests.push(opt);
+  chosenDeliveryLocations.push({ locationId: opt.locationId, locationName: opt.locationName, kind: "supplier", supplierId: opt.supplierId, supplierLocationId: opt.supplierLocationId });
+  renderSupplierDestSelect();
+  renderDeliveryLocationOptions();
+  applyAutoDeliveryLocation();
+  renderCart();
+});
+
+// Upozorenje (ne blokira): isti dobavljač je i odakle se roba preuzima i kamo se vraća.
+function updateSupplierDestWarning() {
+  const el = document.getElementById("delivery-supplier-warning");
+  if (!el) return;
+  const pickupIds = new Set(cart.map((i) => i.supplierId));
+  const same = chosenDeliveryLocations.filter((l) => l.kind === "supplier" && pickupIds.has(l.supplierId));
+  const names = [...new Set(same.map((l) => suppliers.find((s) => s.id === l.supplierId)?.name || l.locationName))];
+  el.style.display = names.length ? "" : "none";
+  el.textContent = names.length ? t("delivery_supplier_same_warning", { names: names.join(", ") }) : "";
 }
 
 // Kada je izabrana tačno jedna lokacija isporuke, automatski je dodeli svim artiklima u listi
@@ -578,6 +624,7 @@ function getCartInDisplayOrder() {
 }
 
 function renderCart() {
+  updateSupplierDestWarning();
   const host = document.getElementById("cart-host");
   if (!cart.length) { host.innerHTML = `<p class="muted">${t("no_items_added_yet")}</p>`; return; }
 

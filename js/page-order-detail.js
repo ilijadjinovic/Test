@@ -7,7 +7,7 @@ import {
   updateOrderItem, addOrderItem, updateOrderPriority, updateOrderRequestedBy, addOrderDeliveryLocation, removeOrderDeliveryLocation,
 } from "./orders.js";
 import { finishPurchase, markItemPurchased, markItemNotFound, markItemSubstitute, setPurchasePayment, calcOrderTotal } from "./purchases.js";
-import { getSupplierLocations } from "./suppliers.js";
+import { getSupplierLocations, getSuppliers, getSupplierDestinations } from "./suppliers.js";
 import { getProducts, smartSearch } from "./catalog.js";
 import { getLocations } from "./locations.js";
 import { generateOrderPdf } from "./order-print.js";
@@ -641,21 +641,30 @@ function renderDeliveryPanel() {
   });
 
   if (canEdit) {
-    getCompanyLocationsCached().then((companyLocs) => {
+    Promise.all([
+      getCompanyLocationsCached(),
+      getSuppliers(companyId).then((sups) => getSupplierDestinations(companyId, sups)).catch(() => []),
+    ]).then(([companyLocs, supDests]) => {
       const sel = document.getElementById("new-delivery-loc");
       if (!sel) return;
       const alreadyAdded = new Set(deliveryLocations.map((l) => l.locationId));
       const available = companyLocs.filter((l) => !alreadyAdded.has(l.id));
-      if (!available.length) {
+      const availableSup = supDests.filter((d) => !alreadyAdded.has(d.locationId));
+      if (!available.length && !availableSup.length) {
         sel.innerHTML = `<option value="">${t("no_more_locations_to_add")}</option>`;
         document.getElementById("add-delivery-loc-btn").disabled = true;
         return;
       }
-      sel.innerHTML = available.map((l) => `<option value="${l.id}" data-name="${escapeHtml(l.name)}">${escapeHtml(l.name)}</option>`).join("");
+      sel.innerHTML = available.map((l) => `<option value="${l.id}" data-name="${escapeHtml(l.name)}">${escapeHtml(l.name)}</option>`).join("")
+        + (availableSup.length ? `<optgroup label="${escapeHtml(t("delivery_supplier_group"))}">` + availableSup.map((d) =>
+          `<option value="${escapeHtml(d.locationId)}" data-name="${escapeHtml(d.locationName)}" data-kind="supplier" data-supplier-id="${escapeHtml(d.supplierId)}" data-supplier-loc-id="${escapeHtml(d.supplierLocationId)}">${escapeHtml(d.locationName)}</option>`).join("") + "</optgroup>" : "");
       document.getElementById("add-delivery-loc-btn").addEventListener("click", async () => {
         const opt = sel.options[sel.selectedIndex];
         if (!opt || !opt.value) return;
-        await addOrderDeliveryLocation(companyId, orderId, { locationId: opt.value, locationName: opt.dataset.name });
+        await addOrderDeliveryLocation(companyId, orderId, {
+          locationId: opt.value, locationName: opt.dataset.name,
+          ...(opt.dataset.kind === "supplier" ? { kind: "supplier", supplierId: opt.dataset.supplierId, supplierLocationId: opt.dataset.supplierLocId } : {}),
+        });
         toast(t("toast_location_added_to_order"), "success");
       });
     });

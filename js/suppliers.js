@@ -58,3 +58,29 @@ export async function getSupplierLocations(companyId, supplierId) {
   const snap = await getDocs(query(supLocationsCol(companyId, supplierId), orderBy("name")));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+
+// --- Dobavljač kao odredište isporuke (povrat robe) ---------------------------------------
+// Vraća opcije { locationId, locationName, kind:"supplier", supplierId, supplierLocationId }.
+// Dobavljač sa lokacijama preuzimanja daje po jednu opciju za svaku lokaciju ("Naziv – Lokacija"),
+// dobavljač bez lokacija jednu opciju (po adresi dobavljača).
+export function buildSupplierDestinations(suppliers, locsBySupplier = {}) {
+  const out = [];
+  for (const s of suppliers) {
+    const locs = locsBySupplier[s.id] || [];
+    if (!locs.length) {
+      out.push({ locationId: `sup:${s.id}`, locationName: s.name, kind: "supplier", supplierId: s.id, supplierLocationId: "" });
+    } else {
+      for (const l of locs) {
+        out.push({ locationId: `sup:${s.id}:${l.id}`, locationName: `${s.name} – ${l.name}`, kind: "supplier", supplierId: s.id, supplierLocationId: l.id });
+      }
+    }
+  }
+  return out;
+}
+export async function getSupplierDestinations(companyId, suppliers) {
+  const locsBySupplier = {};
+  await Promise.all(suppliers.map(async (s) => {
+    try { locsBySupplier[s.id] = await getSupplierLocations(companyId, s.id); } catch (e) { console.error(e); locsBySupplier[s.id] = []; }
+  }));
+  return buildSupplierDestinations(suppliers, locsBySupplier);
+}

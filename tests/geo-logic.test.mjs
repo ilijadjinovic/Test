@@ -137,6 +137,15 @@ ok("buildStops: isporuke — isporučena lokacija se preskače, narudžbina bez 
   assert.equal(deliveries.find((s) => s.key === "d:m1").orders.length, 2);
   assert.ok(deliveries.find((s) => s.key === "d:m2").orders.some((o) => o.orderId === "o3"));
 });
+ok("buildStops: dobavljač kao odredište isporuke (povrat) uzima koordinate lokacije dobavljača", () => {
+  const r = buildStops({
+    orders: [{ id: "r1", orderNumber: "NAR-R1", items: [], deliveryLocations: [{ locationId: "sup:s1:l1", locationName: "Dobavljač A – L1", kind: "supplier", supplierId: "s1", supplierLocationId: "l1", status: "ceka" }] }],
+    suppliersById, supplierLocsById, companyLocsById,
+  });
+  const d = r.deliveries[0];
+  assert.equal(d.key, "d:sup:s1:l1");
+  assert.equal(d.hasCoords, !!(supplierLocsById.s1.find((l) => l.id === "l1").lat));
+});
 ok("planRoute: sva preuzimanja pre isporuka, najbliže prvo, bez koordinata na kraju grupe", () => {
   const start = { lat: 44.82, lng: 20.40 };
   const r = planRoute({ start, pickups, deliveries });

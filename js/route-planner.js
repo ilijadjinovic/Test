@@ -64,7 +64,7 @@ export async function openRoutePlanner({ companyId, orderId = null, ownerField =
       items: await getOrderItems(companyId, o.id),
       deliveryLocations: await getOrderDeliveryLocations(companyId, o.id),
     })));
-    const supIds = [...new Set(orders.flatMap((o) => o.items.map((i) => i.supplierId)).filter(Boolean))];
+    const supIds = [...new Set(orders.flatMap((o) => [...o.items.map((i) => i.supplierId), ...o.deliveryLocations.map((d) => d.supplierId)]).filter(Boolean))];
     await Promise.all(supIds.map(async (id) => { supplierLocsById[id] = await getSupplierLocations(companyId, id); }));
   } catch (err) {
     console.error(err);

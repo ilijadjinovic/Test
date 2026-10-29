@@ -684,5 +684,11 @@
   "route_copy_link": "Copy link",
   "route_copied": "Link copied",
   "route_move_up": "Move up",
-  "route_move_down": "Move down"
+  "route_move_down": "Move down",
+  "add_btn_plus": "+ Add",
+  "delivery_add_supplier_label": "Add a supplier as destination (goods return)",
+  "delivery_supplier_placeholder": "— choose supplier —",
+  "delivery_supplier_badge": "Supplier",
+  "delivery_supplier_group": "Suppliers (goods return)",
+  "delivery_supplier_same_warning": "Note: {names} is both the supplier goods are picked up from and a delivery destination (return). Make sure this is intended."
 }

@@ -91,6 +91,12 @@
       <div class="panel-head"><h2 data-i18n="step2_title">2. Mesto isporuke</h2></div>
       <p class="hint" data-i18n="delivery_locations_hint">Označite lokacije isporuke. Ako izaberete samo jednu, ona će se automatski primeniti na sve artikle. Ako dodate više lokacija, za svaki artikal izaberite gde ide (u listi artikala ispod).</p>
       <div id="delivery-locations" class="form-row"></div>
+      <div class="form-row" style="align-items:end;margin-top:12px;">
+        <div class="field" style="max-width:380px;"><label data-i18n="delivery_add_supplier_label">Dodaj dobavljača kao odredište (povrat robe)</label>
+          <select id="delivery-supplier-select"></select></div>
+        <button type="button" class="btn btn-sm btn-amber" id="delivery-supplier-add" data-i18n="add_btn_plus">+ Dodaj</button>
+      </div>
+      <p id="delivery-supplier-warning" class="hint" style="display:none;color:var(--color-warning,#b45309);margin-top:8px;"></p>
     </div>
 
     <div class="panel">

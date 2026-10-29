@@ -315,7 +315,13 @@ export function buildStops({ orders, suppliersById = {}, supplierLocsById = {}, 
     }
     for (const dl of order.deliveryLocations || []) {
       if (dl.status && dl.status !== "ceka") continue;
-      const cl = companyLocsById[dl.locationId] || {};
+      let cl = companyLocsById[dl.locationId] || {};
+      if (dl.kind === "supplier" && dl.supplierId) {   // povrat robe: odredište je dobavljač
+        const sup = suppliersById[dl.supplierId] || {};
+        const locs = supplierLocsById[dl.supplierId] || [];
+        const sl = (dl.supplierLocationId && locs.find((l) => l.id === dl.supplierLocationId)) || locs.find(hasCoords) || null;
+        cl = { name: dl.locationName, address: sl?.address || sup.address || locs.find((l) => l.address)?.address || "", lat: sl?.lat, lng: sl?.lng };
+      }
       const base = { key: `d:${dl.locationId || dl.locationName}`, kind: "delivery", name: dl.locationName || cl.name || "?", address: cl.address || "", lat: cl.lat, lng: cl.lng };
       add(deliveries, base, order);
     }

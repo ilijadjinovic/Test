@@ -51,7 +51,7 @@ function render(suppliers) {
       <td>${escapeHtml(s.email || "—")}</td>
       <td>
         ${canEdit ? `<button class="btn btn-sm btn-outline" data-action="edit" data-id="${s.id}">✎ ${t("edit")}</button>` : ""}
-        <button class="btn btn-sm btn-outline" data-action="locations" data-id="${s.id}" data-name="${escapeHtml(s.name)}">📍 ${t("locations")}</button>
+        <button class="btn btn-sm btn-outline" data-action="locations" data-id="${s.id}" data-name="${escapeHtml(s.name)}">📍 ${t("pickup_locations_title")}</button>
         <a class="btn btn-sm btn-outline" href="./admin-catalog.html?supplier=${s.id}">📦 ${t("catalog")}</a>
         ${isAdmin ? `<button class="btn btn-sm btn-danger" data-action="delete" data-id="${s.id}">${t("delete")}</button>` : ""}
       </td>

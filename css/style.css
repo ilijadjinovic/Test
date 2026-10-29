@@ -427,15 +427,6 @@ table.data-table.table-fixed th { white-space: normal; }
   /* Kolone gde je prelamanje teksta zaista poželjno (npr. napomene) mogu da
      zadrže staro ponašanje dodavanjem klase "wrap-col" na <th>/<td>. */
   .data-table .wrap-col { white-space: normal; word-break: break-word; overflow-wrap: break-word; max-width: 220px; }
-
-  /* Prva kolona ostaje vidljiva dok se ostatak reda skroluje ulevo-udesno. */
-  .data-table tr > *:first-child {
-    position: sticky; left: 0; z-index: 1;
-    background: var(--color-surface);
-    box-shadow: 1px 0 0 var(--color-border);
-  }
-  .data-table th:first-child { background: var(--color-surface-2); }
-  .data-table tr:hover > *:first-child { background: var(--color-surface-2); }
 }
 
 /* Mala oznaka "prevucite za više" — prikazuje se samo na mobilnom, i samo

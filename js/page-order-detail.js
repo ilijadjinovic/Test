@@ -24,6 +24,7 @@ import {
   ORDER_STATUS, statusLabel, ORDER_STATUS_FLOW, normalizeQuantity,
 } from "./utils.js";
 import { getISO, initDatepickers } from "./datepicker.js";
+import { calcShortages, buildCarryOverDraft, finalizeCarryOver } from "./carry-over-logic.js";
 
 await loadLang();
 
@@ -51,13 +52,21 @@ async function getCompanyLocationsCached() {
 // po potrebi za dobavljače koji se pojave u stavkama narudžbine (Poglavlje "Nabavke po dobavljaču").
 let pickupLocationAddresses = {};
 const fetchedSupplierIdsForPickup = new Set();
+// Keš lokacija preuzimanja po dobavljaču: { [supplierId]: [{id, name, address}] } — za izbor
+// mesta preuzimanja u tabeli stavki, u panelu "Dodaj artikal" i u dijalogu prenosa manjka.
+const supplierLocsCache = {};
+async function getSupplierLocsCached(supplierId) {
+  if (!supplierId) return [];
+  if (!supplierLocsCache[supplierId]) supplierLocsCache[supplierId] = await getSupplierLocations(companyId, supplierId);
+  return supplierLocsCache[supplierId];
+}
 async function ensurePickupAddresses(itemsList) {
   const supplierIds = [...new Set(itemsList.map((i) => i.supplierId).filter(Boolean))];
   const toFetch = supplierIds.filter((sid) => !fetchedSupplierIdsForPickup.has(sid));
   if (!toFetch.length) return;
   toFetch.forEach((sid) => fetchedSupplierIdsForPickup.add(sid));
   const results = await Promise.all(toFetch.map((sid) => getSupplierLocations(companyId, sid)));
-  results.forEach((locs) => locs.forEach((l) => { pickupLocationAddresses[l.id] = l.address || ""; }));
+  results.forEach((locs, idx) => { supplierLocsCache[toFetch[idx]] = locs; locs.forEach((l) => { pickupLocationAddresses[l.id] = l.address || ""; }); });
   renderAll();
 }
 
@@ -127,6 +136,8 @@ function renderHeader() {
     ${priorityHtml}
     <span class="badge ${badgeClassForStatus(order.status)}">${statusLabel(order.status)}</span> ·
     ${t("created_label")} ${formatDate(order.createdAt)}
+    ${order.carriedFromOrderId ? ` · ${t("carried_from_label")}: <a href="./order-detail.html?order=${encodeURIComponent(order.carriedFromOrderId)}"><strong>${escapeHtml(order.carriedFromNumber || "…")}</strong></a>` : ""}
+    ${order.carriedOverAsOrderId ? ` · ${t("carried_over_label")}: <a href="./order-detail.html?order=${encodeURIComponent(order.carriedOverAsOrderId)}"><strong>${escapeHtml(order.carriedOverAsNumber || "…")}</strong></a>` : ""}
     ${order.status === ORDER_STATUS.ZATVORENA && (order.closedAt || order.updatedAt) ? ` · ${t("closed_label")} ${formatDate(order.closedAt || order.updatedAt)}` : ""}
     ${editable ? `<span class="muted" style="display:block;margin-top:4px;font-size:12px;">✎ ${t("order_editable_hint")}</span>` : ""}
   `;
@@ -256,13 +267,25 @@ function renderItemsTable() {
     return opts.join("");
   };
 
+  // Mesto preuzimanja se menja dok narudžbina nije prihvaćena (isti izbor kao na formi "Nova narudžbina").
+  const pickupOptionsHtml = (item, locs) => {
+    const cur = item.pickupLocationId || "any";
+    const opts = [];
+    if (cur === "any") opts.push(`<option value="any" data-name="${escapeHtml(t("any_location"))}" selected>${t("any_location")}</option>`);
+    else if (!locs.some((l) => l.id === cur)) opts.push(`<option value="${escapeHtml(cur)}" data-name="${escapeHtml(item.pickupLocationName || "")}" selected>${escapeHtml(item.pickupLocationName || "—")}</option>`);
+    locs.forEach((l) => opts.push(`<option value="${escapeHtml(l.id)}" data-name="${escapeHtml(l.name || "")}" ${cur === l.id ? "selected" : ""}>${escapeHtml(l.name || "—")}</option>`));
+    return opts.join("");
+  };
+
   body.innerHTML = (items.length ? items : [null]).filter(Boolean).map((i, idx) => `
     <tr data-item-id="${i.id}">
       <td class="col-num muted">${idx + 1}</td>
       <td class="mono">${escapeHtml(i.code || "—")}</td>
       <td><strong>${escapeHtml(i.productName)}</strong></td>
       <td>${escapeHtml(i.supplierName)}</td>
-      <td>${i.pickupLocationId && i.pickupLocationId !== "any" ? escapeHtml(i.pickupLocationName || "—") : "—"}</td>
+      <td>${canEdit && supplierLocsCache[i.supplierId]?.length
+        ? `<select class="edit-item-pickup">${pickupOptionsHtml(i, supplierLocsCache[i.supplierId])}</select>`
+        : (i.pickupLocationId && i.pickupLocationId !== "any" ? escapeHtml(i.pickupLocationName || "—") : "—")}</td>
       <td>${canEdit
         ? `<input type="number" min="1" step="1" class="edit-item-qty mono" style="width:70px;" value="${i.quantity}" /> ${escapeHtml(i.unit)}`
         : `${i.quantity} ${escapeHtml(i.unit)}`}</td>
@@ -298,6 +321,13 @@ function renderItemsTable() {
         await updateOrderItem(companyId, orderId, itemId, { note: e.target.value.trim() });
         toast(t("toast_item_updated"), "success");
       });
+      row.querySelector(".edit-item-pickup")?.addEventListener("change", async (e) => {
+        const opt = e.target.options[e.target.selectedIndex];
+        const pickupLocationId = opt.value;
+        const pickupLocationName = pickupLocationId === "any" ? t("any_location") : (opt.dataset.name || "");
+        await updateOrderItem(companyId, orderId, itemId, { pickupLocationId, pickupLocationName });
+        toast(t("toast_item_updated"), "success");
+      });
       row.querySelector(".edit-item-delivery")?.addEventListener("change", async (e) => {
         const opt = e.target.options[e.target.selectedIndex];
         const deliveryLocationId = opt.value;
@@ -326,6 +356,9 @@ function renderAddItemPanel(canEdit) {
       <div class="field"><label>${t("supplier")}</label>
         <select id="ai-supplier">${purchases.map((p) => `<option value="${p.supplierId}" data-name="${escapeHtml(p.supplierName)}">${escapeHtml(p.supplierName)}</option>`).join("")}</select>
       </div>
+      <div class="field"><label>${t("pickup_location_label")}</label>
+        <select id="ai-pickup"></select>
+      </div>
       <div class="field"><label>${t("delivery_label")}</label>
         <select id="ai-delivery">${[`<option value="any">${t("any_location")}</option>`].concat(deliveryLocations.map((l) => `<option value="${l.id}" data-name="${escapeHtml(l.locationName)}">${escapeHtml(l.locationName)}</option>`)).join("")}</select>
       </div>
@@ -352,6 +385,7 @@ function renderAddItemPanel(canEdit) {
 
   const supplierSelect = document.getElementById("ai-supplier");
   const deliverySelect = document.getElementById("ai-delivery");
+  const pickupSelect = document.getElementById("ai-pickup");
   const searchInput = document.getElementById("ai-search");
   const productListBody = document.getElementById("ai-product-list");
 
@@ -376,9 +410,26 @@ function renderAddItemPanel(canEdit) {
     });
   }
 
-  supplierSelect.addEventListener("change", renderProductList);
+  // Mesto preuzimanja za novi artikal: jedna lokacija dobavljača -> ona; inače ista kao kod postojećih
+  // artikala tog dobavljača u narudžbini (ako su svi na istoj); inače "bilo koja lokacija".
+  async function fillPickupSelect() {
+    const sid = supplierSelect.value;
+    let locs = [];
+    try { locs = await getSupplierLocsCached(sid); } catch (e) { console.error(e); }
+    const existing = items.filter((i) => i.supplierId === sid).map((i) => i.pickupLocationId || "any");
+    const same = existing.length && existing.every((x) => x === existing[0]) ? existing[0] : "any";
+    const sel = locs.length === 1 ? locs[0].id : (locs.some((l) => l.id === same) ? same : "any");
+    const opts = [];
+    if (locs.length !== 1) opts.push(`<option value="any" data-name="${escapeHtml(t("any_location"))}">${t("any_location")}</option>`);
+    locs.forEach((l) => opts.push(`<option value="${escapeHtml(l.id)}" data-name="${escapeHtml(l.name || "")}">${escapeHtml(l.name || "—")}</option>`));
+    pickupSelect.innerHTML = opts.join("");
+    pickupSelect.value = sel;
+  }
+
+  supplierSelect.addEventListener("change", () => { renderProductList(); fillPickupSelect(); });
   searchInput.addEventListener("input", renderProductList);
   renderProductList();
+  fillPickupSelect();
 
   host.querySelectorAll("button[data-ai-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -404,7 +455,8 @@ function renderAddItemPanel(canEdit) {
     await addOrderItem(companyId, orderId, {
       supplierId: supplierSelect.value, supplierName: supplierOpt.dataset.name,
       productId, productName, code, unit, quantity, note, manualEntry,
-      pickupLocationId: "any", pickupLocationName: t("any_location"),
+      pickupLocationId: pickupSelect.value || "any",
+      pickupLocationName: !pickupSelect.value || pickupSelect.value === "any" ? t("any_location") : (pickupSelect.options[pickupSelect.selectedIndex].dataset.name || ""),
       deliveryLocationId: deliveryOpt.value, deliveryLocationName: deliveryOpt.value === "any" ? t("any_location") : deliveryOpt.dataset.name,
     });
     toast(t("toast_item_added", { name: productName }), "success");
@@ -699,25 +751,40 @@ function renderReceiptPanel() {
     </div>
   `;
 
-  document.getElementById("confirm-receipt-btn").addEventListener("click", async () => {
+  document.getElementById("confirm-receipt-btn").addEventListener("click", async (ev) => {
+    const btn = ev.currentTarget;
     const rows = Array.from(panel.querySelectorAll("tbody tr"));
-    const missing = rows.filter((r) => Number(r.querySelector(".received-qty").value) < Number(r.dataset.requested));
-    let carryOver = [];
-    if (missing.length) {
-      const wantsCarryOver = confirm(t("confirm_carry_over_missing", { count: missing.length }));
-      if (wantsCarryOver) {
-        carryOver = missing.map((r) => ({
-          supplierId: r.dataset.supplier, supplierName: r.dataset.supplierName,
-          productId: "", productName: r.dataset.product, unit: r.dataset.unit,
-          quantity: Number(r.dataset.requested) - Number(r.querySelector(".received-qty").value),
-          note: t("auto_carried_over_note"), priority: order.priority,
-          pickupLocationId: "any", pickupLocationName: t("any_location"),
-        }));
-      }
+    const { shortages, invalidItemId } = calcShortages(rows.map((r) => ({
+      itemId: r.dataset.itemId, requested: r.dataset.requested, received: r.querySelector(".received-qty").value,
+    })));
+    if (invalidItemId) {
+      toast(t("toast_invalid_received_qty", { name: items.find((i) => i.id === invalidItemId)?.productName || "" }), "error");
+      return;
     }
-    await confirmReceipt(companyId, orderId, { actorUid: uidValue, actorName: profile.name, missingItemsToCarryOver: carryOver });
-    await Promise.all(deliveryLocations.map((l) => confirmLocationReceipt(companyId, orderId, l.id, profile.name)));
-    toast(t("toast_receipt_confirmed_closed"), "success");
+
+    // Manjak -> nova narudžbina, unapred popunjena kao da ju je naručilac sam napravio (vidi dijalog ispod).
+    let carryOver = null;
+    if (shortages.length) {
+      btn.disabled = true;
+      let decision = null;
+      try { decision = await openCarryOverDialog(shortages); }
+      catch (err) { console.error(err); toast(t("toast_carry_over_error"), "error"); }
+      finally { btn.disabled = false; }
+      if (!decision) return;           // "Nazad" — ništa se ne potvrđuje
+      carryOver = decision.carryOver;  // null = prijem bez nove narudžbine
+    }
+
+    btn.disabled = true;
+    try {
+      const created = await confirmReceipt(companyId, orderId, { actorUid: uidValue, actorName: profile.name, carryOver });
+      await Promise.all(deliveryLocations.map((l) => confirmLocationReceipt(companyId, orderId, l.id, profile.name)));
+      toast(created ? t("toast_receipt_confirmed_carried", { number: created.orderNumber }) : t("toast_receipt_confirmed_closed"), "success");
+      if (created?.assignFailed) toast(t("toast_order_created_not_assigned"), "error");
+    } catch (err) {
+      console.error(err);
+      toast(t(carryOver ? "toast_carry_over_error" : "toast_receipt_confirm_error"), "error");
+      btn.disabled = false;
+    }
   });
 
   document.getElementById("open-claim-btn").addEventListener("click", () => {
@@ -729,6 +796,106 @@ function renderReceiptPanel() {
       document.getElementById("claim-requested").value = claimSelect.options[0].dataset.qty || "";
     }
     document.getElementById("claim-modal").classList.remove("hidden");
+  });
+}
+
+// ---------------------------------------------------------------- PRENOS MANJKA (dijalog)
+// Prikazuje novu narudžbinu za robu koja fali, unapred popunjenu iz originala (dobavljač, mesto
+// preuzimanja, mesto isporuke, prioritet). Naručilac menja samo ono što želi, pa potvrđuje.
+// Isporučilac se određuje prema podešavanju firme — isto kao na formi "Nova narudžbina":
+//   automatski -> sistem, admin_bira -> admin, narucilac_bira -> izbor ovde.
+// Vraća: null ("Nazad"), { carryOver: null } (prijem bez nove narudžbine) ili { carryOver: {...} }.
+async function openCarryOverDialog(shortages) {
+  const shortItems = items.filter((i) => shortages.some((s) => s.itemId === i.id));
+  const locsBySupplier = {};
+  await Promise.all([...new Set(shortItems.map((i) => i.supplierId))].map(async (sid) => {
+    try { locsBySupplier[sid] = await getSupplierLocsCached(sid); } catch (e) { console.error(e); locsBySupplier[sid] = []; }
+  }));
+  const settings = await getCompanySettings(companyId).catch(() => companySettings);
+  const mode = settings?.assignmentMode || "admin_bira";
+  const fulfillers = mode === "narucilac_bira" ? await getIsporucioci(companyId).catch(() => []) : [];
+  const draft = buildCarryOverDraft({ items, deliveryLocations, shortages, locsBySupplier });
+
+  const selectHtml = (cls, options, currentId, withAny) => `<select class="${cls}">${
+    (withAny ? [`<option value="any" data-name="" ${currentId === "any" ? "selected" : ""}>${t("any_location")}</option>`] : [])
+      .concat(options.map((o) => `<option value="${escapeHtml(o.id)}" data-name="${escapeHtml(o.name)}" ${currentId === o.id ? "selected" : ""}>${escapeHtml(o.name || "—")}</option>`)).join("")
+  }</select>`;
+  const cellHtml = (cls, options, d, idKey, nameKey) => {
+    if (options.length > 1) return selectHtml(cls, options, d[idKey], d[idKey] === "any");
+    return escapeHtml(options[0]?.name || (d[idKey] === "any" ? t("any_location") : d[nameKey]) || "—");
+  };
+
+  const rowsHtml = draft.items.map((d, idx) => `
+    <tr data-idx="${idx}">
+      <td><input type="checkbox" class="co-include" checked /></td>
+      <td><strong>${escapeHtml(d.productName)}</strong>${d.code ? `<div class="muted mono" style="font-size:12px;">${escapeHtml(d.code)}</div>` : ""}</td>
+      <td>${escapeHtml(d.supplierName)}</td>
+      <td style="white-space:nowrap;"><input type="number" class="co-qty mono" min="1" step="1" value="${d.quantity}" style="width:70px;" /> ${escapeHtml(d.unit)}</td>
+      <td>${cellHtml("co-pickup", d.pickupOptions, d, "pickupLocationId", "pickupLocationName")}</td>
+      <td>${cellHtml("co-delivery", draft.deliveryOptions, d, "deliveryLocationId", "deliveryLocationName")}</td>
+    </tr>`).join("");
+
+  let fulfillerHtml = "";
+  if (mode === "narucilac_bira") {
+    fulfillerHtml = fulfillers.length
+      ? `<div class="field" style="max-width:320px;"><label>${t("role_isporucilac")}</label>
+          <select class="co-fulfiller"><option value="">${t("carry_fulfiller_choose")}</option>${fulfillers.map((u) => `<option value="${u.uid}" ${u.uid === order.assignedToUid ? "selected" : ""}>${escapeHtml(u.name)}</option>`).join("")}</select></div>`
+      : `<p class="muted">${t("no_fulfillers")}</p>`;
+  } else {
+    fulfillerHtml = `<p class="muted" style="margin:0;">${t(mode === "automatski" ? "carry_fulfiller_auto" : "carry_fulfiller_admin")}</p>`;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card wide" style="max-width:940px;">
+      <div class="modal-head"><h2>${t("carry_modal_title")}</h2><button type="button" class="icon-btn co-back" title="${escapeHtml(t("cancel"))}">✕</button></div>
+      <p class="muted" style="margin-top:0;">${t("carry_modal_intro", { count: draft.items.length })}</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th></th><th>${t("item_label")}</th><th>${t("supplier")}</th><th>${t("quantity")}</th><th>${t("pickup_location_label")}</th><th>${t("delivery_label")}</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+      <div class="form-row" style="align-items:end;margin-top:14px;">
+        <div class="field" style="max-width:200px;"><label>${t("priority")}</label>
+          <select class="co-priority"><option value="standardno" ${order.priority !== "hitno" ? "selected" : ""}>${t("standard")}</option><option value="hitno" ${order.priority === "hitno" ? "selected" : ""}>${t("urgent")}</option></select></div>
+        <div style="flex:1;">${fulfillerHtml}</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost co-back">${t("carry_btn_back")}</button>
+        <button type="button" class="btn btn-ghost co-skip">${t("carry_btn_skip")}</button>
+        <button type="button" class="btn btn-primary co-create" ${mode === "narucilac_bira" && !fulfillers.length ? "disabled" : ""}>${t("carry_btn_create")}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  return new Promise((resolve) => {
+    const close = (result) => { overlay.remove(); resolve(result); };
+    overlay.querySelectorAll(".co-back").forEach((b) => b.addEventListener("click", () => close(null)));
+    overlay.querySelector(".co-skip").addEventListener("click", () => close({ carryOver: null }));
+    overlay.querySelector(".co-create").addEventListener("click", () => {
+      const readOpt = (sel) => (sel ? { id: sel.value, name: sel.options[sel.selectedIndex]?.dataset.name || "" } : null);
+      const rows = draft.items.map((d, idx) => {
+        const tr = overlay.querySelector(`tr[data-idx="${idx}"]`);
+        const pick = readOpt(tr.querySelector(".co-pickup")), del = readOpt(tr.querySelector(".co-delivery"));
+        return {
+          ...d, include: tr.querySelector(".co-include").checked,
+          quantity: normalizeQuantity(tr.querySelector(".co-qty").value, d.missingQty),
+          ...(pick ? { pickupLocationId: pick.id, pickupLocationName: pick.name } : {}),
+          ...(del ? { deliveryLocationId: del.id, deliveryLocationName: del.name } : {}),
+        };
+      });
+      if (!rows.some((r) => r.include)) { toast(t("toast_carry_pick_one"), "error"); return; }
+      const fSel = overlay.querySelector(".co-fulfiller");
+      if (mode === "narucilac_bira" && !fSel?.value) { toast(t("toast_select_fulfiller"), "error"); fSel?.focus(); return; }
+      const fin = finalizeCarryOver(draft, rows, { anyLabel: t("any_location"), autoNote: t("auto_carried_over_note") });
+      close({ carryOver: {
+        items: fin.items, deliveryLocations: fin.deliveryLocations, assignmentMode: mode,
+        assignedTo: mode === "narucilac_bira" ? { uid: fSel.value, name: fSel.options[fSel.selectedIndex].textContent } : null,
+        priority: overlay.querySelector(".co-priority").value,
+      } });
+    });
   });
 }
 

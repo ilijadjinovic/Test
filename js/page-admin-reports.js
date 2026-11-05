@@ -19,7 +19,9 @@ await loadLang();
 let companyId, actorName, currency = "RSD", company = null;
 let ownerUid = null;    // naručilac vidi samo svoje narudžbine (zaključano na njegov uid)
 let fullDataset = [];   // narudžbine (sa items+purchases) unutar izabranog perioda, bez narucilac/isporucilac/dobavljac/status filtera
-let filteredRows = [];  // posle primene svih filtera — osnova za sve tabove
+let filteredRows = [];
+const expanded = new Set();   // otvoreni redovi po tabovima („tab:ključ") — ostaju otvoreni i posle promene filtera
+const aggCache = {};          // tab -> poslednja agregacija (za otvaranje i izvoz reda)  // posle primene svih filtera — osnova za sve tabove
 
 requireAuth([ROLES.ADMIN, ROLES.NARUCILAC], async (user, profile) => {
   companyId = profile.companyId; actorName = profile.name;
@@ -161,51 +163,127 @@ function renderOrdersTab() {
   `).join("");
 }
 
-// --------------------------------------------------------------- PO NARUČIOCIMA
-function renderNarucioci() {
-  const body = document.getElementById("narucioci-body");
-  const agg = aggregateByNarucilac(filteredRows);
-  if (!agg.length) { body.innerHTML = `<tr class="empty-row"><td colspan="3">${t("no_data")}</td></tr>`; return; }
-  body.innerHTML = agg.map((a) => `
-    <tr><td>${escapeHtml(a.name)}</td><td>${a.orderCount}</td><td><strong>${fmtAmount(a.total)}</strong></td></tr>
-  `).join("");
+// --------------------------------------------------------------- DRILL-DOWN (klik na red → lista narudžbenica)
+const COL = {
+  number: { head: () => t("export_col_number"), html: (o) => `<a class="mono" href="./order-detail.html?order=${o.r.id}">${escapeHtml(o.r.orderNumber)}</a>`, text: (o) => o.r.orderNumber },
+  date: { head: () => t("export_col_date"), html: (o) => formatDate(o.r.createdAt), text: (o) => formatDate(o.r.createdAt) },
+  narucilac: { head: () => t("role_narucilac"), html: (o) => escapeHtml(o.r.createdByName || "—"), text: (o) => o.r.createdByName || "—" },
+  isporucilac: { head: () => t("role_isporucilac"), html: (o) => escapeHtml(o.r.assignedToName || t("not_assigned")), text: (o) => o.r.assignedToName || t("not_assigned") },
+  status: { head: () => t("status"), html: (o) => `<span class="badge ${badgeClassForStatus(o.r.status)}">${escapeHtml(statusLabel(o.r.status))}</span>`, text: (o) => statusLabel(o.r.status) },
+  total: { head: () => t("export_col_total_amount"), money: true, html: (o) => (o.r.total > 0 ? `<strong>${fmtAmount(o.r.total)}</strong>` : "—"), text: (o) => o.r.total.toFixed(2) },
+  paid: { head: () => t("report_col_paid_to_supplier"), money: true, html: (o) => (o.amount > 0 ? `<strong>${fmtAmount(o.amount)}</strong>` : "—"), text: (o) => o.amount.toFixed(2) },
+  qty: { head: () => t("quantity"), html: (o, a) => `<strong>${fmtQty(o.quantity, currentLang === "en" ? "en-GB" : "sr-RS")}</strong> ${escapeHtml(a.unit || "")}`, text: (o) => o.quantity },
+  unit: { head: () => t("unit"), exportOnly: true, text: (o, a) => a.unit || "—" },
+};
+const DRILL_COLS = {
+  narucioci: ["number", "date", "isporucilac", "status", "total"],
+  isporucioci: ["number", "date", "narucilac", "status", "total"],
+  suppliers: ["number", "date", "narucilac", "isporucilac", "status", "paid"],
+  items: ["number", "date", "narucilac", "isporucilac", "status", "qty", "unit"],
+};
+const CHEV = `<span class="rep-chevron" aria-hidden="true">▸</span>`;
+
+function drillDetailHtml(tab, a) {
+  const cols = DRILL_COLS[tab].map((k) => COL[k]).filter((c) => !c.exportOnly);
+  const key = escapeHtml(a.key);
+  const btn = (kind, label) => `<button class="btn btn-sm btn-outline" data-drill-export="${kind}" data-tab="${tab}" data-key="${key}">${label}</button>`;
+  return `
+    <div class="rep-drill-bar">
+      <strong>${t("report_meta_count", { count: a.orders.length })}</strong>
+      <span style="display:flex;gap:8px;">${btn("csv", "⇩ CSV")}${btn("excel", "⇩ Excel")}${btn("pdf", "⇩ PDF")}</span>
+    </div>
+    <table class="data-table rep-detail-table">
+      <thead><tr>${cols.map((c) => `<th>${c.head()}</th>`).join("")}</tr></thead>
+      <tbody>${a.orders.map((o) => `<tr>${cols.map((c) => `<td>${c.html(o, a)}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table>`;
 }
+
+// Generički prikaz taba: red agregacije (klikabilan) + ispod njega, ako je otvoren, lista narudžbenica.
+function renderAggTab(tab, bodyId, agg, colCount, cellsFn) {
+  const body = document.getElementById(bodyId);
+  aggCache[tab] = agg;
+  if (!agg.length) { body.innerHTML = `<tr class="empty-row"><td colspan="${colCount}">${t("no_data")}</td></tr>`; return; }
+  body.innerHTML = agg.map((a) => {
+    const open = expanded.has(`${tab}:${a.key}`);
+    return `
+    <tr class="rep-drill-toggle" data-key="${escapeHtml(a.key)}" tabindex="0" role="button" aria-expanded="${open}">${cellsFn(a)}</tr>
+    ${open ? `<tr class="rep-detail-row"><td colspan="${colCount}">${drillDetailHtml(tab, a)}</td></tr>` : ""}`;
+  }).join("");
+}
+
+const nameAmountCells = (a) => `<td>${CHEV}${escapeHtml(a.name)}</td><td>${a.orderCount}</td><td><strong>${fmtAmount(a.total)}</strong></td>`;
+
+// --------------------------------------------------------------- PO NARUČIOCIMA
+function renderNarucioci() { renderAggTab("narucioci", "narucioci-body", aggregateByNarucilac(filteredRows), 3, nameAmountCells); }
 
 // --------------------------------------------------------------- PO ISPORUČIOCIMA
-function renderIsporucioci() {
-  const body = document.getElementById("isporucioci-body");
-  const agg = aggregateByIsporucilac(filteredRows);
-  if (!agg.length) { body.innerHTML = `<tr class="empty-row"><td colspan="3">${t("no_data")}</td></tr>`; return; }
-  body.innerHTML = agg.map((a) => `
-    <tr><td>${escapeHtml(a.name)}</td><td>${a.orderCount}</td><td><strong>${fmtAmount(a.total)}</strong></td></tr>
-  `).join("");
-}
+function renderIsporucioci() { renderAggTab("isporucioci", "isporucioci-body", aggregateByIsporucilac(filteredRows), 3, nameAmountCells); }
 
 // --------------------------------------------------------------- PO DOBAVLJAČIMA
-function renderSuppliersTab() {
-  const body = document.getElementById("suppliers-body-report");
-  const agg = aggregateBySupplier(filteredRows);
-  if (!agg.length) { body.innerHTML = `<tr class="empty-row"><td colspan="3">${t("no_data")}</td></tr>`; return; }
-  body.innerHTML = agg.map((a) => `
-    <tr><td>${escapeHtml(a.name)}</td><td>${a.orderCount}</td><td><strong>${fmtAmount(a.total)}</strong></td></tr>
-  `).join("");
-}
+function renderSuppliersTab() { renderAggTab("suppliers", "suppliers-body-report", aggregateBySupplier(filteredRows), 3, nameAmountCells); }
 
 // --------------------------------------------------------------- PO ARTIKLIMA
 function renderItemsTab() {
-  const body = document.getElementById("items-body");
-  const agg = aggregateByItem(filteredRows);
-  if (!agg.length) { body.innerHTML = `<tr class="empty-row"><td colspan="5">${t("no_data")}</td></tr>`; return; }
   const locale = currentLang === "en" ? "en-GB" : "sr-RS";
-  body.innerHTML = agg.map((a) => `
-    <tr>
-      <td class="mono">${escapeHtml(a.code || "—")}</td>
+  renderAggTab("items", "items-body", aggregateByItem(filteredRows), 5, (a) => `
+      <td class="mono">${CHEV}${escapeHtml(a.code || "—")}</td>
       <td>${escapeHtml(a.name)}</td>
       <td>${escapeHtml(a.unit || "—")}</td>
       <td><strong>${fmtQty(a.quantity, locale)}</strong></td>
-      <td>${a.orderCount}</td>
-    </tr>
-  `).join("");
+      <td>${a.orderCount}</td>`);
+}
+
+const TAB_BODY = { narucioci: "narucioci-body", isporucioci: "isporucioci-body", suppliers: "suppliers-body-report", items: "items-body" };
+const TAB_RENDER = { narucioci: renderNarucioci, isporucioci: renderIsporucioci, suppliers: renderSuppliersTab, items: renderItemsTab };
+
+Object.entries(TAB_BODY).forEach(([tab, bodyId]) => {
+  const body = document.getElementById(bodyId);
+  const toggle = (tr) => {
+    const id = `${tab}:${tr.dataset.key}`;
+    if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+    TAB_RENDER[tab]();
+  };
+  body.addEventListener("click", (e) => {
+    const exp = e.target.closest("button[data-drill-export]");
+    if (exp) { runDrillExport(exp); return; }
+    const tr = e.target.closest("tr.rep-drill-toggle");
+    if (tr) toggle(tr);
+  });
+  body.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const tr = e.target.closest("tr.rep-drill-toggle");
+    if (tr && e.target === tr) { e.preventDefault(); toggle(tr); }
+  });
+});
+
+// Izvoz liste narudžbenica jednog otvorenog reda (dobavljač / isporučilac / naručilac / artikal)
+function slugify(str) {
+  return String(str || "").toLowerCase().replace(/đ/g, "dj").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "red";
+}
+
+async function runDrillExport(btn) {
+  const { tab, key } = btn.dataset;
+  const a = (aggCache[tab] || []).find((x) => x.key === key);
+  if (!a || !a.orders.length) { toast(t("toast_no_data_to_export"), "error"); return; }
+  const cols = DRILL_COLS[tab].map((k) => COL[k]);
+  const rows = a.orders.map((o) => Object.fromEntries(cols.map((c) => [c.money ? `${c.head()} (${currency})` : c.head(), c.text(o, a)])));
+  const filename = `izvestaj-${tab}-${slugify(a.name)}-${new Date().toISOString().slice(0, 10)}`;
+  const list = a.orders.map((o) => o.r);
+  const total = tab === "items" ? null : tab === "suppliers" ? a.orders.reduce((s, o) => s + o.amount, 0) : list.reduce((s, r) => s + r.total, 0);
+  const original = btn.textContent;
+  btn.disabled = true;
+  if (btn.dataset.drillExport === "pdf") btn.textContent = t("generating_pdf_ellipsis");
+  try {
+    if (btn.dataset.drillExport === "csv") exportCsv(filename, rows);
+    if (btn.dataset.drillExport === "excel") await exportExcel(filename, rows, t("reports"));
+    if (btn.dataset.drillExport === "pdf") await exportPdf(filename, t("report_title_drill", { name: a.name }), rows, { company, subtitle: reportSubtitle(list, total) });
+  } catch (err) {
+    console.error(err);
+    toast(t("toast_export_error"), "error");
+  } finally {
+    btn.disabled = false; btn.textContent = original;
+  }
 }
 
 // --------------------------------------------------------------- FINANSIJSKI PREGLED
@@ -303,18 +381,15 @@ function pdfTitleFor(view) {
 }
 
 // Red ispod naslova PDF-a: period · broj narudžbina · ukupan iznos
-function reportSubtitle() {
+function reportSubtitle(list = filteredRows, total = list.reduce((s, r) => s + r.total, 0)) {
   const from = getISO(document.getElementById("f-date-from"));
   const to = getISO(document.getElementById("f-date-to"));
   const period = (from || to)
     ? t("report_subtitle_period", { from: isoToDmy(from) || "…", to: isoToDmy(to) || "…" })
     : t("report_subtitle_all_periods");
-  const total = filteredRows.reduce((s, r) => s + r.total, 0);
-  return [
-    period,
-    t("report_subtitle_count", { count: filteredRows.length }),
-    t("report_subtitle_total", { amount: fmtAmount(total) }),
-  ].join("   ·   ");
+  const parts = [period, t("report_subtitle_count", { count: list.length })];
+  if (total !== null) parts.push(t("report_subtitle_total", { amount: fmtAmount(total) }));
+  return parts.join("   ·   ");
 }
 
 document.querySelectorAll("button[data-export]").forEach((btn) => {

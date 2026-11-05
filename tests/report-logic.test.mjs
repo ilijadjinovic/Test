@@ -1,6 +1,6 @@
 // Pokretanje: node tests/report-logic.test.mjs
 import assert from "node:assert/strict";
-import { aggregateByItem, groupItemsBySupplier, parseQty, fmtQty } from "../js/report-logic.js";
+import { aggregateBySupplier, aggregateByItem, groupItemsBySupplier, parseQty, fmtQty } from "../js/report-logic.js";
 
 let n = 0; const ok = (name, fn) => { fn(); n++; console.log("  ✓", name); };
 
@@ -55,5 +55,29 @@ ok("groupItemsBySupplier: grupiše po dobavljaču, redosled prvog pojavljivanja"
 });
 ok("fmtQty: do 3 decimale, bez nula viška", () => {
   assert.equal(fmtQty(10, "en-GB"), "10"); assert.equal(fmtQty(2.5, "en-GB"), "2.5"); assert.equal(fmtQty(1.23456, "en-GB"), "1.235");
+});
+ok("aggregateByItem: orders = lista narudžbina sa količinom tog artikla u svakoj", () => {
+  const b = aggregateByItem(rows).find((x) => x.code === "1012");
+  assert.deepEqual(b.orders.map((o) => [o.r.id, o.quantity]), [["o1", 10], ["o2", 6]]);
+  assert.equal(b.orders.length, b.orderCount);
+});
+const sRows = [
+  { id: "a", items: [{ supplierId: "s1", supplierName: "Hadrijan" }], purchases: [{ supplierId: "s1", supplierName: "Hadrijan", paidAmount: 100 }] },
+  { id: "b", items: [{ supplierId: "s1", supplierName: "Hadrijan" }, { supplierId: "s1" }], purchases: [] },
+  { id: "c", items: [{ supplierId: "s2", supplierName: "Metro" }], purchases: [{ supplierId: "s1", supplierName: "Hadrijan", paidAmount: 50 }, { supplierId: "s1", paidAmount: "25" }] },
+  { id: "d" },
+];
+ok("aggregateBySupplier: unija stavki i nabavki, narudžbina se broji jednom", () => {
+  const h = aggregateBySupplier(sRows).find((x) => x.key === "s1");
+  assert.equal(h.orderCount, 3);                       // a (oba), b (samo stavke), c (samo nabavka)
+  assert.deepEqual(h.orders.map((o) => o.r.id), ["a", "b", "c"]);
+  assert.equal(h.total, 175);                          // iznos samo iz nabavki
+  assert.deepEqual(h.orders.map((o) => o.amount), [100, 0, 75]);
+});
+ok("aggregateBySupplier: dobavljač samo u stavkama se vidi; prazan ulaz; sort po iznosu", () => {
+  const a = aggregateBySupplier(sRows);
+  assert.deepEqual(a.map((x) => x.key), ["s1", "s2"]);
+  assert.equal(a[1].orderCount, 1); assert.equal(a[1].total, 0);
+  assert.deepEqual(aggregateBySupplier(undefined), []);
 });
 console.log(`\n${n} testova prošlo`);

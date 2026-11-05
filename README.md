@@ -86,7 +86,7 @@ i promeni polje `role` u `master_admin`.
   redosled se ručno menja (↑↓); link za Google Maps (`dir_action=navigate`) se deli na delove
   po ~9 usputnih stanica; stanice bez koordinata idu kao tekst adrese.
   Kod: `js/geo.js`, `js/geo-ui.js`, `js/map-picker.js`, `js/route-planner.js`;
-  testovi: `node tests/geo-logic.test.mjs`. Pravila baze (`firestore.rules`): admin,
+  testovi: `node tests/geo-logic.test.mjs`, `node tests/carry-over-logic.test.mjs` (prenos manjka, vidi `docs/PRENOS-MANJKA.md`). Pravila baze (`firestore.rules`): admin,
   naručilac i isporučilac smeju da menjaju samo geo polja lokacija (`onlyGeoFieldsChanged`).
   Napomena: OSM geokodiranje za srpske adrese nije uvek tačno — zato je ručno
   podešavanje na mapi važan deo toka. Država pretrage se menja u `GEO_COUNTRY` (`js/geo.js`).

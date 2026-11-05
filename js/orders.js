@@ -175,6 +175,22 @@ export async function createOrder(companyId, {
   return orderRef.id;
 }
 
+// Slanje narudžbine onako kako ga radi naručilac — ZAJEDNIČKO za formu "Nova narudžbina" i za
+// automatski prenos manjka posle potvrde prijema. Isporučilac se određuje prema podešavanju firme
+// (assignmentMode): automatski -> sistem bira, admin_bira -> čeka admina, narucilac_bira -> assignedTo.
+// Ako naknadna dodela ne uspe, narudžbina ostaje u statusu "kreirana" (admin je vidi među nedodeljenima)
+// — ne baca grešku, da retry ne bi napravio duplikat.
+export async function submitOrder(companyId, params, { assignedTo = null, actorName = "" } = {}) {
+  const orderId = await createOrder(companyId, params);
+  let assignFailed = false;
+  if (params.assignmentMode === "narucilac_bira" && assignedTo?.uid) {
+    try {
+      await assignOrder(companyId, orderId, { assignedToUid: assignedTo.uid, assignedToName: assignedTo.name, actorName: actorName || params.createdByName });
+    } catch (e) { console.error("Dodela isporučioca nije uspela:", e); assignFailed = true; }
+  }
+  return { orderId, assignFailed };
+}
+
 export async function getOrder(companyId, orderId) {
   const snap = await getDoc(doc(db, "companies", companyId, "orders", orderId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
@@ -366,31 +382,42 @@ export async function removeOrderDeliveryLocation(companyId, orderId, locId) {
   await safeRefreshSearchData(companyId, orderId);
 }
 
-// --- Potvrda prijema + auto-prenos nedostajuće robe u sledeću nabavku (Poglavlje 6) ---
+// --- Potvrda prijema + prenos manjka u novu narudžbinu (Poglavlje 6) ---
 // Jedan upis: narudžbina odmah ide na "zatvorena" (ranije su bila dva upisa —
 // prvo "potvrdjen_prijem", pa "zatvorena" — i ako drugi padne, narudžbina je
 // ostajala u prelaznom statusu koji nijedna kartica ne prati). Status
 // "potvrdjen_prijem" ostaje u šifrarniku samo zbog starih podataka.
-export async function confirmReceipt(companyId, orderId, { actorUid, actorName, missingItemsToCarryOver = [] }) {
+//
+// carryOver (opciono) = { items, deliveryLocations, assignmentMode, assignedTo, priority }
+// — sadržaj nove narudžbine koji je naručilac pregledao u dijalogu (vidi carry-over-logic.js).
+// Nova narudžbina se pravi PRE zatvaranja stare: ako kreiranje padne, baca se greška i stara
+// ostaje nepotvrđena (naručilac može da proba ponovo), umesto zatvorene narudžbine bez prenosa.
+// Vraća { id, orderNumber } nove narudžbine ili null.
+export async function confirmReceipt(companyId, orderId, { actorUid, actorName, carryOver = null }) {
+  let created = null;
+  if (carryOver?.items?.length) {
+    const order = await getOrder(companyId, orderId);
+    if (!order) throw new Error("order_not_found");
+    const { orderId: newId, assignFailed } = await submitOrder(companyId, {
+      createdByUid: order.createdByUid, createdByName: order.createdByName,
+      priority: carryOver.priority || order.priority || "standardno",
+      requestedByName: order.requestedByName || "",
+      items: carryOver.items, deliveryLocations: carryOver.deliveryLocations,
+      assignmentMode: carryOver.assignmentMode || "admin_bira",
+      extraFields: { carriedFromOrderId: orderId, carriedFromNumber: order.orderNumber || "" },
+    }, { assignedTo: carryOver.assignedTo || null, actorName });
+    const newOrder = await getOrder(companyId, newId);
+    created = { id: newId, orderNumber: newOrder?.orderNumber || "", assignFailed };
+  }
+
   await updateDoc(doc(db, "companies", companyId, "orders", orderId), {
     status: ORDER_STATUS.ZATVORENA, confirmedAt: serverTimestamp(), closedAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    ...(created ? { carriedOverAsOrderId: created.id, carriedOverAsNumber: created.orderNumber } : {}),
   });
   await safeRecordProcessingTime(companyId, orderId);
   await logAudit(companyId, { action: "order_status_changed", entity: "Orders", entityId: orderId, actorUid, actorName, details: statusLabel(ORDER_STATUS.POTVRDJEN_PRIJEM) });
   await createNotification(companyId, { toUid: null, event: NOTIF_EVENTS.PRIJEM_POTVRDJEN, orderId, titleKey: "notif_receipt_confirmed_title", bodyKey: "notif_receipt_confirmed_body" });
-
-  // Ako postoje nedostajuće stavke i naručilac je izabrao "Da" — kreira se nova narudžbina
-  if (missingItemsToCarryOver.length) {
-    const order = await getOrder(companyId, orderId);
-    const deliveryLocations = await getOrderDeliveryLocations(companyId, orderId);
-    return createOrder(companyId, {
-      createdByUid: order.createdByUid, createdByName: order.createdByName, priority: "standardno",
-      requestedByName: order.requestedByName || "",
-      items: missingItemsToCarryOver, deliveryLocations: deliveryLocations.map((l) => ({ locationId: l.id, locationName: l.locationName, ...supplierDestFields(l) })),
-      assignmentMode: "admin_bira",
-    });
-  }
-  return null;
+  return created;
 }
 
 // Vreme obrade (confirmedAt − createdAt, u ms) upisuje se kao broj na narudžbinu, da Admin tabla
@@ -413,7 +440,7 @@ async function safeRecordProcessingTime(companyId, orderId) {
 // potvrđuje sve lokacije isporuke (isto što detalji rade kad nema manjka).
 export async function confirmReceiptFull(companyId, orderId, { actorUid, actorName }) {
   const locations = await getOrderDeliveryLocations(companyId, orderId);
-  await confirmReceipt(companyId, orderId, { actorUid, actorName, missingItemsToCarryOver: [] });
+  await confirmReceipt(companyId, orderId, { actorUid, actorName });
   const pending = locations.filter((l) => l.status !== DELIVERY_LOCATION_STATUS.POTVRDJENO);
   if (pending.length) {
     const batch = writeBatch(db);

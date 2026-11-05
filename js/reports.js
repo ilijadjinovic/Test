@@ -6,7 +6,7 @@
 import { db, collection, getDocs, orderBy, query, limit, where, startAfter, Timestamp } from "./firebase-init.js";
 import { getOrderItems, getOrderPurchases } from "./orders.js";
 import { t } from "./i18n.js";
-export { aggregateByItem } from "./report-logic.js";
+export { aggregateByItem, aggregateBySupplier } from "./report-logic.js";
 
 // Narudžbine firme po stranama od po 500, opciono ograničene periodom kreiranja
 // (filtriranje radi baza, ne browser). Ranije se učitavalo samo poslednjih 500 i
@@ -89,30 +89,13 @@ function aggregateByOrderField(rows, keyFn, nameFn) {
   const map = new Map();
   rows.forEach((r) => {
     const key = keyFn(r) || "—";
-    if (!map.has(key)) map.set(key, { key, name: nameFn(r), orderCount: 0, total: 0 });
+    if (!map.has(key)) map.set(key, { key, name: nameFn(r), orderCount: 0, total: 0, orders: [] });
     const entry = map.get(key);
     entry.orderCount += 1;
     entry.total += r.total;
+    entry.orders.push({ r });
   });
   return Array.from(map.values()).sort((a, b) => b.total - a.total);
-}
-
-// Po dobavljačima: agregacija na nivou Purchase dokumenata (jedna narudžbina može
-// obuhvatiti više dobavljača), broji koliko različitih narudžbina i ukupan iznos.
-export function aggregateBySupplier(rows) {
-  const map = new Map();
-  rows.forEach((r) => {
-    (r.purchases || []).forEach((p) => {
-      if (!p.supplierId) return;
-      if (!map.has(p.supplierId)) map.set(p.supplierId, { key: p.supplierId, name: p.supplierName || "—", orderIds: new Set(), total: 0 });
-      const entry = map.get(p.supplierId);
-      entry.orderIds.add(r.id);
-      entry.total += Number(p.paidAmount) || 0;
-    });
-  });
-  return Array.from(map.values())
-    .map((e) => ({ key: e.key, name: e.name, orderCount: e.orderIds.size, total: e.total }))
-    .sort((a, b) => b.total - a.total);
 }
 
 // Finansijski pregled — ukupan zbir i broj narudžbina sa/bez unetog iznosa

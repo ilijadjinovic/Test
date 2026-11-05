@@ -4,7 +4,7 @@ import { loadLang, t } from "./i18n.js";
 import { getSuppliers, getSupplierLocations, getSupplierDestinations } from "./suppliers.js";
 import { getProducts, addProduct, updateProduct, getCategories, setProductActive, isProductActive } from "./catalog.js";
 import { getLocations } from "./locations.js";
-import { createOrder, assignOrder, getRecentRequesterNames } from "./orders.js";
+import { submitOrder, getRecentRequesterNames } from "./orders.js";
 import { getIsporucioci } from "./users.js";
 import { getTemplates, saveTemplate } from "./templates.js";
 import { getCompanySettings } from "./settings.js";
@@ -76,20 +76,63 @@ requireAuth(["narucilac"], async (user, profile) => {
 });
 
 // --- Supplier -> pickup locations + products ---
+// Keš lokacija preuzimanja po dobavljaču (koristi se i u listi stavki i pri proveri pre slanja).
+const supplierLocsCache = {};
+async function loadSupplierLocs(supplierId) {
+  if (!supplierLocsCache[supplierId]) supplierLocsCache[supplierId] = await getSupplierLocations(companyId, supplierId);
+  return supplierLocsCache[supplierId];
+}
+
+// Jedna lokacija -> odmah izabrana. Više lokacija -> prazan izbor ("— izaberi —") i fokus na njega,
+// a dodavanje artikla je blokirano dok se lokacija ne izabere. Bez lokacija -> "Bilo koja lokacija".
+function fillPickupSelect(locs) {
+  const pickupSelect = document.getElementById("pickup-select");
+  pickupSelect.classList.remove("field-error");
+  if (locs.length === 0) {
+    pickupSelect.innerHTML = `<option value="any">${t("any_location")}</option>`;
+    pickupSelect.value = "any";
+  } else if (locs.length === 1) {
+    pickupSelect.innerHTML = `<option value="${locs[0].id}">${escapeHtml(locs[0].name)}</option>`;
+    pickupSelect.value = locs[0].id;
+  } else {
+    pickupSelect.innerHTML = `<option value="">${t("pickup_choose_placeholder")}</option>` +
+      locs.map((l) => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join("");
+    pickupSelect.value = "";
+  }
+}
+
+function focusPickupSelect() {
+  const sel = document.getElementById("pickup-select");
+  sel.classList.add("field-error");
+  sel.focus();
+  try { if (sel.showPicker) sel.showPicker(); } catch (_) { /* pregledač traži korisnikov klik — fokus je dovoljan */ }
+}
+
+// true ako je lokacija preuzimanja izabrana; inače prikaže poruku i prebaci fokus na izbor.
+function requirePickupSelected() {
+  const sel = document.getElementById("pickup-select");
+  if (sel.value) return true;
+  toast(t("toast_select_pickup_first"), "error");
+  focusPickupSelect();
+  return false;
+}
+document.getElementById("pickup-select").addEventListener("change", (e) => e.target.classList.remove("field-error"));
+
 document.getElementById("supplier-select").addEventListener("change", async (e) => {
   const supplierId = e.target.value;
-  const pickupSelect = document.getElementById("pickup-select");
   const productList = document.getElementById("product-list");
   const searchInput = document.getElementById("product-search");
-  pickupSelect.innerHTML = `<option value="any">${t("any_location")}</option>`;
+  fillPickupSelect([]);
   productList.innerHTML = `<tr class="empty-row"><td colspan="6">${t("select_supplier_prompt")}</td></tr>`;
   searchInput.value = "";
   document.getElementById("product-category-filter").value = "";
   currentSupplierCatalog = []; currentSupplierPassive = []; // dok se novi katalog učitava, stari ne sme da važi
   if (!supplierId) return;
 
-  const [locs, allProducts] = await Promise.all([getSupplierLocations(companyId, supplierId), getProducts(companyId, supplierId)]);
-  pickupSelect.innerHTML += locs.map((l) => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join("");
+  const [locs, allProducts] = await Promise.all([loadSupplierLocs(supplierId), getProducts(companyId, supplierId)]);
+  if (document.getElementById("supplier-select").value !== supplierId) return; // korisnik je u međuvremenu promenio dobavljača
+  fillPickupSelect(locs);
+  if (locs.length > 1) focusPickupSelect();
   currentSupplierCatalog = allProducts.filter(isProductActive);
   currentSupplierPassive = allProducts.filter((p) => !isProductActive(p));
   acClose(); // katalog za predloge se promenio (drugi dobavljač) — stara lista predloga više ne važi
@@ -116,6 +159,7 @@ function renderProductTable(products, supplierId) {
 
   productList.querySelectorAll("button[data-add]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (!requirePickupSelected()) return;
       const row = btn.closest("tr");
       const product = products.find((p) => p.id === btn.dataset.add);
       const qty = normalizeQuantity(row.querySelector(".qty-input").value);
@@ -126,7 +170,7 @@ function renderProductTable(products, supplierId) {
       cart.push({
         tempId: uid("item"), supplierId, supplierName: supplier?.name || t("supplier"),
         productId: product.id, productName: editedName, code: editedCode, unit: product.unit, quantity: qty, note,
-        pickupLocationId: pickupSelect.value, pickupLocationName: pickupOpt ? pickupOpt.textContent : t("any_location"),
+        pickupLocationId: pickupSelect.value, pickupLocationName: pickupOpt && pickupSelect.value ? pickupOpt.textContent : "",
         deliveryLocationId: chosenDeliveryLocations[0]?.locationId || "", deliveryLocationName: chosenDeliveryLocations[0]?.locationName || "",
       });
       toast(t("toast_item_added", { name: editedName }), "success");
@@ -212,6 +256,7 @@ document.getElementById("manual-add-btn").addEventListener("click", () => {
   acClose();
   const supplierId = document.getElementById("supplier-select").value;
   if (!supplierId) { toast(t("toast_select_supplier_first"), "error"); return; }
+  if (!requirePickupSelected()) return;
 
   const name = document.getElementById("manual-name").value.trim();
   if (!name) { toast(t("toast_enter_item_name"), "error"); return; }
@@ -355,7 +400,7 @@ function addManualItemToCartAndOptionallyCatalog({ supplierId, name, qty, unit, 
   const newItem = {
     tempId: uid("item"), supplierId, supplierName: supplier?.name || t("supplier"),
     productId, productName: name, code, unit, quantity: qty, note,
-    pickupLocationId: pickupSelect.value, pickupLocationName: pickupOpt ? pickupOpt.textContent : t("any_location"),
+    pickupLocationId: pickupSelect.value, pickupLocationName: pickupOpt && pickupSelect.value ? pickupOpt.textContent : "",
     deliveryLocationId: chosenDeliveryLocations[0]?.locationId || "", deliveryLocationName: chosenDeliveryLocations[0]?.locationName || "",
     manualEntry: !productId,
   };
@@ -611,6 +656,30 @@ function applyAutoDeliveryLocation() {
   }
 }
 
+// Dovodi lokacije preuzimanja u stavkama u red (npr. posle učitavanja šablona): jedna lokacija
+// dobavljača -> postavi je; više lokacija -> ostavi prazno dok korisnik ne izabere u zaglavlju dobavljača.
+async function normalizeCartPickup() {
+  const ids = [...new Set(cart.map((i) => i.supplierId))];
+  await Promise.all(ids.map((id) => loadSupplierLocs(id).catch(() => [])));
+  cart.forEach((item) => {
+    const locs = supplierLocsCache[item.supplierId] || [];
+    if (!locs.length) { if (!item.pickupLocationId) { item.pickupLocationId = "any"; item.pickupLocationName = t("any_location"); } return; }
+    const valid = locs.find((l) => l.id === item.pickupLocationId);
+    if (valid) { item.pickupLocationName = valid.name; return; }
+    if (locs.length === 1) { item.pickupLocationId = locs[0].id; item.pickupLocationName = locs[0].name; }
+    else { item.pickupLocationId = ""; item.pickupLocationName = ""; }
+  });
+}
+
+// Prva stavka kojoj nedostaje lokacija preuzimanja, ili null.
+function findSupplierMissingPickup() {
+  for (const item of cart) {
+    const locs = supplierLocsCache[item.supplierId] || [];
+    if (!item.pickupLocationId || (item.pickupLocationId === "any" && locs.length > 0)) return item;
+  }
+  return null;
+}
+
 // --- Cart rendering ---
 // Stavke grupisane po dobavljaču (redosled prikaza). Isti redosled se koristi i za redne
 // brojeve u listi i pri slanju narudžbenice, da brojevi ostanu isti i posle slanja.
@@ -621,6 +690,20 @@ function getCartInDisplayOrder() {
     bySupplier.get(i.supplierId).push(i);
   });
   return Array.from(bySupplier.values()).flat();
+}
+
+// Izbor lokacije preuzimanja u zaglavlju grupe dobavljača (samo kad dobavljač ima više lokacija);
+// važi za sve artikle tog dobavljača u narudžbenici.
+function supplierPickupSelectHtml(supplierId, items) {
+  const locs = supplierLocsCache[supplierId] || [];
+  if (locs.length < 2) return "";
+  const ids = new Set(items.map((i) => i.pickupLocationId));
+  const current = ids.size === 1 ? [...ids][0] : "";
+  const invalid = !locs.some((l) => l.id === current);
+  return `<select class="supplier-pickup${invalid ? " field-error" : ""}" data-supplier-id="${escapeHtml(supplierId)}" title="${t("pickup_location_label")}">` +
+    `<option value="">${t("pickup_choose_placeholder")}</option>` +
+    locs.map((l) => `<option value="${l.id}"${l.id === current ? " selected" : ""}>${escapeHtml(l.name)}</option>`).join("") +
+    `</select>`;
 }
 
 function renderCart() {
@@ -644,7 +727,7 @@ function renderCart() {
 
   host.innerHTML = Object.entries(bySupplier).map(([supplierId, group]) => `
     <div class="supplier-block">
-      <div class="supplier-block-head"><h3>${escapeHtml(group.name)}</h3><span class="muted">${t("items_count", { count: group.items.length })}</span></div>
+      <div class="supplier-block-head"><h3>${escapeHtml(group.name)}</h3>${supplierPickupSelectHtml(supplierId, group.items)}<span class="muted">${t("items_count", { count: group.items.length })}</span></div>
       ${group.items.map((item) => `
         <div class="item-row" data-temp-id="${item.tempId}" style="grid-template-columns:32px 80px 1.5fr 90px 110px 1fr 90px auto;">
           <span class="cart-row-num muted" style="text-align:right;font-weight:600;">${rowNumber[item.tempId]}.</span>
@@ -652,7 +735,7 @@ function renderCart() {
           <div>
             <input type="text" class="cart-name" value="${escapeHtml(item.productName)}" style="width:100%;font-weight:600;" />
             ${item.manualEntry ? ` <span class="badge badge-gray">${t("manual_entry_badge")}</span>` : ""}
-            <div class="muted" style="font-size:12px;">${escapeHtml(item.pickupLocationName)}</div>
+            <div class="muted" style="font-size:12px;">${item.pickupLocationId ? escapeHtml(item.pickupLocationName) : `<span class="field-error-text">⚠ ${t("pickup_not_selected")}</span>`}</div>
           </div>
           <input type="number" min="1" step="1" value="${item.quantity}" class="cart-qty" />
           <span class="muted">${escapeHtml(item.unit)}</span>
@@ -665,6 +748,17 @@ function renderCart() {
       `).join("")}
     </div>
   `).join("");
+
+  host.querySelectorAll("select.supplier-pickup").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      const locs = supplierLocsCache[sel.dataset.supplierId] || [];
+      const loc = locs.find((l) => l.id === sel.value);
+      cart.filter((i) => i.supplierId === sel.dataset.supplierId).forEach((i) => {
+        i.pickupLocationId = loc ? loc.id : ""; i.pickupLocationName = loc ? loc.name : "";
+      });
+      renderCart();
+    });
+  });
 
   // Preselect delivery values + wire events
   cart.forEach((item) => {
@@ -731,6 +825,7 @@ document.getElementById("template-select").addEventListener("change", async (e) 
   const tpl = templates.find((tp) => tp.id === id);
   if (!tpl) return;
   cart = tpl.items.map((i) => ({ ...i, tempId: uid("item"), deliveryLocationId: chosenDeliveryLocations[0]?.locationId || "", deliveryLocationName: chosenDeliveryLocations[0]?.locationName || "" }));
+  await normalizeCartPickup();
   toast(t("toast_loaded_from_template", { name: tpl.name }), "success");
   renderCart();
 });
@@ -746,6 +841,15 @@ document.getElementById("submit-order").addEventListener("click", async () => {
   if (missingName) { toast(t("toast_enter_item_name"), "error"); return; }
   const invalidQty = cart.find((i) => !(i.quantity > 0));
   if (invalidQty) { toast(t("toast_invalid_quantity", { name: invalidQty.productName }), "error"); return; }
+  await normalizeCartPickup();
+  const missingPickup = findSupplierMissingPickup();
+  if (missingPickup) {
+    toast(t("toast_select_pickup_for", { name: missingPickup.supplierName }), "error");
+    renderCart();
+    const sel = document.querySelector(`select.supplier-pickup[data-supplier-id="${CSS.escape(missingPickup.supplierId)}"]`);
+    if (sel) { sel.scrollIntoView({ block: "center", behavior: "smooth" }); sel.focus(); }
+    return;
+  }
   if (!chosenDeliveryLocations.length) { toast(t("toast_select_at_least_one_delivery_location"), "error"); return; }
   const missingDelivery = cart.find((i) => !i.deliveryLocationId);
   if (missingDelivery) { toast(t("toast_select_delivery_location_for", { name: missingDelivery.productName }), "error"); return; }
@@ -761,15 +865,15 @@ document.getElementById("submit-order").addEventListener("click", async () => {
 
   try {
     const items = getCartInDisplayOrder().map(({ tempId, ...rest }) => rest);
-    const orderId = await createOrder(companyId, {
+    const chosenOpt = isporucilacSelect.options[isporucilacSelect.selectedIndex];
+    const { orderId, assignFailed } = await submitOrder(companyId, {
       createdByUid: uidValue, createdByName: actorName, priority, requestedByName, items,
       deliveryLocations: chosenDeliveryLocations, assignmentMode,
+    }, {
+      assignedTo: assignmentMode === "narucilac_bira" && isporucilacSelect.value ? { uid: isporucilacSelect.value, name: chosenOpt.textContent } : null,
+      actorName,
     });
-
-    if (assignmentMode === "narucilac_bira" && isporucilacSelect.value) {
-      const chosenOpt = isporucilacSelect.options[isporucilacSelect.selectedIndex];
-      await assignOrder(companyId, orderId, { assignedToUid: isporucilacSelect.value, assignedToName: chosenOpt.textContent, actorName });
-    }
+    if (assignFailed) toast(t("toast_order_created_not_assigned"), "error");
 
     const saveAsType = document.getElementById("save-as-type").value;
     const saveAsName = document.getElementById("save-as-name").value.trim();

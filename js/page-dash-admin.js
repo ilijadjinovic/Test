@@ -3,10 +3,10 @@ import { renderNav } from "./nav.js";
 import { loadLang, t, currentLang } from "./i18n.js";
 import {
   listenOrdersSince, listenOpenOrdersBy, listenRecentClosedBy,
-  getOrdersPageBy, countOrdersBy, searchOrdersByNumberPrefix, getAverageProcessingMs,
+  getOrdersPageBy, countOrdersBy, getAllOrdersBy, getAverageProcessingMs,
 } from "./orders.js";
 import { attachOrderItemsPopover, itemsInfoBtnHtml } from "./order-items-popover.js";
-import { isLate, allViewList, compareByCreatedDesc, toMillis, orderNumberPrefix, PAGE_SIZE, CLOSED_LIVE_HOURS } from "./dash-logic.js";
+import { isLate, allViewList, compareByCreatedDesc, toMillis, parseCriteria, matchesSearch, PAGE_SIZE, CLOSED_LIVE_HOURS, SEARCH_CACHE_MS } from "./dash-logic.js";
 import { formatDate, escapeHtml, badgeClassForStatus, statusLabel, ROLES, roleLabel, debounce, toast } from "./utils.js";
 
 await loadLang();
@@ -19,7 +19,8 @@ const D = {
   open: [], today: [], pages: [], cursor: null, exhausted: false, loadingPage: false, gotPage: false,
   gotOpen: false, gotToday: false, total: null, totalLoading: false, openSig: null,
   visible: PAGE_SIZE, list: [],
-  searchResults: [], searchLoading: false, searchCapped: false, searchSeq: 0, // pretraga po početku broja — u bazi
+  searchResults: [], searchLoading: false, searchCapped: false, searchSeq: 0, // pretraga po svim poljima (broj, osobe, artikli, dobavljači, lokacije)
+  searchCache: null, searchCacheAt: 0, // cela istorija firme, keširana na 5 minuta da kucanje ne čita bazu iznova
   avgMs: null, // prosečno vreme obrade svih narudžbina (agregacija u bazi)
 };
 let chartOrders = []; // narudžbine iz poslednjih 14 dana (poseban upit — tačne brojke i kad ih ima više od 200)
@@ -93,15 +94,19 @@ requireAuth([ROLES.ADMIN], (user, profile) => {
     catch (err) { console.error("Prosečno vreme obrade:", err); }
     renderMetrics();
   };
-  // Pretraga po početku broja narudžbine radi u bazi (bez učitavanja istorije)
+  // Pretraga kao kod naručioca: istorija firme se učita jednom (keš 5 min), pa se filtrira u memoriji
+  // po svim poljima narudžbine (broj, naručilac, isporučilac, artikli, šifre, dobavljači, lokacije).
   runSearch = async () => {
     const seq = ++D.searchSeq;
     if (!searchTerm) { D.searchLoading = false; D.searchResults = []; refresh(); return; }
-    D.searchLoading = true; refresh();
     try {
-      const { orders, capped } = await searchOrdersByNumberPrefix(companyId, orderNumberPrefix(searchTerm));
-      if (seq !== D.searchSeq) return; // u međuvremenu je pokrenuta novija pretraga
-      D.searchResults = orders; D.searchCapped = capped;
+      if (!D.searchCache || Date.now() - D.searchCacheAt > SEARCH_CACHE_MS) {
+        D.searchLoading = true; refresh();
+        const { orders, capped } = await getAllOrdersBy(companyId, null, null);
+        if (seq !== D.searchSeq) return; // u međuvremenu je pokrenuta novija pretraga
+        D.searchCache = orders; D.searchCapped = capped; D.searchCacheAt = Date.now();
+      }
+      D.searchResults = D.searchCache.filter((o) => matchesSearch(o, parseCriteria({ text: searchTerm })));
     } catch (err) {
       if (seq !== D.searchSeq) return;
       console.error(err);
@@ -158,7 +163,7 @@ document.getElementById("order-search").addEventListener("input", debounce((e) =
   D.visible = PAGE_SIZE;
   if (searchTerm) activeFilter = null; // pretraga ide preko cele istorije, pa se ne meša sa karticom
   runSearch();
-}, 250));
+}, 350));
 
 function selectFilter(key) {
   activeFilter = activeFilter === key ? null : key; // drugi klik na istu karticu ukida filter
@@ -272,7 +277,7 @@ function renderPager() {
   const loading = !D.gotOpen || !D.gotToday || (all && !D.gotPage) || (searchTerm && D.searchLoading);
   if (loading || (!total && !canMore)) { host.innerHTML = ""; return; }
   const totalText = all && D.total == null ? "…" : total;
-  const capped = searchTerm && D.searchCapped ? ` <span class="muted">${t("dash_prefix_capped")}</span>` : "";
+  const capped = searchTerm && D.searchCapped ? ` <span class="muted">${t("dash_search_capped")}</span>` : "";
   host.innerHTML = `
     <span class="muted pager-count">${t("dash_showing_count", { shown, total: totalText })}</span>${capped}
     ${canMore ? `<button type="button" class="btn btn-sm btn-outline" id="load-more-btn" ${D.loadingPage ? "disabled" : ""}>${D.loadingPage ? t("loading_ellipsis") : t("dash_load_more")}</button>` : ""}`;

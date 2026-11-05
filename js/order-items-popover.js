@@ -13,6 +13,9 @@ const SHOW_DELAY_MS = 180;   // mali odmak da balon ne bljesne dok miš samo pro
 const MAX_ITEMS = 12;
 const touchOnly = () => window.matchMedia("(hover: none)").matches; // telefon/tablet: bez hovera, balon se otvara dodirom na ikonicu
 const cache = new Map();     // orderId -> Promise<items[]>
+// Sidro balona: bilo koja ćelija sa data-order-id (izveštaji, ugnježdene tabele) ili prva ćelija reda .row-link (kontrolne table)
+const ANCHOR_SEL = "[data-order-id], tr.row-link > td:first-child";
+const idOf = (cell) => cell?.dataset.orderId || cell?.parentElement?.dataset.id;
 
 let pop = null;
 function ensurePop() {
@@ -71,8 +74,9 @@ function position(anchor) {
   p.style.top = `${top}px`;
 }
 
-// body: <tbody> tabele; getOrder(id) vraća narudžbinu iz liste (za broj u naslovu balona)
-export function attachOrderItemsPopover(body, { companyId, getOrder }) {
+// body: <tbody> tabele; getOrder(id) vraća narudžbinu iz liste (za broj u naslovu balona).
+// getItems(id) (neobavezno) vraća artikle ako su već učitani u listi (izveštaji) — tada nema čitanja iz baze.
+export function attachOrderItemsPopover(body, { companyId, getOrder, getItems }) {
   if (!body || body.dataset.itemsPop) return;
   body.dataset.itemsPop = "1";
   let timer = null, hideTimer = null, current = null;   // current = { anchor, id }
@@ -85,6 +89,8 @@ export function attachOrderItemsPopover(body, { companyId, getOrder }) {
   const show = async (anchor, id) => {
     const order = getOrder?.(id) || { orderNumber: "" };
     const p = ensurePop();
+    const known = getItems?.(id);
+    if (known) { p.innerHTML = contentHtml(order, known); p.classList.add("show"); position(anchor); return; }
     const cached = cache.has(id);
     p.innerHTML = contentHtml(order, cached ? await cache.get(id).catch(() => []) : null);
     p.classList.add("show");
@@ -100,9 +106,10 @@ export function attachOrderItemsPopover(body, { companyId, getOrder }) {
 
   body.addEventListener("mouseover", (e) => {
     if (touchOnly()) return;
-    const cell = e.target.closest("tr.row-link > td:first-child");
+    const cell = e.target.closest(ANCHOR_SEL);
     if (!cell || !body.contains(cell)) return;
-    const id = cell.parentElement.dataset.id;
+    const id = idOf(cell);
+    if (!id) return;
     clearTimeout(hideTimer);   // prelazak na sledeću narudžbinu: balon ostaje otvoren i samo menja sadržaj
     if (current?.anchor === cell) return;
     clearTimeout(timer);
@@ -112,7 +119,7 @@ export function attachOrderItemsPopover(body, { companyId, getOrder }) {
   });
   body.addEventListener("mouseout", (e) => {
     if (touchOnly()) return;
-    const cell = e.target.closest("tr.row-link > td:first-child");
+    const cell = e.target.closest(ANCHOR_SEL);
     if (!cell || cell.contains(e.relatedTarget)) return;
     if (current?.anchor !== cell) return;
     clearTimeout(timer); current = null;
@@ -123,7 +130,7 @@ export function attachOrderItemsPopover(body, { companyId, getOrder }) {
     const btn = e.target.closest("[data-items-btn]");
     if (!btn) { hide(); return; }
     const cell = btn.closest("td");
-    const id = btn.closest("tr")?.dataset.id;
+    const id = idOf(cell);
     if (!cell || !id) return;
     if (current?.anchor === cell && pop?.classList.contains("show")) { hide(); return; }
     clearTimeout(timer); clearTimeout(hideTimer);

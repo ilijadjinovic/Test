@@ -13,6 +13,7 @@ import { generateOrdersReportPdf } from "./order-print.js";
 import { exportCsv, exportExcel, exportPdf } from "./import-export.js";
 import { escapeHtml, toast, formatDate, ROLES, statusLabel, ORDER_STATUS_ALL, badgeClassForStatus } from "./utils.js";
 import { getISO, setISO, initDatepickers } from "./datepicker.js";
+import { attachOrderItemsPopover, itemsInfoBtnHtml } from "./order-items-popover.js";
 
 await loadLang();
 
@@ -150,7 +151,7 @@ function renderOrdersTab() {
   const detailed = document.getElementById("f-detailed").checked;
   body.innerHTML = filteredRows.map((r) => `
     <tr>
-      <td class="mono"><a href="./order-detail.html?order=${r.id}">${escapeHtml(r.orderNumber)}</a></td>
+      <td class="mono" data-order-id="${r.id}"><a href="./order-detail.html?order=${r.id}">${escapeHtml(r.orderNumber)}</a>${itemsInfoBtnHtml()}</td>
       <td>${formatDate(r.createdAt)}</td>
       <td>${escapeHtml(r.createdByName || "—")}</td>
       <td>${escapeHtml(r.requestedByName || "—")}</td>
@@ -165,7 +166,7 @@ function renderOrdersTab() {
 
 // --------------------------------------------------------------- DRILL-DOWN (klik na red → lista narudžbenica)
 const COL = {
-  number: { head: () => t("export_col_number"), html: (o) => `<a class="mono" href="./order-detail.html?order=${o.r.id}">${escapeHtml(o.r.orderNumber)}</a>`, text: (o) => o.r.orderNumber },
+  number: { head: () => t("export_col_number"), cellAttr: (o) => ` data-order-id="${o.r.id}"`, html: (o) => `<a class="mono" href="./order-detail.html?order=${o.r.id}">${escapeHtml(o.r.orderNumber)}</a>${itemsInfoBtnHtml()}`, text: (o) => o.r.orderNumber },
   date: { head: () => t("export_col_date"), html: (o) => formatDate(o.r.createdAt), text: (o) => formatDate(o.r.createdAt) },
   narucilac: { head: () => t("role_narucilac"), html: (o) => escapeHtml(o.r.createdByName || "—"), text: (o) => o.r.createdByName || "—" },
   isporucilac: { head: () => t("role_isporucilac"), html: (o) => escapeHtml(o.r.assignedToName || t("not_assigned")), text: (o) => o.r.assignedToName || t("not_assigned") },
@@ -194,7 +195,7 @@ function drillDetailHtml(tab, a) {
     </div>
     <table class="data-table rep-detail-table">
       <thead><tr>${cols.map((c) => `<th>${c.head()}</th>`).join("")}</tr></thead>
-      <tbody>${a.orders.map((o) => `<tr>${cols.map((c) => `<td>${c.html(o, a)}</td>`).join("")}</tr>`).join("")}</tbody>
+      <tbody>${a.orders.map((o) => `<tr>${cols.map((c) => `<td${c.cellAttr ? c.cellAttr(o) : ""}>${c.html(o, a)}</td>`).join("")}</tr>`).join("")}</tbody>
     </table>`;
 }
 
@@ -235,6 +236,13 @@ function renderItemsTab() {
 
 const TAB_BODY = { narucioci: "narucioci-body", isporucioci: "isporucioci-body", suppliers: "suppliers-body-report", items: "items-body" };
 const TAB_RENDER = { narucioci: renderNarucioci, isporucioci: renderIsporucioci, suppliers: renderSuppliersTab, items: renderItemsTab };
+
+// Balon sa artiklima na prelazak miša preko broja narudžbenice — u listi narudžbenica i u svim otvorenim redovima.
+// Artikli su već u učitanim redovima izveštaja, pa nema dodatnog čitanja iz baze.
+const orderById = (id) => fullDataset.find((r) => r.id === id);
+["orders-body", ...Object.values(TAB_BODY)].forEach((bodyId) => {
+  attachOrderItemsPopover(document.getElementById(bodyId), { companyId, getOrder: orderById, getItems: (id) => orderById(id)?.items });
+});
 
 Object.entries(TAB_BODY).forEach(([tab, bodyId]) => {
   const body = document.getElementById(bodyId);
